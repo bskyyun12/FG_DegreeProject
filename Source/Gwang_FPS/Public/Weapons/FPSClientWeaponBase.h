@@ -15,4 +15,7 @@ public:
 	// Sets default values for this actor's properties
 	AFPSClientWeaponBase();
 
+public:
+	void OnWeaponEquipped() override;
+
 };

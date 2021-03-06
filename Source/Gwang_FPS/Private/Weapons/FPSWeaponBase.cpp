@@ -20,3 +20,13 @@ void AFPSWeaponBase::BeginPlay()
 	Super::BeginPlay();
 	
 }
+
+EWeaponType AFPSWeaponBase::GetWeaponType()
+{
+	return WeaponType;
+}
+
+void AFPSWeaponBase::OnWeaponEquipped()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::OnWeaponEquipped()"));
+}

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
-#include "Enums.h"
+#include "Weapons/FPSWeaponBase.h"
 #include "FPSCharacterInterface.generated.h"
 
 // This class does not need to be modified.
@@ -25,8 +25,8 @@ class GWANG_FPS_API IFPSCharacterInterface
 public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	bool HasWeapon(EWeaponType WeaponType);
+	void OnBeginOverlapWeapon(AFPSWeaponBase* Weapon);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void EquipWeapon(EWeaponType WeaponType);
+	void OnEndOverlapWeapon();
 };

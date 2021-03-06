@@ -19,27 +19,31 @@ public:
 	// Sets default values for this character's properties
 	AFPSCharacter();
 
-	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-	/** Called for forwards/backward input */
 	void MoveForward(float Value);
-
-	/** Called for side to side input */
 	void MoveRight(float Value);
+	void Pickup();
+
+	bool HasWeapon(EWeaponType WeaponType);
+	void PickupWeapon(EWeaponType WeaponType);
+	void EquipWeapon(AFPSWeaponBase* Weapon);
 
 	// IFPSCharacterInterface
-	bool HasWeapon_Implementation(EWeaponType WeaponType) override;
-	void EquipWeapon_Implementation(EWeaponType WeaponType) override;
+	void OnBeginOverlapWeapon_Implementation(AFPSWeaponBase* Weapon) override;
+	void OnEndOverlapWeapon_Implementation() override;
 
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = FPSCharacter, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = FPSCharacter, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	USkeletalMeshComponent* FPSArms;
 
 	TMap<EWeaponType, int16> Weapons;
+
+	AFPSWeaponBase* CurrentFocusWeapon;
+	FTimerHandle PickupTraceTimerHandle;
+	int NumOfOverlappingWeapons;
 
 protected:
 	// Called when the game starts or when spawned

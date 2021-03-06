@@ -16,6 +16,7 @@ AFPSRepWeaponBase::AFPSRepWeaponBase()
 	SphereCollider = CreateDefaultSubobject<USphereComponent>(TEXT("Sphere"));
 	SphereCollider->SetupAttachment(WeaponMesh);
 	SphereCollider->OnComponentBeginOverlap.AddDynamic(this, &AFPSRepWeaponBase::OnBeginOverlap);
+	SphereCollider->OnComponentEndOverlap.AddDynamic(this, &AFPSRepWeaponBase::OnEndOverlap);
 
 	SetReplicates(true);
 }
@@ -26,15 +27,24 @@ void AFPSRepWeaponBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent,
 	{
 		if (UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSCharacterInterface::StaticClass()))
 		{
-			if (IFPSCharacterInterface::Execute_HasWeapon(OtherActor, WeaponType))
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Player: %s already has a rifle"), *OtherActor->GetName());
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Player: %s pick up %s"), *OtherActor->GetName(), *this->GetName());
-				IFPSCharacterInterface::Execute_EquipWeapon(OtherActor, WeaponType);
-			}
+			IFPSCharacterInterface::Execute_OnBeginOverlapWeapon(OtherActor, this);
 		}
 	}
+}
+
+void AFPSRepWeaponBase::OnEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (HasAuthority())
+	{
+		if (UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSCharacterInterface::StaticClass()))
+		{
+			IFPSCharacterInterface::Execute_OnEndOverlapWeapon(OtherActor);
+		}
+	}
+}
+
+void AFPSRepWeaponBase::OnWeaponEquipped()
+{
+	Super::OnWeaponEquipped();
+	UE_LOG(LogTemp, Warning, TEXT("AFPSRepWeaponBase::OnWeaponEquipped()"));
 }
