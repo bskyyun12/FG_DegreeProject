@@ -5,8 +5,11 @@
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "DrawDebugHelpers.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
+
+#include "AnimInstances/FPSAnimInterface.h"
 
 // Sets default values
 AFPSCharacter::AFPSCharacter()
@@ -82,11 +85,20 @@ void AFPSCharacter::Pickup()
 	if (CurrentFocusWeapon != nullptr)
 	{
 		PickupWeapon(CurrentFocusWeapon->GetWeaponType());
+
+		// Temporary implementation
+		if (bHasAnyWeapons == false)
+		{
+			EquipWeapon(CurrentFocusWeapon);
+			bHasAnyWeapons = true;
+		}
 	}
 }
 
 void AFPSCharacter::OnBeginOverlapWeapon_Implementation(AFPSWeaponBase* Weapon)
 {
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnBeginOverlapWeapon_Implementation()"));
+
 	NumOfOverlappingWeapons++;
 	UE_LOG(LogTemp, Warning, TEXT("OnBeginOverlapWeapon() NumOfOverlappingWeapons: %i"), NumOfOverlappingWeapons);
 
@@ -96,11 +108,47 @@ void AFPSCharacter::OnBeginOverlapWeapon_Implementation(AFPSWeaponBase* Weapon)
 		return;
 	}
 
-	GetWorld()->GetTimerManager().SetTimer(PickupTraceTimerHandle, []()
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+	World->GetTimerManager().SetTimer(PickupTraceTimerHandle, this, &AFPSCharacter::Client_CheckForWeapon, 0.5f, true, 0.f);
+}
+
+void AFPSCharacter::Client_CheckForWeapon_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("CheckForWeapon"));
+
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	FHitResult Hit;
+	FVector Start = FollowCamera->GetComponentLocation();
+	FVector End = Start + FollowCamera->GetForwardVector() * 300.f;
+	DrawDebugLine(World, Start, End, FColor::Red, false, 0.5f);
+
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+	bool bIsHit = World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
+	if (bIsHit)
+	{
+		AFPSWeaponBase* FocusedWeapon = Cast<AFPSWeaponBase>(Hit.GetActor());
+		if (FocusedWeapon != nullptr)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Timer check"));
-			// Todo: Display UI when player looks at a weapon, set CurrentFocusWeapon
-		}, 0.5f, true, 0.f);
+			UE_LOG(LogTemp, Warning, TEXT("Hit Weapon: %s"), *FocusedWeapon->GetName());
+			CurrentFocusWeapon = FocusedWeapon;
+		}
+
+		DrawDebugPoint(World, Hit.ImpactPoint, 10.f, FColor::Green, false, 0.5f);
+	}
+	else
+	{
+		CurrentFocusWeapon = nullptr;
+	}
 }
 
 void AFPSCharacter::OnEndOverlapWeapon_Implementation()
@@ -130,10 +178,26 @@ bool AFPSCharacter::HasWeapon(EWeaponType WeaponType)
 
 void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 {
-	if (HasWeapon(Weapon->GetWeaponType()))
+	if (Weapon != nullptr && HasWeapon(Weapon->GetWeaponType()))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Player: %s equipped a weapon: %i"), *this->GetName(), Weapon->GetWeaponType());
-		Weapon->OnWeaponEquipped();
+		Server_EquipWeapon(Weapon);
+
+		// Local
+		if (!ensure(FPSArms != nullptr))
+		{
+			return;
+		}
+		Weapon->Client_OnClientWeaponEquipped(FPSArms);
+		Weapon->SetOwner(this);
 	}
 }
 
+void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
+{
+	USkeletalMeshComponent* CharacterMesh = GetMesh();
+	if (!ensure(CharacterMesh != nullptr))
+	{
+		return;
+	}
+	Weapon->Server_OnRepWeaponEquipped(CharacterMesh);
+}

@@ -28,6 +28,9 @@ public:
 	void PickupWeapon(EWeaponType WeaponType);
 	void EquipWeapon(AFPSWeaponBase* Weapon);
 
+	UFUNCTION(Server, Reliable)
+	void Server_EquipWeapon(AFPSWeaponBase* Weapon);
+
 	// IFPSCharacterInterface
 	void OnBeginOverlapWeapon_Implementation(AFPSWeaponBase* Weapon) override;
 	void OnEndOverlapWeapon_Implementation() override;
@@ -45,8 +48,14 @@ protected:
 	FTimerHandle PickupTraceTimerHandle;
 	int NumOfOverlappingWeapons;
 
+	// Temporary thing
+	bool bHasAnyWeapons;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	UFUNCTION(Client, Unreliable)
+	void Client_CheckForWeapon();
 
 };

@@ -2,7 +2,14 @@
 
 
 #include "Weapons/FPSWeaponBase.h"
+#include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/SphereComponent.h"
+#include "Kismet/KismetSystemLibrary.h" // DoesImplementInterface
+#include "Net/UnrealNetwork.h"
+
+#include "./FPSCharacterInterface.h"
+#include "AnimInstances/FPSAnimInterface.h"
 
 // Sets default values
 AFPSWeaponBase::AFPSWeaponBase()
@@ -10,23 +17,91 @@ AFPSWeaponBase::AFPSWeaponBase()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
-	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
-	this->SetRootComponent(WeaponMesh);
+	RootComp = CreateDefaultSubobject<USceneComponent>(TEXT("RootComp"));
+	this->SetRootComponent(RootComp);
+
+	ClientWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ClientWeapnMesh"));
+	ClientWeaponMesh->SetOnlyOwnerSee(true);
+	ClientWeaponMesh->SetupAttachment(RootComp);
+
+	RepWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+	RepWeaponMesh->SetOwnerNoSee(true);
+	RepWeaponMesh->SetSimulatePhysics(true);
+	RepWeaponMesh->SetCollisionProfileName("BlockAllDynamic");
+	RepWeaponMesh->SetupAttachment(RootComp);
+
+	InteractCollider = CreateDefaultSubobject<USphereComponent>(TEXT("Sphere"));
+	InteractCollider->SetSphereRadius(120.f);
+	InteractCollider->SetupAttachment(RepWeaponMesh);
+	InteractCollider->OnComponentBeginOverlap.AddDynamic(this, &AFPSWeaponBase::OnBeginOverlap);
+	InteractCollider->OnComponentEndOverlap.AddDynamic(this, &AFPSWeaponBase::OnEndOverlap);
+
+	SetReplicates(true);
+	SetReplicateMovement(true);
 }
 
 // Called when the game starts or when spawned
 void AFPSWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
-	
+}
+
+void AFPSWeaponBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (HasAuthority())
+	{
+		if (UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSCharacterInterface::StaticClass()))
+		{
+			IFPSCharacterInterface::Execute_OnBeginOverlapWeapon(OtherActor, this);
+		}
+	}
+}
+
+void AFPSWeaponBase::OnEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (HasAuthority())
+	{
+		if (UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSCharacterInterface::StaticClass()))
+		{
+			IFPSCharacterInterface::Execute_OnEndOverlapWeapon(OtherActor);
+		}
+	}
+}
+
+void AFPSWeaponBase::Client_OnClientWeaponEquipped_Implementation(USkeletalMeshComponent* MeshToAttach)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnClientWeaponEquipped_Implementation()"));
+	ClientWeaponMesh->AttachToComponent(MeshToAttach, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
+
+	UAnimInstance* FPSArmsAnim = MeshToAttach->GetAnimInstance();
+	if (!ensure(FPSArmsAnim != nullptr))
+	{
+		return;
+	}
+	if (UKismetSystemLibrary::DoesImplementInterface(FPSArmsAnim, UFPSAnimInterface::StaticClass()))
+	{
+		IFPSAnimInterface::Execute_UpdateBlendPose(FPSArmsAnim, 1);
+	}
+}
+
+void AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation(USkeletalMeshComponent* MeshToAttach)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation()"));
+
+	NetMulticast_OnRepWeaponEquipped(MeshToAttach);
+}
+
+void AFPSWeaponBase::NetMulticast_OnRepWeaponEquipped_Implementation(USkeletalMeshComponent* MeshToAttach)
+{
+	RepWeaponMesh->SetSimulatePhysics(false);
+	RepWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	RepWeaponMesh->AttachToComponent(MeshToAttach, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
 }
 
 EWeaponType AFPSWeaponBase::GetWeaponType()
 {
 	return WeaponType;
-}
-
-void AFPSWeaponBase::OnWeaponEquipped()
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::OnWeaponEquipped()"));
 }
