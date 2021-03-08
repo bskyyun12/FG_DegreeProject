@@ -21,7 +21,9 @@ public:
 	void SpawnDarkTeam(APlayerController* PlayerController);
 	void SpawnSilverTeam(APlayerController* PlayerController);
 
-	FTransform GetRandomPlayerStarts(bool bIsDarkTeam, TArray<FTransform> Transforms);
+	FTransform GetRandomPlayerStarts(bool bIsDarkTeam);
+
+	void RespawnPlayer(APlayerController* PlayerController);
 
 private:
 	TArray<FTransform> DarkCharacterSpawnTransforms;

@@ -54,33 +54,39 @@ void AFPSGameMode::BeginPlay()
 
 void AFPSGameMode::SpawnDarkTeam(APlayerController* PlayerController)
 {
-	FTransform Transform = GetRandomPlayerStarts(true, DarkCharacterSpawnTransforms);
-
 	if (UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, DarkCharacter, Transform);
+		IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, DarkCharacter, true);
 	}
 }
 
 void AFPSGameMode::SpawnSilverTeam(APlayerController* PlayerController)
 {
-	FTransform Transform = GetRandomPlayerStarts(false, SilverCharacterSpawnTransforms);
-
 	if (UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, SilverCharacter, Transform);
+		IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, SilverCharacter, false);
 	}
 }
 
-FTransform AFPSGameMode::GetRandomPlayerStarts(bool bIsDarkTeam, TArray<FTransform> Transforms)
+FTransform AFPSGameMode::GetRandomPlayerStarts(bool bIsDarkTeam)
 {
-	int16 RandomIndex = FMath::RandRange(0, Transforms.Num() - 1);
 	if (bIsDarkTeam)
 	{
+		int16 RandomIndex = FMath::RandRange(0, DarkCharacterSpawnTransforms.Num() - 1);
 		return DarkCharacterSpawnTransforms[RandomIndex];
 	}
 	else
 	{
+		int16 RandomIndex = FMath::RandRange(0, SilverCharacterSpawnTransforms.Num() - 1);
 		return SilverCharacterSpawnTransforms[RandomIndex];
+	}
+}
+
+void AFPSGameMode::RespawnPlayer(APlayerController* PlayerController)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::RespawnPlayer"));
+	if (UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
+	{
+		IFPSPlayerControllerInterface::Execute_OnRespawnPlayer(PlayerController);
 	}
 }

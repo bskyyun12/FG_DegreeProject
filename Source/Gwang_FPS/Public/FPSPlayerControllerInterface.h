@@ -32,5 +32,11 @@ public:
 	void OnSilverTeamSelected();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnSpawnPlayer(TSubclassOf<AFPSCharacter> CharacterClass, FTransform Transform);
+	void OnSpawnPlayer(TSubclassOf<AFPSCharacter> CharacterClass, bool bIsDarkTeam);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void OnPlayerDeath();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void OnRespawnPlayer();
 };

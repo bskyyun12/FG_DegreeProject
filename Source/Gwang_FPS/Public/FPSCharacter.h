@@ -26,10 +26,19 @@ public:
 
 	bool HasWeapon(EWeaponType WeaponType);
 	void PickupWeapon(EWeaponType WeaponType);
-	void EquipWeapon(AFPSWeaponBase* Weapon);
 
+	void EquipWeapon(AFPSWeaponBase* Weapon);
 	UFUNCTION(Server, Reliable)
 	void Server_EquipWeapon(AFPSWeaponBase* Weapon);
+
+	void Fire();
+	UFUNCTION(Server, Reliable)
+	void Server_Fire(AFPSWeaponBase* Weapon, FTransform CameraTransform);
+
+	UFUNCTION(BlueprintCallable)
+	void RespawnPlayer();
+
+	bool bIsDarkTeam;
 
 	// IFPSCharacterInterface
 	void OnBeginOverlapWeapon_Implementation(AFPSWeaponBase* Weapon) override;
@@ -43,10 +52,12 @@ protected:
 	USkeletalMeshComponent* FPSArms;
 
 	TMap<EWeaponType, int16> Weapons;
+	AFPSWeaponBase* CurrentWeapon;
 
-	AFPSWeaponBase* CurrentFocusWeapon;
+	AFPSWeaponBase* CurrentFocus;
 	FTimerHandle PickupTraceTimerHandle;
 	int NumOfOverlappingWeapons;
+
 
 	// Temporary thing
 	bool bHasAnyWeapons;

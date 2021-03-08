@@ -5,11 +5,14 @@
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
+#include "DrawDebugHelpers.h"
 #include "Kismet/KismetSystemLibrary.h" // DoesImplementInterface
 #include "Net/UnrealNetwork.h"
+#include "PhysicalMaterials/PhysicalMaterial.h"
 
 #include "./FPSCharacterInterface.h"
 #include "AnimInstances/FPSAnimInterface.h"
+#include "Components/HealthComponent.h"
 
 // Sets default values
 AFPSWeaponBase::AFPSWeaponBase()
@@ -99,6 +102,62 @@ void AFPSWeaponBase::NetMulticast_OnRepWeaponEquipped_Implementation(USkeletalMe
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	RepWeaponMesh->AttachToComponent(MeshToAttach, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
+}
+
+void AFPSWeaponBase::Server_FireWeapon_Implementation(FTransform CameraTransform)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_FireWeapon_Implementation"));
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	FHitResult Hit;
+	FVector Start = CameraTransform.GetLocation();
+	FVector End = Start + CameraTransform.GetRotation().GetForwardVector() * WeaponInfo.Range;
+	DrawDebugLine(World, Start, End, FColor::Red, true);
+
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+	Params.AddIgnoredActor(GetOwner());
+	Params.bReturnPhysicalMaterial = true;
+	bool bIsHit = World->LineTraceSingleByChannel(Hit, Start, End, ECC_GameTraceChannel1, Params);
+	if (bIsHit)
+	{
+		AActor* HitActor = Hit.GetActor();
+		if (HitActor != nullptr)
+		{
+			EPhysicalSurface SurfaceType = UPhysicalMaterial::DetermineSurfaceType(Hit.PhysMaterial.Get());
+			float DamageMultiplier = 1.f;
+			switch (SurfaceType)
+			{
+			case SurfaceType_Default:
+				break;
+			case SurfaceType1:	// Head
+				DamageMultiplier = 2.f;
+				break;
+			case SurfaceType2:	// Torso
+				break;
+			case SurfaceType3:	// Arms
+				break;
+			case SurfaceType4:	// Legs
+				break;
+			case SurfaceType5:	// Pelvis
+				break;
+			}
+			float FinalDamage = WeaponInfo.Damage * DamageMultiplier;
+
+			UHealthComponent* HealthComp = Cast<UHealthComponent>(HitActor->GetComponentByClass(UHealthComponent::StaticClass()));
+			if (HealthComp != nullptr)
+			{
+				HealthComp->AddHealth(-FinalDamage);
+			}
+			UE_LOG(LogTemp, Warning, TEXT("Attacker: %s, Damaged Actor: %s, Damage Taken: %f"), *GetOwner()->GetName(), *HitActor->GetName(), FinalDamage);
+		}
+
+		DrawDebugPoint(World, Hit.ImpactPoint, 10.f, FColor::Green, true);
+	}
 }
 
 EWeaponType AFPSWeaponBase::GetWeaponType()

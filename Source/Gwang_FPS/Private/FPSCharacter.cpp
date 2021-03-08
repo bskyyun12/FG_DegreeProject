@@ -10,6 +10,8 @@
 #include "Net/UnrealNetwork.h"
 
 #include "AnimInstances/FPSAnimInterface.h"
+#include "FPSPlayerControllerInterface.h"
+#include "FPSPlayerController.h"
 
 // Sets default values
 AFPSCharacter::AFPSCharacter()
@@ -43,6 +45,7 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
 	PlayerInputComponent->BindAction("Pickup", IE_Pressed, this, &AFPSCharacter::Pickup);
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AFPSCharacter::Fire);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AFPSCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AFPSCharacter::MoveRight);
@@ -82,15 +85,44 @@ void AFPSCharacter::MoveRight(float Value)
 
 void AFPSCharacter::Pickup()
 {
-	if (CurrentFocusWeapon != nullptr)
+	if (CurrentFocus != nullptr)
 	{
-		PickupWeapon(CurrentFocusWeapon->GetWeaponType());
+		PickupWeapon(CurrentFocus->GetWeaponType());
 
 		// Temporary implementation
 		if (bHasAnyWeapons == false)
 		{
-			EquipWeapon(CurrentFocusWeapon);
+			EquipWeapon(CurrentFocus);
 			bHasAnyWeapons = true;
+		}
+	}
+}
+
+void AFPSCharacter::Fire()
+{
+	if (CurrentWeapon != nullptr)
+	{
+		Server_Fire(CurrentFocus, FollowCamera->GetComponentTransform());
+	}
+}
+
+void AFPSCharacter::Server_Fire_Implementation(AFPSWeaponBase* Weapon, FTransform CameraTransform)
+{
+	if (Weapon != nullptr)
+	{
+		Weapon->Server_FireWeapon(CameraTransform);
+	}
+}
+
+void AFPSCharacter::RespawnPlayer()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnDeath"));
+	AFPSPlayerController* FPSController = Cast<AFPSPlayerController>(GetController());
+	if (FPSController != nullptr)
+	{
+		if (UKismetSystemLibrary::DoesImplementInterface(FPSController, UFPSPlayerControllerInterface::StaticClass()))
+		{
+			IFPSPlayerControllerInterface::Execute_OnPlayerDeath(FPSController);
 		}
 	}
 }
@@ -140,14 +172,14 @@ void AFPSCharacter::Client_CheckForWeapon_Implementation()
 		if (FocusedWeapon != nullptr)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Hit Weapon: %s"), *FocusedWeapon->GetName());
-			CurrentFocusWeapon = FocusedWeapon;
+			CurrentFocus = FocusedWeapon;
 		}
 
 		DrawDebugPoint(World, Hit.ImpactPoint, 10.f, FColor::Green, false, 0.5f);
 	}
 	else
 	{
-		CurrentFocusWeapon = nullptr;
+		CurrentFocus = nullptr;
 	}
 }
 
@@ -188,7 +220,8 @@ void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 			return;
 		}
 		Weapon->Client_OnClientWeaponEquipped(FPSArms);
-		Weapon->SetOwner(this);
+
+		CurrentWeapon = Weapon;
 	}
 }
 
@@ -199,5 +232,6 @@ void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
 	{
 		return;
 	}
+	Weapon->SetOwner(this);
 	Weapon->Server_OnRepWeaponEquipped(CharacterMesh);
 }

@@ -23,6 +23,9 @@ struct FWeaponInfo
 	int MaxAmmo;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Range;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* EquipAnim;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -68,6 +71,9 @@ public:
 
 	UFUNCTION(NetMulticast, Reliable)
 	void NetMulticast_OnRepWeaponEquipped(USkeletalMeshComponent* MeshToAttach);
+
+	UFUNCTION(Server, Reliable)
+	void Server_FireWeapon(FTransform CameraTransform);
 
 protected:
 	// Called when the game starts or when spawned

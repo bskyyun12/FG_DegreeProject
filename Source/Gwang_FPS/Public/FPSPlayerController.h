@@ -35,7 +35,9 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_OnSilverTeamSelected();
 
-	void OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacter> CharacterClass, FTransform Transform) override;
+	void OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacter> CharacterClass, bool bIsDarkTeam) override;
+	void OnPlayerDeath_Implementation() override;
+	void OnRespawnPlayer_Implementation() override;
 
 private:
 	UPROPERTY(EditDefaultsOnly)

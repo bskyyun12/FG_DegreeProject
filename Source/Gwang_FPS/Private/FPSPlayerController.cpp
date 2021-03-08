@@ -10,22 +10,12 @@
 
 AFPSPlayerController::AFPSPlayerController(const FObjectInitializer& ObjectInitializer /*= FObjectInitializer::Get()*/)
 {
-	//static ConstructorHelpers::FClassFinder<UUserWidget> TeamSelectionBPClass(TEXT("/Game/FPSGame/UI/WBP_TeamSelection"));
-	//if (!ensure(TeamSelectionBPClass.Class != nullptr))
-	//{
-	//	return;
-	//}
 
-	//TeamSelectionClass = TeamSelectionBPClass.Class;
-	//if (!ensure(TeamSelectionClass != nullptr))
-	//{
-	//	return;
-	//}
 }
 
 void AFPSPlayerController::BeginPlay()
 {
-
+	Super::BeginPlay();
 }
 
 void AFPSPlayerController::LoadTeamSelection_Implementation()
@@ -98,7 +88,7 @@ void AFPSPlayerController::Server_OnSilverTeamSelected_Implementation()
 	GameMode->SpawnSilverTeam(this);
 }
 
-void AFPSPlayerController::OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacter> CharacterClass, FTransform Transform)
+void AFPSPlayerController::OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacter> CharacterClass, bool bIsDarkTeam)
 {
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
@@ -106,8 +96,27 @@ void AFPSPlayerController::OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacte
 		return;
 	}
 
+	FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(bIsDarkTeam);
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-	AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(CharacterClass, Transform, SpawnParams);
+	AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(CharacterClass, SpawnTransform, SpawnParams);
 	this->Possess(SpawnedCharacter);
+	SpawnedCharacter->bIsDarkTeam = bIsDarkTeam;
+}
+
+void AFPSPlayerController::OnPlayerDeath_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnPlayerDeath_Implementation"));
+	GameMode->RespawnPlayer(this);
+}
+
+void AFPSPlayerController::OnRespawnPlayer_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnRespawnPlayer_Implementation"));
+	AFPSCharacter* FPSPlayer = Cast<AFPSCharacter>(GetPawn());
+	if (FPSPlayer != nullptr)
+	{
+		FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(FPSPlayer->bIsDarkTeam);
+		FPSPlayer->SetActorTransform(SpawnTransform);
+	}
 }
