@@ -64,13 +64,16 @@ public:
 	EWeaponType GetWeaponType();
 
 	UFUNCTION(Client, Reliable)
-	void Client_OnClientWeaponEquipped(USkeletalMeshComponent* MeshToAttach);
+	void Client_OnClientWeaponEquipped(USkeletalMeshComponent* FPSArmMesh);
 
 	UFUNCTION(Server, Reliable)
-	void Server_OnRepWeaponEquipped(USkeletalMeshComponent* MeshToAttach);
+	void Server_OnRepWeaponEquipped(USkeletalMeshComponent* FPSCharacterMesh);
 
-	UFUNCTION(NetMulticast, Reliable)
-	void NetMulticast_OnRepWeaponEquipped(USkeletalMeshComponent* MeshToAttach);
+	UPROPERTY(ReplicatedUsing=RepUsing_OnWeaponEquipped)
+	USkeletalMeshComponent* OwnerCharacterMesh;
+
+	UFUNCTION()
+	void RepUsing_OnWeaponEquipped();
 
 	UFUNCTION(Server, Reliable)
 	void Server_FireWeapon(FTransform CameraTransform);
@@ -102,4 +105,5 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FWeaponInfo WeaponInfo;
+
 };

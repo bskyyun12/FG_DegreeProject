@@ -7,7 +7,7 @@
 #include "Components/SphereComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetSystemLibrary.h" // DoesImplementInterface
-#include "Net/UnrealNetwork.h"
+#include "Net/UnrealNetwork.h" // GetLifetimeReplicatedProps
 #include "PhysicalMaterials/PhysicalMaterial.h"
 
 #include "./FPSCharacterInterface.h"
@@ -30,7 +30,7 @@ AFPSWeaponBase::AFPSWeaponBase()
 	RepWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	RepWeaponMesh->SetOwnerNoSee(true);
 	RepWeaponMesh->SetSimulatePhysics(true);
-	RepWeaponMesh->SetCollisionProfileName("BlockAllDynamic");
+	RepWeaponMesh->SetCollisionProfileName("IgnoreCharacter");
 	RepWeaponMesh->SetupAttachment(RootComp);
 
 	InteractCollider = CreateDefaultSubobject<USphereComponent>(TEXT("Sphere"));
@@ -47,6 +47,12 @@ AFPSWeaponBase::AFPSWeaponBase()
 void AFPSWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AFPSWeaponBase, OwnerCharacterMesh);
 }
 
 void AFPSWeaponBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -71,12 +77,12 @@ void AFPSWeaponBase::OnEndOverlap(UPrimitiveComponent* OverlappedComponent, AAct
 	}
 }
 
-void AFPSWeaponBase::Client_OnClientWeaponEquipped_Implementation(USkeletalMeshComponent* MeshToAttach)
+void AFPSWeaponBase::Client_OnClientWeaponEquipped_Implementation(USkeletalMeshComponent* FPSArmMesh)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnClientWeaponEquipped_Implementation()"));
-	ClientWeaponMesh->AttachToComponent(MeshToAttach, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
+	ClientWeaponMesh->AttachToComponent(FPSArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
 
-	UAnimInstance* FPSArmsAnim = MeshToAttach->GetAnimInstance();
+	UAnimInstance* FPSArmsAnim = FPSArmMesh->GetAnimInstance();
 	if (!ensure(FPSArmsAnim != nullptr))
 	{
 		return;
@@ -87,21 +93,32 @@ void AFPSWeaponBase::Client_OnClientWeaponEquipped_Implementation(USkeletalMeshC
 	}
 }
 
-void AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation(USkeletalMeshComponent* MeshToAttach)
+void AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation(USkeletalMeshComponent* FPSCharacterMesh)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation()"));
 
-	NetMulticast_OnRepWeaponEquipped(MeshToAttach);
+	if (!ensure(FPSCharacterMesh != nullptr))
+	{
+		return;
+	}
+	OwnerCharacterMesh = FPSCharacterMesh; // RepUsing_OnWeaponEquipped gets called for clients
+
+	RepWeaponMesh->SetSimulatePhysics(false);
+	RepWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	RepWeaponMesh->AttachToComponent(OwnerCharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
 }
 
-void AFPSWeaponBase::NetMulticast_OnRepWeaponEquipped_Implementation(USkeletalMeshComponent* MeshToAttach)
+void AFPSWeaponBase::RepUsing_OnWeaponEquipped()
 {
 	RepWeaponMesh->SetSimulatePhysics(false);
 	RepWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	RepWeaponMesh->AttachToComponent(MeshToAttach, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
+	RepWeaponMesh->AttachToComponent(OwnerCharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
 }
 
 void AFPSWeaponBase::Server_FireWeapon_Implementation(FTransform CameraTransform)

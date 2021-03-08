@@ -7,7 +7,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "Net/UnrealNetwork.h"
+//#include "Net/UnrealNetwork.h" // GetLifetimeReplicatedProps
 
 #include "AnimInstances/FPSAnimInterface.h"
 #include "FPSPlayerControllerInterface.h"
