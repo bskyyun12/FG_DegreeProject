@@ -7,6 +7,7 @@
 #include "FPSCharacterInterface.h"
 #include "FPSCharacter.generated.h"
 
+class AFPSPlayerController;
 class UBoxComponent;
 class UCameraComponent;
 class USkeletalMeshComponent;
@@ -20,10 +21,17 @@ class GWANG_FPS_API AFPSCharacter : public ACharacter, public IFPSCharacterInter
 public:
 	AFPSCharacter();
 
+	void OnPossessed(AFPSPlayerController* InFPSController);
+
+#pragma region Input binds
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 	void Pickup();
+	void Fire();
+	UFUNCTION(Server, Reliable)
+	void Server_Fire(AFPSWeaponBase* Weapon, FTransform CameraTransform);
+#pragma endregion
 
 	bool HasWeapon(EWeaponType WeaponType);
 	void PickupWeapon(EWeaponType WeaponType);
@@ -31,13 +39,6 @@ public:
 	void EquipWeapon(AFPSWeaponBase* Weapon);
 	UFUNCTION(Server, Reliable)
 	void Server_EquipWeapon(AFPSWeaponBase* Weapon);
-
-	void Fire();
-	UFUNCTION(Server, Reliable)
-	void Server_Fire(AFPSWeaponBase* Weapon, FTransform CameraTransform);
-
-
-	bool bIsDarkTeam;
 
 #pragma region IFPSCharacterInterface
 	void OnBeginOverlapWeapon_Implementation(AFPSWeaponBase* Weapon) override;
@@ -66,8 +67,11 @@ protected:
 
 	float RespawnDelay = 5.f;
 
+	// Cache
 	USkeletalMeshComponent* CharacterMesh;
 	UCapsuleComponent* CapsuleComponent;
+	AFPSPlayerController* FPSController;
+	FVector DefaultCameraRelativeLocation;
 
 	// Temporary thing
 	bool bHasAnyWeapons;

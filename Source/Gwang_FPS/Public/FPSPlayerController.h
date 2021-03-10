@@ -27,24 +27,24 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_LoadTeamSelection(TSubclassOf<UUserWidget> teamSelectionClass);
 
-	void OnDarkTeamSelected_Implementation() override;
+	void OnTeamSelected_Implementation(ETeam InTeam) override;
 	UFUNCTION(Server, Reliable)
-	void Server_OnDarkTeamSelected();
+	void Server_OnTeamSelected(ETeam InTeam);
 
-	void OnSilverTeamSelected_Implementation() override;
-	UFUNCTION(Server, Reliable)
-	void Server_OnSilverTeamSelected();
-
-	void OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacter> CharacterClass, bool bIsDarkTeam) override;
+	void OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacter> CharacterClass) override;
 
 	void RespawnPlayer_Implementation() override;
 #pragma endregion
 
-private:
+protected:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUserWidget> TeamSelectionClass;
 
 	UTeamSelectionWidget* TeamSelection;
 
 	AFPSGameMode* GameMode;
+
+	ETeam Team;
+
+protected:
 };

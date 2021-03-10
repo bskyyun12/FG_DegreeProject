@@ -6,9 +6,12 @@
 #include "GameFramework/PlayerStart.h"
 #include "FPSPlayerStart.generated.h"
 
-/**
- *
- */
+UENUM(BlueprintType)
+enum class ETeam : uint8 {
+	Dark	UMETA(DisplayName = "Team Dark"),
+	Silver	UMETA(DisplayName = "Team Silver"),
+};
+
 UCLASS()
 class GWANG_FPS_API AFPSPlayerStart : public APlayerStart
 {
@@ -16,6 +19,5 @@ class GWANG_FPS_API AFPSPlayerStart : public APlayerStart
 
 public:
 	UPROPERTY(EditAnywhere)
-	bool bIsDarkTeamStart;
-
+	ETeam Team;
 };

@@ -51,6 +51,13 @@ void AFPSCharacter::BeginPlay()
 	{
 		return;
 	}
+
+	DefaultCameraRelativeLocation = CameraContainer->GetRelativeLocation();
+}
+
+void AFPSCharacter::OnPossessed(AFPSPlayerController* InFPSController)
+{
+	FPSController = InFPSController;
 }
 
 void AFPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -274,13 +281,9 @@ void AFPSCharacter::RespawnPlayer()
 		HealthComponent->Reset();
 	}
 
-	AFPSPlayerController* FPSController = Cast<AFPSPlayerController>(GetController());
-	if (FPSController != nullptr)
+	if (FPSController != nullptr && UKismetSystemLibrary::DoesImplementInterface(FPSController, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		if (UKismetSystemLibrary::DoesImplementInterface(FPSController, UFPSPlayerControllerInterface::StaticClass()))
-		{
-			IFPSPlayerControllerInterface::Execute_RespawnPlayer(FPSController);
-		}
+		IFPSPlayerControllerInterface::Execute_RespawnPlayer(FPSController);
 	}
 }
 
@@ -316,4 +319,5 @@ void AFPSCharacter::CollisionHandleOnRespawn()
 	CameraContainer->SetSimulatePhysics(false);
 	CameraContainer->SetCollisionProfileName(TEXT("NoCollision"));
 	CameraContainer->AttachToComponent(CapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
+	CameraContainer->SetRelativeLocation(DefaultCameraRelativeLocation);
 }

@@ -4,9 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "FPSPlayerStart.h"
 #include "FPSGameMode.generated.h"
 
 class AFPSCharacter;
+
 
 UCLASS()
 class GWANG_FPS_API AFPSGameMode : public AGameModeBase
@@ -18,10 +20,9 @@ public:
 
 	void BeginPlay() override;
 
-	void SpawnDarkTeam(APlayerController* PlayerController);
-	void SpawnSilverTeam(APlayerController* PlayerController);
+	void SpawnPlayer(APlayerController* PlayerController, ETeam Team);
 
-	FTransform GetRandomPlayerStarts(bool bIsDarkTeam);
+	FTransform GetRandomPlayerStarts(ETeam Team);
 
 private:
 	TArray<FTransform> DarkCharacterSpawnTransforms;

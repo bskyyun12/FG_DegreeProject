@@ -7,10 +7,9 @@
 #include "MenuInterface.h"
 #include "TeamSelectionWidget.generated.h"
 
-/**
- * 
- */
+
 class UButton;
+class APlayerController;
 
 UCLASS()
 class GWANG_FPS_API UTeamSelectionWidget : public UUserWidget
@@ -25,13 +24,15 @@ public:
 	void Teardown();
 
 private:
-
 	UPROPERTY(meta = (BindWidget))
 	UButton* Button_DarkTeam;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* Button_SilverTeam;
 
+	APlayerController* OwningPlayer;
+
+private:
 	UFUNCTION()
 	void OnClick_Button_DarkTeam();
 

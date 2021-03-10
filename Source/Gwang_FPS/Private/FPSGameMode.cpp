@@ -13,14 +13,6 @@ void AFPSGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
-	// casting approach
-	//AFPSPlayerController* PlayerController = Cast<AFPSPlayerController>(NewPlayer);
-	//if (!ensure(PlayerController != nullptr))
-	//{
-	//	return;
-	//}
-	//PlayerController->LoadTeamSelection();
-
 	// interface approach
 	if (UKismetSystemLibrary::DoesImplementInterface(NewPlayer, UFPSPlayerControllerInterface::StaticClass()))
 	{
@@ -40,44 +32,62 @@ void AFPSGameMode::BeginPlay()
 		AFPSPlayerStart* PlayerStart = Cast<AFPSPlayerStart>(PlayerStarts[i]);
 		if (PlayerStart != nullptr)
 		{
-			if (PlayerStart->bIsDarkTeamStart)
+			if (PlayerStart->Team == ETeam::Dark)
 			{
 				DarkCharacterSpawnTransforms.Add(PlayerStart->GetActorTransform());
 			}
-			else
+			else if (PlayerStart->Team == ETeam::Silver)
 			{
 				SilverCharacterSpawnTransforms.Add(PlayerStart->GetActorTransform());
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Add the new team in the enum. enum location: FPSPlayerStart.h"));
+				ensure(false);
 			}
 		}
 	}
 }
 
-void AFPSGameMode::SpawnDarkTeam(APlayerController* PlayerController)
+void AFPSGameMode::SpawnPlayer(APlayerController* PlayerController, ETeam Team)
 {
 	if (UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, DarkCharacter, true);
+		if (Team == ETeam::Dark)
+		{
+			IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, DarkCharacter);
+		}
+		else if (Team == ETeam::Silver)
+		{
+			IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, SilverCharacter);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Add the new team in the enum. enum location: FPSPlayerStart.h"));
+			ensure(false);
+		}
 	}
 }
 
-void AFPSGameMode::SpawnSilverTeam(APlayerController* PlayerController)
+FTransform AFPSGameMode::GetRandomPlayerStarts(ETeam Team)
 {
-	if (UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
-	{
-		IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, SilverCharacter, false);
-	}
-}
+	FTransform output;
 
-FTransform AFPSGameMode::GetRandomPlayerStarts(bool bIsDarkTeam)
-{
-	if (bIsDarkTeam)
+	if (Team == ETeam::Dark)
 	{
 		int16 RandomIndex = FMath::RandRange(0, DarkCharacterSpawnTransforms.Num() - 1);
-		return DarkCharacterSpawnTransforms[RandomIndex];
+		output = DarkCharacterSpawnTransforms[RandomIndex];
+	}
+	else if (Team == ETeam::Silver)
+	{
+		int16 RandomIndex = FMath::RandRange(0, SilverCharacterSpawnTransforms.Num() - 1);
+		output = SilverCharacterSpawnTransforms[RandomIndex];
 	}
 	else
 	{
-		int16 RandomIndex = FMath::RandRange(0, SilverCharacterSpawnTransforms.Num() - 1);
-		return SilverCharacterSpawnTransforms[RandomIndex];
+		UE_LOG(LogTemp, Warning, TEXT("Add the new team in the enum. enum location: FPSPlayerStart.h"));
+		ensure(false);
 	}
+
+	return output;
 }

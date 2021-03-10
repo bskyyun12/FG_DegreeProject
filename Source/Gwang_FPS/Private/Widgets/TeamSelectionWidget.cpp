@@ -6,11 +6,18 @@
 #include "Kismet/KismetSystemLibrary.h" // DoesImplementInterface
 
 #include "FPSPlayerControllerInterface.h"
+#include "FPSPlayerStart.h"
 
 bool UTeamSelectionWidget::Initialize()
 {
 	bool Success = Super::Initialize();
 	if (!Success)
+	{
+		return false;
+	}
+
+	OwningPlayer = GetOwningPlayer();
+	if (!ensure(OwningPlayer != nullptr))
 	{
 		return false;
 	}
@@ -27,34 +34,23 @@ bool UTeamSelectionWidget::Initialize()
 	}
 	Button_SilverTeam->OnClicked.AddDynamic(this, &UTeamSelectionWidget::OnClick_Button_SilverTeam);
 
+
 	return true;
 }
 
 void UTeamSelectionWidget::OnClick_Button_DarkTeam()
 {
-	APlayerController* PlayerController = GetOwningPlayer();
-	if (!ensure(PlayerController != nullptr))
+	if (UKismetSystemLibrary::DoesImplementInterface(OwningPlayer, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		return;
-	}
-
-	if (UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
-	{
-		IFPSPlayerControllerInterface::Execute_OnDarkTeamSelected(PlayerController);
+		IFPSPlayerControllerInterface::Execute_OnTeamSelected(OwningPlayer, ETeam::Dark);
 	}
 }
 
 void UTeamSelectionWidget::OnClick_Button_SilverTeam()
 {
-	APlayerController* PlayerController = GetOwningPlayer();
-	if (!ensure(PlayerController != nullptr))
+	if (UKismetSystemLibrary::DoesImplementInterface(OwningPlayer, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		return;
-	}
-
-	if (UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
-	{
-		IFPSPlayerControllerInterface::Execute_OnSilverTeamSelected(PlayerController);
+		IFPSPlayerControllerInterface::Execute_OnTeamSelected(OwningPlayer, ETeam::Silver);
 	}
 }
 

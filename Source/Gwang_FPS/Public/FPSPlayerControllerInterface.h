@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+#include "FPSGameMode.h"
 #include "FPSPlayerControllerInterface.generated.h"
 
 class AFPSCharacter;
@@ -26,13 +27,10 @@ public:
 	void LoadTeamSelection();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnDarkTeamSelected();
+	void OnTeamSelected(ETeam InTeam);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnSilverTeamSelected();
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnSpawnPlayer(TSubclassOf<AFPSCharacter> CharacterClass, bool bIsDarkTeam);
+	void OnSpawnPlayer(TSubclassOf<AFPSCharacter> CharacterClass);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void RespawnPlayer();
