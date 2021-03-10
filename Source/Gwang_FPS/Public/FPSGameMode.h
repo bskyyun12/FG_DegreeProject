@@ -23,8 +23,6 @@ public:
 
 	FTransform GetRandomPlayerStarts(bool bIsDarkTeam);
 
-	void RespawnPlayer(APlayerController* PlayerController);
-
 private:
 	TArray<FTransform> DarkCharacterSpawnTransforms;
 	TArray<FTransform> SilverCharacterSpawnTransforms;

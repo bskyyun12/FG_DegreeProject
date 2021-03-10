@@ -7,8 +7,10 @@
 #include "FPSCharacterInterface.h"
 #include "FPSCharacter.generated.h"
 
+class UBoxComponent;
 class UCameraComponent;
 class USkeletalMeshComponent;
+class UHealthComponent;
 
 UCLASS()
 class GWANG_FPS_API AFPSCharacter : public ACharacter, public IFPSCharacterInterface
@@ -16,7 +18,6 @@ class GWANG_FPS_API AFPSCharacter : public ACharacter, public IFPSCharacterInter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	AFPSCharacter();
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -35,21 +36,26 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_Fire(AFPSWeaponBase* Weapon, FTransform CameraTransform);
 
-	UFUNCTION(BlueprintCallable)
-	void RespawnPlayer();
 
 	bool bIsDarkTeam;
 
-	// IFPSCharacterInterface
+#pragma region IFPSCharacterInterface
 	void OnBeginOverlapWeapon_Implementation(AFPSWeaponBase* Weapon) override;
 	void OnEndOverlapWeapon_Implementation() override;
+#pragma endregion
 
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UBoxComponent* CameraContainer;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	USkeletalMeshComponent* FPSArms;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UHealthComponent* HealthComponent;
 
 	TMap<EWeaponType, int16> Weapons;
 	AFPSWeaponBase* CurrentWeapon;
@@ -58,15 +64,39 @@ protected:
 	FTimerHandle PickupTraceTimerHandle;
 	int NumOfOverlappingWeapons;
 
+	float RespawnDelay = 5.f;
+
+	USkeletalMeshComponent* CharacterMesh;
+	UCapsuleComponent* CapsuleComponent;
 
 	// Temporary thing
 	bool bHasAnyWeapons;
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 	UFUNCTION(Client, Unreliable)
 	void Client_CheckForWeapon();
 
+#pragma region Health & Death
+	UFUNCTION()
+	void OnDamageReceived();
+
+	UFUNCTION()
+	void OnHealthAcquired();
+		
+	UFUNCTION()
+	void OnDeath();
+
+	UPROPERTY(ReplicatedUsing = OnRep_bIsDead)
+	bool bIsDead;
+	UFUNCTION()
+	void OnRep_bIsDead();
+
+	void RespawnPlayer();
+
+	void CollisionHandleOnDeath();
+	void CollisionHandleOnRespawn();
+
+#pragma endregion Health & Death
 };

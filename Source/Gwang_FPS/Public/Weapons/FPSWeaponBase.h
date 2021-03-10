@@ -63,17 +63,27 @@ public:
 
 	EWeaponType GetWeaponType();
 
+#pragma region FP Weapon (Local Only)
 	UFUNCTION(Client, Reliable)
 	void Client_OnClientWeaponEquipped(USkeletalMeshComponent* FPSArmMesh);
 
+	UFUNCTION(Client, Reliable)
+	void Client_OnClientWeaponDroped(USkeletalMeshComponent* FPSArmMesh);
+#pragma endregion
+
+#pragma region TP Weapon (Should be replicated)
 	UFUNCTION(Server, Reliable)
 	void Server_OnRepWeaponEquipped(USkeletalMeshComponent* FPSCharacterMesh);
 
-	UPROPERTY(ReplicatedUsing=RepUsing_OnWeaponEquipped)
+	UFUNCTION(Server, Reliable)
+	void Server_OnRepWeaponDroped(USkeletalMeshComponent* FPSCharacterMesh);
+#pragma endregion
+
+	UPROPERTY(ReplicatedUsing = OnRep_OwnerChanged)
 	USkeletalMeshComponent* OwnerCharacterMesh;
 
 	UFUNCTION()
-	void RepUsing_OnWeaponEquipped();
+	void OnRep_OwnerChanged();
 
 	UFUNCTION(Server, Reliable)
 	void Server_FireWeapon(FTransform CameraTransform);

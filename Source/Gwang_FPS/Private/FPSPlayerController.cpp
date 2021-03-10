@@ -104,15 +104,9 @@ void AFPSPlayerController::OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacte
 	SpawnedCharacter->bIsDarkTeam = bIsDarkTeam;
 }
 
-void AFPSPlayerController::OnPlayerDeath_Implementation()
+void AFPSPlayerController::RespawnPlayer_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnPlayerDeath_Implementation"));
-	GameMode->RespawnPlayer(this);
-}
-
-void AFPSPlayerController::OnRespawnPlayer_Implementation()
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnRespawnPlayer_Implementation"));
 	AFPSCharacter* FPSPlayer = Cast<AFPSCharacter>(GetPawn());
 	if (FPSPlayer != nullptr)
 	{

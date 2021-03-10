@@ -16,11 +16,11 @@ public:
 	// Sets default values for this component's properties
 	UHealthComponent();
 
+	void Reset();
+
 	void AddHealth(float ValueToAdd);
 
-protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;		
+	bool IsDead();
 
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FHealthDelegate);
 	
@@ -32,6 +32,10 @@ protected:
 
 	UPROPERTY(BlueprintAssignable)
 	FHealthDelegate OnDeath;
+
+protected:
+	// Called when the game starts
+	virtual void BeginPlay() override;		
 
 private:
 	UPROPERTY(EditDefaultsOnly)

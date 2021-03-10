@@ -17,7 +17,7 @@
 // Sets default values
 AFPSWeaponBase::AFPSWeaponBase()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
 	RootComp = CreateDefaultSubobject<USceneComponent>(TEXT("RootComp"));
@@ -93,6 +93,11 @@ void AFPSWeaponBase::Client_OnClientWeaponEquipped_Implementation(USkeletalMeshC
 	}
 }
 
+void AFPSWeaponBase::Client_OnClientWeaponDroped_Implementation(USkeletalMeshComponent* FPSArmMesh)
+{
+
+}
+
 void AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation(USkeletalMeshComponent* FPSCharacterMesh)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation()"));
@@ -101,7 +106,7 @@ void AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation(USkeletalMeshComp
 	{
 		return;
 	}
-	OwnerCharacterMesh = FPSCharacterMesh; // RepUsing_OnWeaponEquipped gets called for clients
+	OwnerCharacterMesh = FPSCharacterMesh; // OnRep_OwnerChanged()
 
 	RepWeaponMesh->SetSimulatePhysics(false);
 	RepWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -111,7 +116,12 @@ void AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation(USkeletalMeshComp
 	RepWeaponMesh->AttachToComponent(OwnerCharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
 }
 
-void AFPSWeaponBase::RepUsing_OnWeaponEquipped()
+void AFPSWeaponBase::Server_OnRepWeaponDroped_Implementation(USkeletalMeshComponent* FPSCharacterMesh)
+{
+	OwnerCharacterMesh = nullptr; // OnRep_OwnerChanged()
+}
+
+void AFPSWeaponBase::OnRep_OwnerChanged()
 {
 	RepWeaponMesh->SetSimulatePhysics(false);
 	RepWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -139,7 +149,7 @@ void AFPSWeaponBase::Server_FireWeapon_Implementation(FTransform CameraTransform
 	Params.AddIgnoredActor(this);
 	Params.AddIgnoredActor(GetOwner());
 	Params.bReturnPhysicalMaterial = true;
-	bool bIsHit = World->LineTraceSingleByChannel(Hit, Start, End, ECC_GameTraceChannel1, Params);
+	bool bIsHit = World->LineTraceSingleByChannel(Hit, Start, End, ECC_GameTraceChannel1, Params); // ECC_GameTraceChannel1 = DamageTrace
 	if (bIsHit)
 	{
 		AActor* HitActor = Hit.GetActor();
@@ -150,27 +160,32 @@ void AFPSWeaponBase::Server_FireWeapon_Implementation(FTransform CameraTransform
 			switch (SurfaceType)
 			{
 			case SurfaceType_Default:
+				DamageMultiplier = 1.1f;
 				break;
 			case SurfaceType1:	// Head
 				DamageMultiplier = 2.f;
 				break;
 			case SurfaceType2:	// Torso
+				DamageMultiplier = 1.5f;
 				break;
 			case SurfaceType3:	// Arms
+				DamageMultiplier = 1.2f;
 				break;
 			case SurfaceType4:	// Legs
+				DamageMultiplier = 1.3f;
 				break;
 			case SurfaceType5:	// Pelvis
+				DamageMultiplier = 1.4f;
 				break;
 			}
 			float FinalDamage = WeaponInfo.Damage * DamageMultiplier;
 
 			UHealthComponent* HealthComp = Cast<UHealthComponent>(HitActor->GetComponentByClass(UHealthComponent::StaticClass()));
-			if (HealthComp != nullptr)
+			if (HealthComp != nullptr && !HealthComp->IsDead())
 			{
 				HealthComp->AddHealth(-FinalDamage);
 			}
-			UE_LOG(LogTemp, Warning, TEXT("Attacker: %s, Damaged Actor: %s, Damage Taken: %f"), *GetOwner()->GetName(), *HitActor->GetName(), FinalDamage);
+			UE_LOG(LogTemp, Warning, TEXT("Damage Taken: %f, Attacker: %s, Damaged Actor: %s"), FinalDamage, *GetOwner()->GetName(), *HitActor->GetName());
 		}
 
 		DrawDebugPoint(World, Hit.ImpactPoint, 10.f, FColor::Green, true);

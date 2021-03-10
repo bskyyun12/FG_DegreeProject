@@ -35,8 +35,5 @@ public:
 	void OnSpawnPlayer(TSubclassOf<AFPSCharacter> CharacterClass, bool bIsDarkTeam);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnPlayerDeath();
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnRespawnPlayer();
+	void RespawnPlayer();
 };

@@ -5,11 +5,13 @@
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetSystemLibrary.h"
-//#include "Net/UnrealNetwork.h" // GetLifetimeReplicatedProps
+#include "Net/UnrealNetwork.h" // GetLifetimeReplicatedProps
 
 #include "AnimInstances/FPSAnimInterface.h"
+#include "Components/HealthComponent.h"
 #include "FPSPlayerControllerInterface.h"
 #include "FPSPlayerController.h"
 
@@ -19,23 +21,43 @@ AFPSCharacter::AFPSCharacter()
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
+	CameraContainer = CreateDefaultSubobject<UBoxComponent>(TEXT("CameraContainer"));
+	CameraContainer->SetupAttachment(RootComponent);
+
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	FollowCamera->SetupAttachment(RootComponent);
+	FollowCamera->SetupAttachment(CameraContainer);
 
 	FPSArms = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPS_Arms"));
 	FPSArms->SetupAttachment(FollowCamera);
+
+	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
+	HealthComponent->OnDamageReceived.AddDynamic(this, &AFPSCharacter::OnDamageReceived);
+	HealthComponent->OnHealthAcquired.AddDynamic(this, &AFPSCharacter::OnHealthAcquired);
+	HealthComponent->OnDeath.AddDynamic(this, &AFPSCharacter::OnDeath);
 }
 
 // Called when the game starts or when spawned
 void AFPSCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	CharacterMesh = GetMesh();
+	if (!ensure(CharacterMesh != nullptr))
+	{
+		return;
+	}
+	CapsuleComponent = GetCapsuleComponent();
+	if (!ensure(CapsuleComponent != nullptr))
+	{
+		return;
+	}
 }
 
-//void AFPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-//{
-//	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-//}
+void AFPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AFPSCharacter, bIsDead);
+}
 
 // Called to bind functionality to input
 void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -102,28 +124,16 @@ void AFPSCharacter::Fire()
 {
 	if (CurrentWeapon != nullptr)
 	{
-		Server_Fire(CurrentFocus, FollowCamera->GetComponentTransform());
+		Server_Fire(CurrentWeapon, FollowCamera->GetComponentTransform());
 	}
 }
 
 void AFPSCharacter::Server_Fire_Implementation(AFPSWeaponBase* Weapon, FTransform CameraTransform)
 {
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Server_Fire_Implementation"));
 	if (Weapon != nullptr)
 	{
 		Weapon->Server_FireWeapon(CameraTransform);
-	}
-}
-
-void AFPSCharacter::RespawnPlayer()
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnDeath"));
-	AFPSPlayerController* FPSController = Cast<AFPSPlayerController>(GetController());
-	if (FPSController != nullptr)
-	{
-		if (UKismetSystemLibrary::DoesImplementInterface(FPSController, UFPSPlayerControllerInterface::StaticClass()))
-		{
-			IFPSPlayerControllerInterface::Execute_OnPlayerDeath(FPSController);
-		}
 	}
 }
 
@@ -145,7 +155,7 @@ void AFPSCharacter::OnBeginOverlapWeapon_Implementation(AFPSWeaponBase* Weapon)
 	{
 		return;
 	}
-	World->GetTimerManager().SetTimer(PickupTraceTimerHandle, this, &AFPSCharacter::Client_CheckForWeapon, 0.5f, true, 0.f);
+	World->GetTimerManager().SetTimer(PickupTraceTimerHandle, this, &AFPSCharacter::Client_CheckForWeapon, 0.1f, true, 0.f);
 }
 
 void AFPSCharacter::Client_CheckForWeapon_Implementation()
@@ -161,7 +171,7 @@ void AFPSCharacter::Client_CheckForWeapon_Implementation()
 	FHitResult Hit;
 	FVector Start = FollowCamera->GetComponentLocation();
 	FVector End = Start + FollowCamera->GetForwardVector() * 300.f;
-	DrawDebugLine(World, Start, End, FColor::Red, false, 0.5f);
+	DrawDebugLine(World, Start, End, FColor::Red, false, 0.1f);
 
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
@@ -175,7 +185,7 @@ void AFPSCharacter::Client_CheckForWeapon_Implementation()
 			CurrentFocus = FocusedWeapon;
 		}
 
-		DrawDebugPoint(World, Hit.ImpactPoint, 10.f, FColor::Green, false, 0.5f);
+		DrawDebugPoint(World, Hit.ImpactPoint, 10.f, FColor::Green, false, 0.1f);
 	}
 	else
 	{
@@ -227,11 +237,83 @@ void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 
 void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
 {
-	USkeletalMeshComponent* CharacterMesh = GetMesh();
-	if (!ensure(CharacterMesh != nullptr))
-	{
-		return;
-	}
 	Weapon->SetOwner(this);
 	Weapon->Server_OnRepWeaponEquipped(CharacterMesh);
+}
+
+void AFPSCharacter::OnDamageReceived()
+{
+	UE_LOG(LogTemp, Warning, TEXT("( %s ) received damage."), *this->GetName());
+
+}
+
+void AFPSCharacter::OnHealthAcquired()
+{
+	UE_LOG(LogTemp, Warning, TEXT("( %s ) acquired health."), *this->GetName());
+}
+
+void AFPSCharacter::OnDeath()
+{
+	bIsDead = true;	// OnRep_bIsDead()
+	CollisionHandleOnDeath();
+
+	FTimerHandle RespawnTimer;
+	GetWorld()->GetTimerManager().SetTimer(RespawnTimer, [&]()
+		{
+			RespawnPlayer();
+		}, RespawnDelay, false);
+}
+
+void AFPSCharacter::RespawnPlayer()
+{
+	bIsDead = false;	// OnRep_bIsDead()
+	CollisionHandleOnRespawn();
+
+	if (HealthComponent != nullptr)
+	{
+		HealthComponent->Reset();
+	}
+
+	AFPSPlayerController* FPSController = Cast<AFPSPlayerController>(GetController());
+	if (FPSController != nullptr)
+	{
+		if (UKismetSystemLibrary::DoesImplementInterface(FPSController, UFPSPlayerControllerInterface::StaticClass()))
+		{
+			IFPSPlayerControllerInterface::Execute_RespawnPlayer(FPSController);
+		}
+	}
+}
+
+void AFPSCharacter::OnRep_bIsDead()
+{
+	if (bIsDead)
+	{
+		CollisionHandleOnDeath();
+	}
+	else
+	{
+		CollisionHandleOnRespawn();
+	}
+}
+
+void AFPSCharacter::CollisionHandleOnDeath()
+{
+	CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CharacterMesh->SetCollisionProfileName(TEXT("Ragdoll"));
+	CharacterMesh->SetSimulatePhysics(true);
+
+	CameraContainer->SetCollisionProfileName(TEXT("IgnoreCharacter"));
+	CameraContainer->SetSimulatePhysics(true);
+}
+
+void AFPSCharacter::CollisionHandleOnRespawn()
+{
+	CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	CharacterMesh->SetSimulatePhysics(false);
+	CharacterMesh->SetCollisionProfileName(TEXT("CharacterMesh"));
+	CharacterMesh->AttachToComponent(CapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
+
+	CameraContainer->SetSimulatePhysics(false);
+	CameraContainer->SetCollisionProfileName(TEXT("NoCollision"));
+	CameraContainer->AttachToComponent(CapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
 }

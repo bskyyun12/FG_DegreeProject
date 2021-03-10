@@ -22,7 +22,7 @@ public:
 	
 	virtual void BeginPlay() override;
 
-	// IFPSPlayerControllerInterface
+#pragma region IFPSPlayerControllerInterface
 	virtual void LoadTeamSelection_Implementation() override;
 	UFUNCTION(Client, Reliable)
 	void Client_LoadTeamSelection(TSubclassOf<UUserWidget> teamSelectionClass);
@@ -36,8 +36,9 @@ public:
 	void Server_OnSilverTeamSelected();
 
 	void OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacter> CharacterClass, bool bIsDarkTeam) override;
-	void OnPlayerDeath_Implementation() override;
-	void OnRespawnPlayer_Implementation() override;
+
+	void RespawnPlayer_Implementation() override;
+#pragma endregion
 
 private:
 	UPROPERTY(EditDefaultsOnly)

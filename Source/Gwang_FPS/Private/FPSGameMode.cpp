@@ -81,12 +81,3 @@ FTransform AFPSGameMode::GetRandomPlayerStarts(bool bIsDarkTeam)
 		return SilverCharacterSpawnTransforms[RandomIndex];
 	}
 }
-
-void AFPSGameMode::RespawnPlayer(APlayerController* PlayerController)
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::RespawnPlayer"));
-	if (UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
-	{
-		IFPSPlayerControllerInterface::Execute_OnRespawnPlayer(PlayerController);
-	}
-}
