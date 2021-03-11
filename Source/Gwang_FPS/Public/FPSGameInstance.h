@@ -13,4 +13,7 @@ class GWANG_FPS_API UFPSGameInstance : public UGameInstance
 	
 public:
 	UFPSGameInstance(const FObjectInitializer& ObjectIn);
+
+	UFUNCTION(Exec)
+	void JoinWithIP(const FString& IPAddress);
 };
