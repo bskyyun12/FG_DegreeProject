@@ -28,10 +28,20 @@ public:
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 	void Pickup();
-	void Fire();
+	void OnBeginFire();
 	UFUNCTION(Server, Reliable)
-	void Server_Fire(AFPSWeaponBase* Weapon, FTransform CameraTransform);
+	void Server_OnBeginFire(AFPSWeaponBase* Weapon, AFPSCharacter* FPSCharacter);
+
+	void OnEndFire();
+	UFUNCTION(Server, Reliable)
+	void Server_OnEndFire(AFPSWeaponBase* Weapon);
 #pragma endregion
+
+	// Getters
+	USkeletalMeshComponent* GetArmMesh();
+	USkeletalMeshComponent* GetCharacterMesh();
+	FTransform GetCameraTransform();
+	// Getters
 
 	bool HasWeapon(EWeaponType WeaponType);
 	void PickupWeapon(EWeaponType WeaponType);
@@ -53,7 +63,7 @@ protected:
 	UCameraComponent* FollowCamera;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	USkeletalMeshComponent* FPSArms;
+	USkeletalMeshComponent* FPSArmMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UHealthComponent* HealthComponent;
@@ -68,7 +78,7 @@ protected:
 	float RespawnDelay = 5.f;
 
 	// Cache
-	USkeletalMeshComponent* CharacterMesh;
+	USkeletalMeshComponent* FPSCharacterMesh;
 	UCapsuleComponent* CapsuleComponent;
 	AFPSPlayerController* FPSController;
 	FVector DefaultCameraRelativeLocation;

@@ -9,6 +9,7 @@
 class UAnimMontage;
 class USceneComponent;
 class USkeletalMeshComponent;
+class AFPSCharacter;
 class USphereComponent;
 
 USTRUCT(BlueprintType)
@@ -24,6 +25,9 @@ struct FWeaponInfo
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Range;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float FireRate;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* EquipAnim;
@@ -65,28 +69,28 @@ public:
 
 #pragma region FP Weapon (Local Only)
 	UFUNCTION(Client, Reliable)
-	void Client_OnClientWeaponEquipped(USkeletalMeshComponent* FPSArmMesh);
+	void Client_OnClientWeaponEquipped(AFPSCharacter* FPSCharacter);
 
 	UFUNCTION(Client, Reliable)
-	void Client_OnClientWeaponDroped(USkeletalMeshComponent* FPSArmMesh);
+	void Client_OnClientWeaponDroped(AFPSCharacter* FPSCharacter);
 #pragma endregion
 
 #pragma region TP Weapon (Should be replicated)
 	UFUNCTION(Server, Reliable)
-	void Server_OnRepWeaponEquipped(USkeletalMeshComponent* FPSCharacterMesh);
+	void Server_OnRepWeaponEquipped(AFPSCharacter* FPSCharacter);
 
 	UFUNCTION(Server, Reliable)
-	void Server_OnRepWeaponDroped(USkeletalMeshComponent* FPSCharacterMesh);
+	void Server_OnRepWeaponDroped(AFPSCharacter* FPSCharacter);
 #pragma endregion
 
-	UPROPERTY(ReplicatedUsing = OnRep_OwnerChanged)
-	USkeletalMeshComponent* OwnerCharacterMesh;
-
-	UFUNCTION()
-	void OnRep_OwnerChanged();
+	//UPROPERTY(ReplicatedUsing = OnRep_OwnerChanged)
+	//USkeletalMeshComponent* OwnerCharacterMesh;
 
 	UFUNCTION(Server, Reliable)
-	void Server_FireWeapon(FTransform CameraTransform);
+	virtual void Server_OnBeginFireWeapon(AFPSCharacter* FPSCharacter);
+
+	UFUNCTION(Server, Reliable)
+	virtual void Server_OnEndFireWeapon();
 
 protected:
 	// Called when the game starts or when spawned
@@ -97,6 +101,12 @@ protected:
 
 	UFUNCTION()
 	void OnEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	UPROPERTY(ReplicatedUsing = OnRep_OwnerChanged)
+	AFPSCharacter* OwnerCharacter;
+
+	UFUNCTION()
+	void OnRep_OwnerChanged();
 
 	UPROPERTY(VisibleAnywhere)
 	USceneComponent* RootComp;
@@ -115,5 +125,4 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FWeaponInfo WeaponInfo;
-
 };

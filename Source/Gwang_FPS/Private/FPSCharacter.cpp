@@ -27,8 +27,8 @@ AFPSCharacter::AFPSCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	FollowCamera->SetupAttachment(CameraContainer);
 
-	FPSArms = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPS_Arms"));
-	FPSArms->SetupAttachment(FollowCamera);
+	FPSArmMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPS_Arms"));
+	FPSArmMesh->SetupAttachment(FollowCamera);
 
 	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
 	HealthComponent->OnDamageReceived.AddDynamic(this, &AFPSCharacter::OnDamageReceived);
@@ -41,8 +41,8 @@ void AFPSCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	CharacterMesh = GetMesh();
-	if (!ensure(CharacterMesh != nullptr))
+	FPSCharacterMesh = GetMesh();
+	if (!ensure(FPSCharacterMesh != nullptr))
 	{
 		return;
 	}
@@ -74,7 +74,8 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
 	PlayerInputComponent->BindAction("Pickup", IE_Pressed, this, &AFPSCharacter::Pickup);
-	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AFPSCharacter::Fire);
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AFPSCharacter::OnBeginFire);
+	PlayerInputComponent->BindAction("Fire", IE_Released, this, &AFPSCharacter::OnEndFire);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AFPSCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AFPSCharacter::MoveRight);
@@ -127,20 +128,37 @@ void AFPSCharacter::Pickup()
 	}
 }
 
-void AFPSCharacter::Fire()
+void AFPSCharacter::OnBeginFire()
 {
 	if (CurrentWeapon != nullptr)
 	{
-		Server_Fire(CurrentWeapon, FollowCamera->GetComponentTransform());
+		Server_OnBeginFire(CurrentWeapon, this);
 	}
 }
 
-void AFPSCharacter::Server_Fire_Implementation(AFPSWeaponBase* Weapon, FTransform CameraTransform)
+void AFPSCharacter::Server_OnBeginFire_Implementation(AFPSWeaponBase* Weapon, AFPSCharacter* FPSCharacter)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Server_Fire_Implementation"));
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Server_OnBeginFire_Implementation"));
 	if (Weapon != nullptr)
 	{
-		Weapon->Server_FireWeapon(CameraTransform);
+		Weapon->Server_OnBeginFireWeapon(FPSCharacter);
+	}
+}
+
+void AFPSCharacter::OnEndFire()
+{
+	if (CurrentWeapon != nullptr)
+	{
+		Server_OnEndFire(CurrentWeapon);
+	}
+}
+
+void AFPSCharacter::Server_OnEndFire_Implementation(AFPSWeaponBase* Weapon)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Server_OnEndFire_Implementation"));
+	if (Weapon != nullptr)
+	{
+		Weapon->Server_OnEndFireWeapon();
 	}
 }
 
@@ -151,17 +169,18 @@ void AFPSCharacter::OnBeginOverlapWeapon_Implementation(AFPSWeaponBase* Weapon)
 	NumOfOverlappingWeapons++;
 	UE_LOG(LogTemp, Warning, TEXT("OnBeginOverlapWeapon() NumOfOverlappingWeapons: %i"), NumOfOverlappingWeapons);
 
-	if (UKismetSystemLibrary::K2_IsTimerActiveHandle(GetWorld(), PickupTraceTimerHandle))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Timer is already running"));
-		return;
-	}
-
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
 	{
 		return;
 	}
+
+	if (World->GetTimerManager().IsTimerActive(PickupTraceTimerHandle))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Timer is already running"));
+		return;
+	}
+
 	World->GetTimerManager().SetTimer(PickupTraceTimerHandle, this, &AFPSCharacter::Client_CheckForWeapon, 0.1f, true, 0.f);
 }
 
@@ -208,7 +227,12 @@ void AFPSCharacter::OnEndOverlapWeapon_Implementation()
 	if (NumOfOverlappingWeapons == 0)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Clear Timer"));
-		UKismetSystemLibrary::K2_ClearTimerHandle(GetWorld(), PickupTraceTimerHandle);
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		World->GetTimerManager().ClearTimer(PickupTraceTimerHandle);
 	}
 }
 
@@ -232,11 +256,11 @@ void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 		Server_EquipWeapon(Weapon);
 
 		// Local
-		if (!ensure(FPSArms != nullptr))
+		if (!ensure(FPSArmMesh != nullptr))
 		{
 			return;
 		}
-		Weapon->Client_OnClientWeaponEquipped(FPSArms);
+		Weapon->Client_OnClientWeaponEquipped(this);
 
 		CurrentWeapon = Weapon;
 	}
@@ -244,8 +268,7 @@ void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 
 void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
 {
-	Weapon->SetOwner(this);
-	Weapon->Server_OnRepWeaponEquipped(CharacterMesh);
+	Weapon->Server_OnRepWeaponEquipped(this);
 }
 
 void AFPSCharacter::OnDamageReceived()
@@ -302,8 +325,8 @@ void AFPSCharacter::OnRep_bIsDead()
 void AFPSCharacter::CollisionHandleOnDeath()
 {
 	CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	CharacterMesh->SetCollisionProfileName(TEXT("Ragdoll"));
-	CharacterMesh->SetSimulatePhysics(true);
+	FPSCharacterMesh->SetCollisionProfileName(TEXT("Ragdoll"));
+	FPSCharacterMesh->SetSimulatePhysics(true);
 
 	CameraContainer->SetCollisionProfileName(TEXT("IgnoreCharacter"));
 	CameraContainer->SetSimulatePhysics(true);
@@ -312,12 +335,28 @@ void AFPSCharacter::CollisionHandleOnDeath()
 void AFPSCharacter::CollisionHandleOnRespawn()
 {
 	CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	CharacterMesh->SetSimulatePhysics(false);
-	CharacterMesh->SetCollisionProfileName(TEXT("CharacterMesh"));
-	CharacterMesh->AttachToComponent(CapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
+	FPSCharacterMesh->SetSimulatePhysics(false);
+	FPSCharacterMesh->SetCollisionProfileName(TEXT("CharacterMesh"));
+	FPSCharacterMesh->AttachToComponent(CapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
 
 	CameraContainer->SetSimulatePhysics(false);
 	CameraContainer->SetCollisionProfileName(TEXT("NoCollision"));
 	CameraContainer->AttachToComponent(CapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
 	CameraContainer->SetRelativeLocation(DefaultCameraRelativeLocation);
+}
+
+// Getters
+USkeletalMeshComponent* AFPSCharacter::GetArmMesh()
+{
+	return FPSArmMesh;
+}
+
+USkeletalMeshComponent* AFPSCharacter::GetCharacterMesh()
+{
+	return FPSCharacterMesh;
+}
+
+FTransform AFPSCharacter::GetCameraTransform()
+{
+	return FollowCamera->GetComponentTransform();
 }

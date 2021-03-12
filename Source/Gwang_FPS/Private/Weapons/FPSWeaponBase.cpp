@@ -5,14 +5,13 @@
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
-#include "DrawDebugHelpers.h"
 #include "Kismet/KismetSystemLibrary.h" // DoesImplementInterface
 #include "Net/UnrealNetwork.h" // GetLifetimeReplicatedProps
-#include "PhysicalMaterials/PhysicalMaterial.h"
 
 #include "./FPSCharacterInterface.h"
 #include "AnimInstances/FPSAnimInterface.h"
 #include "Components/HealthComponent.h"
+#include "FPSCharacter.h"
 
 // Sets default values
 AFPSWeaponBase::AFPSWeaponBase()
@@ -52,7 +51,8 @@ void AFPSWeaponBase::BeginPlay()
 void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AFPSWeaponBase, OwnerCharacterMesh);
+	//DOREPLIFETIME(AFPSWeaponBase, OwnerCharacterMesh);
+	DOREPLIFETIME(AFPSWeaponBase, OwnerCharacter);
 }
 
 void AFPSWeaponBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -77,12 +77,12 @@ void AFPSWeaponBase::OnEndOverlap(UPrimitiveComponent* OverlappedComponent, AAct
 	}
 }
 
-void AFPSWeaponBase::Client_OnClientWeaponEquipped_Implementation(USkeletalMeshComponent* FPSArmMesh)
+void AFPSWeaponBase::Client_OnClientWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnClientWeaponEquipped_Implementation()"));
-	ClientWeaponMesh->AttachToComponent(FPSArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
+	ClientWeaponMesh->AttachToComponent(FPSCharacter->GetArmMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
 
-	UAnimInstance* FPSArmsAnim = FPSArmMesh->GetAnimInstance();
+	UAnimInstance* FPSArmsAnim = FPSCharacter->GetArmMesh()->GetAnimInstance();
 	if (!ensure(FPSArmsAnim != nullptr))
 	{
 		return;
@@ -93,32 +93,35 @@ void AFPSWeaponBase::Client_OnClientWeaponEquipped_Implementation(USkeletalMeshC
 	}
 }
 
-void AFPSWeaponBase::Client_OnClientWeaponDroped_Implementation(USkeletalMeshComponent* FPSArmMesh)
+void AFPSWeaponBase::Client_OnClientWeaponDroped_Implementation(AFPSCharacter* FPSCharacter)
 {
 
 }
 
-void AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation(USkeletalMeshComponent* FPSCharacterMesh)
+void AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation()"));
 
-	if (!ensure(FPSCharacterMesh != nullptr))
+	if (!ensure(FPSCharacter->GetCharacterMesh() != nullptr))
 	{
 		return;
 	}
-	OwnerCharacterMesh = FPSCharacterMesh; // OnRep_OwnerChanged()
+
+	SetOwner(FPSCharacter);
+	OwnerCharacter = FPSCharacter; // OnRep_OwnerChanged()
 
 	RepWeaponMesh->SetSimulatePhysics(false);
 	RepWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	RepWeaponMesh->AttachToComponent(OwnerCharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
+	RepWeaponMesh->AttachToComponent(OwnerCharacter->GetCharacterMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
 }
 
-void AFPSWeaponBase::Server_OnRepWeaponDroped_Implementation(USkeletalMeshComponent* FPSCharacterMesh)
+void AFPSWeaponBase::Server_OnRepWeaponDroped_Implementation(AFPSCharacter* FPSCharacter)
 {
-	OwnerCharacterMesh = nullptr; // OnRep_OwnerChanged()
+	SetOwner(nullptr);
+	OwnerCharacter = nullptr; // OnRep_OwnerChanged()
 }
 
 void AFPSWeaponBase::OnRep_OwnerChanged()
@@ -128,68 +131,18 @@ void AFPSWeaponBase::OnRep_OwnerChanged()
 
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	RepWeaponMesh->AttachToComponent(OwnerCharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
+	RepWeaponMesh->AttachToComponent(OwnerCharacter->GetCharacterMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
 }
 
-void AFPSWeaponBase::Server_FireWeapon_Implementation(FTransform CameraTransform)
+void AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation(AFPSCharacter* FPSCharacter)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_FireWeapon_Implementation"));
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation"));
+}
 
-	FHitResult Hit;
-	FVector Start = CameraTransform.GetLocation();
-	FVector End = Start + CameraTransform.GetRotation().GetForwardVector() * WeaponInfo.Range;
-	DrawDebugLine(World, Start, End, FColor::Red, true);
+void AFPSWeaponBase::Server_OnEndFireWeapon_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnEndFireWeapon_Implementation"));
 
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
-	Params.AddIgnoredActor(GetOwner());
-	Params.bReturnPhysicalMaterial = true;
-	bool bIsHit = World->LineTraceSingleByChannel(Hit, Start, End, ECC_GameTraceChannel1, Params); // ECC_GameTraceChannel1 = DamageTrace
-	if (bIsHit)
-	{
-		AActor* HitActor = Hit.GetActor();
-		if (HitActor != nullptr)
-		{
-			EPhysicalSurface SurfaceType = UPhysicalMaterial::DetermineSurfaceType(Hit.PhysMaterial.Get());
-			float DamageMultiplier = 1.f;
-			switch (SurfaceType)
-			{
-			case SurfaceType_Default:
-				DamageMultiplier = 1.1f;
-				break;
-			case SurfaceType1:	// Head
-				DamageMultiplier = 2.f;
-				break;
-			case SurfaceType2:	// Torso
-				DamageMultiplier = 1.5f;
-				break;
-			case SurfaceType3:	// Arms
-				DamageMultiplier = 1.2f;
-				break;
-			case SurfaceType4:	// Legs
-				DamageMultiplier = 1.3f;
-				break;
-			case SurfaceType5:	// Pelvis
-				DamageMultiplier = 1.4f;
-				break;
-			}
-			float FinalDamage = WeaponInfo.Damage * DamageMultiplier;
-
-			UHealthComponent* HealthComp = Cast<UHealthComponent>(HitActor->GetComponentByClass(UHealthComponent::StaticClass()));
-			if (HealthComp != nullptr && !HealthComp->IsDead())
-			{
-				HealthComp->AddHealth(-FinalDamage);
-			}
-			UE_LOG(LogTemp, Warning, TEXT("Damage Taken: %f, Attacker: %s, Damaged Actor: %s"), FinalDamage, *GetOwner()->GetName(), *HitActor->GetName());
-		}
-
-		DrawDebugPoint(World, Hit.ImpactPoint, 10.f, FColor::Green, true);
-	}
 }
 
 EWeaponType AFPSWeaponBase::GetWeaponType()
