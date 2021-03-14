@@ -69,18 +69,18 @@ public:
 
 #pragma region FP Weapon (Local Only)
 	UFUNCTION(Client, Reliable)
-	void Client_OnClientWeaponEquipped(AFPSCharacter* FPSCharacter);
+	void Client_OnFPWeaponEquipped(AFPSCharacter* FPSCharacter);
 
 	UFUNCTION(Client, Reliable)
-	void Client_OnClientWeaponDroped(AFPSCharacter* FPSCharacter);
+	void Client_OnFPWeaponDroped(AFPSCharacter* FPSCharacter);
 #pragma endregion
 
 #pragma region TP Weapon (Should be replicated)
 	UFUNCTION(Server, Reliable)
-	void Server_OnRepWeaponEquipped(AFPSCharacter* FPSCharacter);
+	void Server_OnTPWeaponEquipped(AFPSCharacter* FPSCharacter);
 
 	UFUNCTION(Server, Reliable)
-	void Server_OnRepWeaponDroped(AFPSCharacter* FPSCharacter);
+	void Server_OnTPWeaponDroped(AFPSCharacter* FPSCharacter);
 #pragma endregion
 
 	//UPROPERTY(ReplicatedUsing = OnRep_OwnerChanged)

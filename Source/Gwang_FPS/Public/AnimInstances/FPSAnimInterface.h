@@ -26,4 +26,6 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void UpdateBlendPose(int NewIndex);
 
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void UpdateSpineAngle(float Pitch);
 };

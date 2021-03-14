@@ -10,6 +10,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h" // GetLifetimeReplicatedProps
 
+#include "Animation/AnimInstance.h"
 #include "AnimInstances/FPSAnimInterface.h"
 #include "Components/HealthComponent.h"
 #include "FPSPlayerControllerInterface.h"
@@ -80,8 +81,8 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAxis("MoveForward", this, &AFPSCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AFPSCharacter::MoveRight);
 
-	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
-	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis("Turn", this, &AFPSCharacter::Turn);
+	PlayerInputComponent->BindAxis("LookUp", this, &AFPSCharacter::LookUp);
 }
 
 void AFPSCharacter::MoveForward(float Value)
@@ -110,6 +111,40 @@ void AFPSCharacter::MoveRight(float Value)
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		// add movement in that direction
 		AddMovementInput(Direction, Value);
+	}
+}
+
+void AFPSCharacter::Turn(float Value)
+{
+	AddControllerYawInput(Value);
+}
+
+void AFPSCharacter::LookUp(float Value)
+{
+	AddControllerPitchInput(Value);
+
+	Server_LookUp(GetControlRotation());
+}
+
+void AFPSCharacter::Server_LookUp_Implementation(FRotator CameraRot)
+{
+	Multicast_LookUp(CameraRot);
+}
+
+void AFPSCharacter::Multicast_LookUp_Implementation(FRotator CameraRot)
+{
+	if (!IsLocallyControlled())
+	{
+		FollowCamera->SetWorldRotation(CameraRot);
+
+		UAnimInstance* FPSAnimInstance = FPSCharacterMesh->GetAnimInstance();
+		if (FPSAnimInstance != nullptr)
+		{
+			if (UKismetSystemLibrary::DoesImplementInterface(FPSAnimInstance, UFPSAnimInterface::StaticClass()))
+			{
+				IFPSAnimInterface::Execute_UpdateSpineAngle(FPSAnimInstance, CameraRot.Pitch);
+			}
+		}
 	}
 }
 
@@ -260,7 +295,7 @@ void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 		{
 			return;
 		}
-		Weapon->Client_OnClientWeaponEquipped(this);
+		Weapon->Client_OnFPWeaponEquipped(this);
 
 		CurrentWeapon = Weapon;
 	}
@@ -268,7 +303,7 @@ void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 
 void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
 {
-	Weapon->Server_OnRepWeaponEquipped(this);
+	Weapon->Server_OnTPWeaponEquipped(this);
 }
 
 void AFPSCharacter::OnDamageReceived()

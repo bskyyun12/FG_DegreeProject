@@ -27,6 +27,13 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	void MoveForward(float Value);
 	void MoveRight(float Value);
+	void Turn(float Value);
+	void LookUp(float Value);
+	UFUNCTION(Server, Unreliable)
+	void Server_LookUp(FRotator CameraRot);
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_LookUp(FRotator CameraRot);
+
 	void Pickup();
 	void OnBeginFire();
 	UFUNCTION(Server, Reliable)

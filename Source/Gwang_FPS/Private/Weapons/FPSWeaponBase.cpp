@@ -9,7 +9,6 @@
 #include "Net/UnrealNetwork.h" // GetLifetimeReplicatedProps
 
 #include "./FPSCharacterInterface.h"
-#include "AnimInstances/FPSAnimInterface.h"
 #include "Components/HealthComponent.h"
 #include "FPSCharacter.h"
 
@@ -77,32 +76,22 @@ void AFPSWeaponBase::OnEndOverlap(UPrimitiveComponent* OverlappedComponent, AAct
 	}
 }
 
-void AFPSWeaponBase::Client_OnClientWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnClientWeaponEquipped_Implementation()"));
-	ClientWeaponMesh->AttachToComponent(FPSCharacter->GetArmMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
-
-	UAnimInstance* FPSArmsAnim = FPSCharacter->GetArmMesh()->GetAnimInstance();
-	if (!ensure(FPSArmsAnim != nullptr))
-	{
-		return;
-	}
-	if (UKismetSystemLibrary::DoesImplementInterface(FPSArmsAnim, UFPSAnimInterface::StaticClass()))
-	{
-		IFPSAnimInterface::Execute_UpdateBlendPose(FPSArmsAnim, 1);
-	}
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation()"));
 }
 
-void AFPSWeaponBase::Client_OnClientWeaponDroped_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSWeaponBase::Client_OnFPWeaponDroped_Implementation(AFPSCharacter* FPSCharacter)
 {
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnFPWeaponDroped_Implementation()"));
 
 }
 
-void AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSWeaponBase::Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation()"));
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnTPWeaponEquipped_Implementation()"));
 
-	if (!ensure(FPSCharacter->GetCharacterMesh() != nullptr))
+	if (!ensure(FPSCharacter != nullptr))
 	{
 		return;
 	}
@@ -110,16 +99,12 @@ void AFPSWeaponBase::Server_OnRepWeaponEquipped_Implementation(AFPSCharacter* FP
 	SetOwner(FPSCharacter);
 	OwnerCharacter = FPSCharacter; // OnRep_OwnerChanged()
 
-	RepWeaponMesh->SetSimulatePhysics(false);
-	RepWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	RepWeaponMesh->AttachToComponent(OwnerCharacter->GetCharacterMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
 }
 
-void AFPSWeaponBase::Server_OnRepWeaponDroped_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSWeaponBase::Server_OnTPWeaponDroped_Implementation(AFPSCharacter* FPSCharacter)
 {
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnTPWeaponDroped_Implementation()"));
 	SetOwner(nullptr);
 	OwnerCharacter = nullptr; // OnRep_OwnerChanged()
 }
