@@ -9,6 +9,7 @@
 class USceneComponent;
 class USoundBase;
 class UParticleSystem;
+class UCameraShakeBase;
 
 UCLASS()
 class GWANG_FPS_API AFPSRifleBase : public AFPSWeaponBase
@@ -51,6 +52,8 @@ private:
 	UPROPERTY(EditDefaultsOnly)
 	FName TP_MuzzleSocketName = "MuzzleFlash";
 
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UCameraShakeBase> CameraShakeOnFire;	
 
 	FTransform OwnerCameraTransform;
 	FTimerDelegate RifleFireDelegate;

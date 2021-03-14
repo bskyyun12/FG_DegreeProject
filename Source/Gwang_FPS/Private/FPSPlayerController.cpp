@@ -65,6 +65,15 @@ void AFPSPlayerController::Server_OnTeamSelected_Implementation(ETeam InTeam)
 	GameMode->SpawnPlayer(this, Team);
 }
 
+void AFPSPlayerController::ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::ShakeCamera_Implementation"));
+	if (CameraShake != nullptr)
+	{
+		ClientStartCameraShake(CameraShake);
+	}
+}
+
 void AFPSPlayerController::OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacter> CharacterClass)
 {
 	UWorld* World = GetWorld();

@@ -34,6 +34,8 @@ public:
 	void OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacter> CharacterClass) override;
 
 	void RespawnPlayer_Implementation() override;
+
+	void ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake) override;
 #pragma endregion
 
 protected:

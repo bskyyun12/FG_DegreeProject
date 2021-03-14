@@ -34,4 +34,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void RespawnPlayer();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void ShakeCamera(TSubclassOf<UCameraShakeBase> CameraShake);
+
 };

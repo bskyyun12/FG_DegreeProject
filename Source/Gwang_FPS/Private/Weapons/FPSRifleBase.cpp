@@ -10,6 +10,7 @@
 #include "Components/HealthComponent.h"
 #include "FPSCharacter.h"
 #include "AnimInstances/FPSAnimInterface.h"
+#include "FPSPlayerControllerInterface.h"
 
 void AFPSRifleBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter)
 {
@@ -21,9 +22,9 @@ void AFPSRifleBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* FPSC
 		return;
 	}
 
-	if (ClientWeaponMesh != nullptr && FPSCharacter->GetArmMesh() != nullptr)
+	if (FPWeaponMesh != nullptr && FPSCharacter->GetArmMesh() != nullptr)
 	{
-		ClientWeaponMesh->AttachToComponent(FPSCharacter->GetArmMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FP_WeaponSocketName);
+		FPWeaponMesh->AttachToComponent(FPSCharacter->GetArmMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FP_WeaponSocketName);
 
 		UAnimInstance* FPSArmsAnim = FPSCharacter->GetArmMesh()->GetAnimInstance();
 		if (FPSArmsAnim != nullptr)
@@ -52,12 +53,12 @@ void AFPSRifleBase::Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* FPSC
 		return;
 	}
 
-	if (RepWeaponMesh != nullptr && FPSCharacter->GetCharacterMesh() != nullptr)
+	if (TPWeaponMesh != nullptr && FPSCharacter->GetCharacterMesh() != nullptr)
 	{
-		RepWeaponMesh->SetSimulatePhysics(false);
-		RepWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		TPWeaponMesh->SetSimulatePhysics(false);
+		TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-		RepWeaponMesh->AttachToComponent(OwnerCharacter->GetCharacterMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TP_WeaponSocketName);
+		TPWeaponMesh->AttachToComponent(OwnerCharacter->GetCharacterMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TP_WeaponSocketName);
 	}
 }
 
@@ -144,17 +145,25 @@ void AFPSRifleBase::Multicast_FireEffects_Implementation()
 		return;
 	}
 
-	if (FireEmitter != nullptr && ClientWeaponMesh != nullptr)
+	bool bIsLocalPlayer = UGameplayStatics::GetPlayerPawn(World, 0) == GetOwner();
+	if (bIsLocalPlayer)
 	{
-		bool bIsLocalPlayer = UGameplayStatics::GetPlayerPawn(World, 0) == GetOwner();
-		USkeletalMeshComponent* MeshToSpawnEffects = bIsLocalPlayer ? ClientWeaponMesh : RepWeaponMesh;
-		FName MuzzleSocketName = bIsLocalPlayer ? FP_MuzzleSocketName : TP_MuzzleSocketName;
-		UGameplayStatics::SpawnEmitterAttached(FireEmitter, MeshToSpawnEffects, MuzzleSocketName);
+		UGameplayStatics::SpawnEmitterAttached(FireEmitter, FPWeaponMesh, FP_MuzzleSocketName);
+		UGameplayStatics::SpawnSoundAttached(FireSound, FPWeaponMesh, FP_MuzzleSocketName);
 
-		if (FireSound != nullptr)
+		AController* InstigatorController = GetInstigatorController();
+		if (InstigatorController != nullptr)
 		{
-			UGameplayStatics::SpawnSoundAttached(FireSound, MeshToSpawnEffects, MuzzleSocketName);
+			if (UKismetSystemLibrary::DoesImplementInterface(InstigatorController, UFPSPlayerControllerInterface::StaticClass()))
+			{
+				IFPSPlayerControllerInterface::Execute_ShakeCamera(InstigatorController, CameraShakeOnFire);
+			}
 		}
+	}
+	else
+	{
+		UGameplayStatics::SpawnEmitterAttached(FireEmitter, TPWeaponMesh, TP_MuzzleSocketName);
+		UGameplayStatics::SpawnSoundAttached(FireSound, TPWeaponMesh, TP_MuzzleSocketName);
 	}
 }
 

@@ -112,10 +112,10 @@ protected:
 	USceneComponent* RootComp;
 
 	UPROPERTY(VisibleAnywhere)
-	USkeletalMeshComponent* ClientWeaponMesh;
+	USkeletalMeshComponent* FPWeaponMesh;
 
 	UPROPERTY(VisibleAnywhere)
-	USkeletalMeshComponent* RepWeaponMesh;
+	USkeletalMeshComponent* TPWeaponMesh;
 
 	UPROPERTY(VisibleAnywhere)
 	USphereComponent* InteractCollider;

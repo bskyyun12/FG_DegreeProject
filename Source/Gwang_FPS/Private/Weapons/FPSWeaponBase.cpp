@@ -21,19 +21,19 @@ AFPSWeaponBase::AFPSWeaponBase()
 	RootComp = CreateDefaultSubobject<USceneComponent>(TEXT("RootComp"));
 	this->SetRootComponent(RootComp);
 
-	ClientWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ClientWeapnMesh"));
-	ClientWeaponMesh->SetOnlyOwnerSee(true);
-	ClientWeaponMesh->SetupAttachment(RootComp);
+	FPWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ClientWeapnMesh"));
+	FPWeaponMesh->SetOnlyOwnerSee(true);
+	FPWeaponMesh->SetupAttachment(RootComp);
 
-	RepWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
-	RepWeaponMesh->SetOwnerNoSee(true);
-	RepWeaponMesh->SetSimulatePhysics(true);
-	RepWeaponMesh->SetCollisionProfileName("IgnoreCharacter");
-	RepWeaponMesh->SetupAttachment(RootComp);
+	TPWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+	TPWeaponMesh->SetOwnerNoSee(true);
+	TPWeaponMesh->SetSimulatePhysics(true);
+	TPWeaponMesh->SetCollisionProfileName("IgnoreCharacter");
+	TPWeaponMesh->SetupAttachment(RootComp);
 
 	InteractCollider = CreateDefaultSubobject<USphereComponent>(TEXT("Sphere"));
 	InteractCollider->SetSphereRadius(120.f);
-	InteractCollider->SetupAttachment(RepWeaponMesh);
+	InteractCollider->SetupAttachment(TPWeaponMesh);
 	InteractCollider->OnComponentBeginOverlap.AddDynamic(this, &AFPSWeaponBase::OnBeginOverlap);
 	InteractCollider->OnComponentEndOverlap.AddDynamic(this, &AFPSWeaponBase::OnEndOverlap);
 
@@ -97,6 +97,7 @@ void AFPSWeaponBase::Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* FPS
 	}
 
 	SetOwner(FPSCharacter);
+	SetInstigator(FPSCharacter);
 	OwnerCharacter = FPSCharacter; // OnRep_OwnerChanged()
 
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -106,17 +107,18 @@ void AFPSWeaponBase::Server_OnTPWeaponDroped_Implementation(AFPSCharacter* FPSCh
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnTPWeaponDroped_Implementation()"));
 	SetOwner(nullptr);
+	SetInstigator(nullptr);
 	OwnerCharacter = nullptr; // OnRep_OwnerChanged()
 }
 
 void AFPSWeaponBase::OnRep_OwnerChanged()
 {
-	RepWeaponMesh->SetSimulatePhysics(false);
-	RepWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	TPWeaponMesh->SetSimulatePhysics(false);
+	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	RepWeaponMesh->AttachToComponent(OwnerCharacter->GetCharacterMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
+	TPWeaponMesh->AttachToComponent(OwnerCharacter->GetCharacterMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
 }
 
 void AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation(AFPSCharacter* FPSCharacter)
