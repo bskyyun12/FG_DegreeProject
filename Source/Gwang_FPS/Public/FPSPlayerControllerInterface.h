@@ -38,4 +38,10 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void ShakeCamera(TSubclassOf<UCameraShakeBase> CameraShake);
 
+	// Game over checks
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void OnPlayerDeath();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void LoadGameOver();
 };

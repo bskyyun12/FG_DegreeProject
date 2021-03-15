@@ -10,6 +10,7 @@
 
 class UUserWidget;
 class UTeamSelectionWidget;
+class UGameOverWidget;
 class AFPSGameMode;
 
 UCLASS()
@@ -23,9 +24,9 @@ public:
 	virtual void BeginPlay() override;
 
 #pragma region IFPSPlayerControllerInterface
-	virtual void LoadTeamSelection_Implementation() override;
+	void LoadTeamSelection_Implementation() override;
 	UFUNCTION(Client, Reliable)
-	void Client_LoadTeamSelection(TSubclassOf<UUserWidget> teamSelectionClass);
+	void Client_LoadTeamSelection();
 
 	void OnTeamSelected_Implementation(ETeam InTeam) override;
 	UFUNCTION(Server, Reliable)
@@ -36,13 +37,27 @@ public:
 	void RespawnPlayer_Implementation() override;
 
 	void ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake) override;
+
+	// Game over check
+	void OnPlayerDeath_Implementation() override;
+	void LoadGameOver_Implementation() override;
+	UFUNCTION(Client, Reliable)
+	void Client_LoadGameOver();
 #pragma endregion
 
 protected:
+	///////////
+	// Widgets
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUserWidget> TeamSelectionClass;
-
 	UTeamSelectionWidget* TeamSelection;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UUserWidget> GameOverWidgetClass;
+	UGameOverWidget* GameOverWidget;
+	// Widgets
+	///////////
+
 
 	AFPSGameMode* GameMode;
 

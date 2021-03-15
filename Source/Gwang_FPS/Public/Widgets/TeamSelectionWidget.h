@@ -4,38 +4,31 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "MenuInterface.h"
+#include "FPSWidgetBase.h"
 #include "TeamSelectionWidget.generated.h"
-
 
 class UButton;
 class APlayerController;
 
 UCLASS()
-class GWANG_FPS_API UTeamSelectionWidget : public UUserWidget
+class GWANG_FPS_API UTeamSelectionWidget : public UFPSWidgetBase
 {
 	GENERATED_BODY()
 
 public:
 	virtual bool Initialize() override;
 
-	void Setup();
-
-	void Teardown();
-
 private:
 	UPROPERTY(meta = (BindWidget))
-	UButton* Button_DarkTeam;
+	UButton* Button_MarvelTeam;
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* Button_SilverTeam;
-
-	APlayerController* OwningPlayer;
+	UButton* Button_DCTeam;
 
 private:
 	UFUNCTION()
-	void OnClick_Button_DarkTeam();
+	void OnClick_Button_MarvelTeam();
 
 	UFUNCTION()
-	void OnClick_Button_SilverTeam();
+	void OnClick_Button_DCTeam();
 };

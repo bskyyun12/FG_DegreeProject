@@ -8,8 +8,8 @@
 
 UENUM(BlueprintType)
 enum class ETeam : uint8 {
-	Dark	UMETA(DisplayName = "Team Dark"),
-	Silver	UMETA(DisplayName = "Team Silver"),
+	Marvel	UMETA(DisplayName = "Team Marvel"),
+	DC	UMETA(DisplayName = "Team DC"),
 };
 
 UCLASS()

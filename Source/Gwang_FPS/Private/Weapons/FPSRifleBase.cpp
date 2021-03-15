@@ -127,7 +127,7 @@ void AFPSRifleBase::Fire(AFPSCharacter* FPSCharacter)
 			if (HealthComp != nullptr && !HealthComp->IsDead())
 			{
 				float Damage = CalcDamageToApply(Hit.PhysMaterial.Get());
-				HealthComp->AddHealth(-Damage);
+				HealthComp->Server_AddHealth(-Damage);
 				UE_LOG(LogTemp, Warning, TEXT("Damage Taken: %f, Attacker: %s, Damaged Actor: %s"), Damage, *GetOwner()->GetName(), *HitActor->GetName());
 			}
 		}

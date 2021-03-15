@@ -16,84 +16,34 @@ bool UTeamSelectionWidget::Initialize()
 		return false;
 	}
 
-	OwningPlayer = GetOwningPlayer();
-	if (!ensure(OwningPlayer != nullptr))
+	if (!ensure(Button_MarvelTeam != nullptr))
 	{
 		return false;
 	}
+	Button_MarvelTeam->OnClicked.AddDynamic(this, &UTeamSelectionWidget::OnClick_Button_MarvelTeam);
 
-	if (!ensure(Button_DarkTeam != nullptr))
+	if (!ensure(Button_DCTeam != nullptr))
 	{
 		return false;
 	}
-	Button_DarkTeam->OnClicked.AddDynamic(this, &UTeamSelectionWidget::OnClick_Button_DarkTeam);
-
-	if (!ensure(Button_SilverTeam != nullptr))
-	{
-		return false;
-	}
-	Button_SilverTeam->OnClicked.AddDynamic(this, &UTeamSelectionWidget::OnClick_Button_SilverTeam);
+	Button_DCTeam->OnClicked.AddDynamic(this, &UTeamSelectionWidget::OnClick_Button_DCTeam);
 
 
 	return true;
 }
 
-void UTeamSelectionWidget::OnClick_Button_DarkTeam()
+void UTeamSelectionWidget::OnClick_Button_MarvelTeam()
 {
 	if (UKismetSystemLibrary::DoesImplementInterface(OwningPlayer, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_OnTeamSelected(OwningPlayer, ETeam::Dark);
+		IFPSPlayerControllerInterface::Execute_OnTeamSelected(OwningPlayer, ETeam::Marvel);
 	}
 }
 
-void UTeamSelectionWidget::OnClick_Button_SilverTeam()
+void UTeamSelectionWidget::OnClick_Button_DCTeam()
 {
 	if (UKismetSystemLibrary::DoesImplementInterface(OwningPlayer, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_OnTeamSelected(OwningPlayer, ETeam::Silver);
+		IFPSPlayerControllerInterface::Execute_OnTeamSelected(OwningPlayer, ETeam::DC);
 	}
-}
-
-void UTeamSelectionWidget::Setup()
-{
-	this->AddToViewport();
-	this->bIsFocusable = true;
-
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-	APlayerController* PlayerController = World->GetFirstPlayerController();
-	if (!ensure(PlayerController != nullptr))
-	{
-		return;
-	}
-	FInputModeUIOnly InputModeData;
-	InputModeData.SetWidgetToFocus(this->TakeWidget());
-	InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-	PlayerController->SetInputMode(InputModeData);
-
-	PlayerController->bShowMouseCursor = true;
-}
-
-void UTeamSelectionWidget::Teardown()
-{
-	this->RemoveFromViewport();
-	this->bIsFocusable = false;
-
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-	APlayerController* PlayerController = World->GetFirstPlayerController();
-	if (!ensure(PlayerController != nullptr))
-	{
-		return;
-	}
-	FInputModeGameOnly InputModeData;
-	PlayerController->SetInputMode(InputModeData);
-
-	PlayerController->bShowMouseCursor = false;
 }

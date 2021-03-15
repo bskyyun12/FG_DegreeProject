@@ -24,7 +24,7 @@ void UHealthComponent::Reset()
 	CurrentHealth = MaxHealth;
 }
 
-void UHealthComponent::AddHealth(float ValueToAdd)
+void UHealthComponent::Server_AddHealth_Implementation(float ValueToAdd)
 {
 	CurrentHealth += ValueToAdd;
 

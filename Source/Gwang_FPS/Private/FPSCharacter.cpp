@@ -54,6 +54,7 @@ void AFPSCharacter::BeginPlay()
 	}
 
 	DefaultCameraRelativeLocation = CameraContainer->GetRelativeLocation();
+	DefaultCharacterMeshRelativeTransform = FPSCharacterMesh->GetRelativeTransform();
 }
 
 void AFPSCharacter::OnPossessed(AFPSPlayerController* InFPSController)
@@ -322,6 +323,11 @@ void AFPSCharacter::OnDeath()
 	bIsDead = true;	// OnRep_bIsDead()
 	CollisionHandleOnDeath();
 
+	if (FPSController != nullptr && UKismetSystemLibrary::DoesImplementInterface(FPSController, UFPSPlayerControllerInterface::StaticClass()))
+	{
+		IFPSPlayerControllerInterface::Execute_OnPlayerDeath(FPSController);
+	}
+
 	FTimerHandle RespawnTimer;
 	GetWorld()->GetTimerManager().SetTimer(RespawnTimer, [&]()
 		{
@@ -373,6 +379,7 @@ void AFPSCharacter::CollisionHandleOnRespawn()
 	FPSCharacterMesh->SetSimulatePhysics(false);
 	FPSCharacterMesh->SetCollisionProfileName(TEXT("CharacterMesh"));
 	FPSCharacterMesh->AttachToComponent(CapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
+	FPSCharacterMesh->SetRelativeTransform(DefaultCharacterMeshRelativeTransform);
 
 	CameraContainer->SetSimulatePhysics(false);
 	CameraContainer->SetCollisionProfileName(TEXT("NoCollision"));

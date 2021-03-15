@@ -89,6 +89,7 @@ protected:
 	UCapsuleComponent* CapsuleComponent;
 	AFPSPlayerController* FPSController;
 	FVector DefaultCameraRelativeLocation;
+	FTransform DefaultCharacterMeshRelativeTransform;
 
 	// Temporary thing
 	bool bHasAnyWeapons;

@@ -18,7 +18,8 @@ public:
 
 	void Reset();
 
-	void AddHealth(float ValueToAdd);
+	UFUNCTION(Server, Reliable)
+	void Server_AddHealth(float ValueToAdd);
 
 	bool IsDead();
 

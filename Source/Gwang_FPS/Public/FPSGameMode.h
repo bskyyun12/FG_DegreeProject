@@ -9,7 +9,6 @@
 
 class AFPSCharacter;
 
-
 UCLASS()
 class GWANG_FPS_API AFPSGameMode : public AGameModeBase
 {
@@ -24,16 +23,27 @@ public:
 
 	FTransform GetRandomPlayerStarts(ETeam Team);
 
-private:
-	TArray<FTransform> DarkCharacterSpawnTransforms;
-	TArray<FTransform> SilverCharacterSpawnTransforms;
-
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<AFPSCharacter> DarkCharacter;
-
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<AFPSCharacter> SilverCharacter;
+	// Game over
+	void OnPlayerDeath(APlayerController* PlayerController, ETeam Team);
 
 private:
+	TArray<FTransform> MarvelTeamSpawnTransforms;
+	TArray<FTransform> DCTeamSpawnTransforms;
 
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AFPSCharacter> MarvelTeamCharacter;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AFPSCharacter> DCTeamCharacter;
+
+	void CheckGameOver(APlayerController* PlayerController);
+
+private:
+	UPROPERTY(EditDefaultsOnly)
+	int KillScoreToWin = 3;
+
+	int CurrentMarvelScore;
+	int CurrentDCScore;
+
+	TArray<APlayerController*> PlayerControllers;
 };

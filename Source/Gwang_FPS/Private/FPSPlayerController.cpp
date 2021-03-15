@@ -2,11 +2,12 @@
 
 
 #include "FPSPlayerController.h"
-#include "Widgets/TeamSelectionWidget.h"
 #include "Kismet/GameplayStatics.h"
 
 #include "FPSGameMode.h"
 #include "FPSCharacter.h"
+#include "Widgets/TeamSelectionWidget.h"
+#include "Widgets/GameOverWidget.h"
 
 AFPSPlayerController::AFPSPlayerController(const FObjectInitializer& ObjectInitializer /*= FObjectInitializer::Get()*/)
 {
@@ -20,10 +21,10 @@ void AFPSPlayerController::BeginPlay()
 
 void AFPSPlayerController::LoadTeamSelection_Implementation()
 {
-	Client_LoadTeamSelection(TeamSelectionClass);
+	Client_LoadTeamSelection();
 }
 
-void AFPSPlayerController::Client_LoadTeamSelection_Implementation(TSubclassOf<UUserWidget> teamSelectionClass)
+void AFPSPlayerController::Client_LoadTeamSelection_Implementation()
 {
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
@@ -31,7 +32,7 @@ void AFPSPlayerController::Client_LoadTeamSelection_Implementation(TSubclassOf<U
 		return;
 	}
 
-	TeamSelection = CreateWidget<UTeamSelectionWidget>(World, teamSelectionClass);
+	TeamSelection = CreateWidget<UTeamSelectionWidget>(World, TeamSelectionClass);
 	if (!ensure(TeamSelection != nullptr))
 	{
 		return;
@@ -42,8 +43,11 @@ void AFPSPlayerController::Client_LoadTeamSelection_Implementation(TSubclassOf<U
 
 void AFPSPlayerController::OnTeamSelected_Implementation(ETeam InTeam)
 {
-	TeamSelection->Teardown();
-	Server_OnTeamSelected(InTeam);
+	if (TeamSelection != nullptr)
+	{
+		TeamSelection->Teardown();
+		Server_OnTeamSelected(InTeam);
+	}
 }
 
 void AFPSPlayerController::Server_OnTeamSelected_Implementation(ETeam InTeam)
@@ -82,6 +86,14 @@ void AFPSPlayerController::OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacte
 		return;
 	}
 
+	// if this controller already has a pawn, re-position the pawn. (skip SpawnActor)
+	if (GetPawn() != nullptr)
+	{
+		RespawnPlayer_Implementation();
+		// TODO: Mesh is not changed here
+		return;
+	}
+
 	FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
@@ -92,11 +104,39 @@ void AFPSPlayerController::OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacte
 
 void AFPSPlayerController::RespawnPlayer_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnPlayerDeath_Implementation"));
+	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::RespawnPlayer_Implementation"));
 
 	FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
 	if (GetPawn() != nullptr)
 	{
 		GetPawn()->SetActorTransform(SpawnTransform);
 	}
+}
+
+void AFPSPlayerController::OnPlayerDeath_Implementation()
+{
+	GameMode->OnPlayerDeath(this, Team);
+}
+
+void AFPSPlayerController::LoadGameOver_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::LoadGameOver_Implementation"));
+	Client_LoadGameOver();
+}
+
+void AFPSPlayerController::Client_LoadGameOver_Implementation()
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	GameOverWidget = CreateWidget<UGameOverWidget>(World, GameOverWidgetClass);
+	if (!ensure(GameOverWidget != nullptr))
+	{
+		return;
+	}
+
+	GameOverWidget->Setup();
 }
