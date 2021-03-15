@@ -19,7 +19,6 @@ void AFPSGameMode::PostLogin(APlayerController* NewPlayer)
 		return;
 	}
 
-	PlayerControllers.Add(NewPlayer);
 	if (UKismetSystemLibrary::DoesImplementInterface(NewPlayer, UFPSPlayerControllerInterface::StaticClass()))
 	{
 		IFPSPlayerControllerInterface::Execute_LoadTeamSelection(NewPlayer);
@@ -30,6 +29,7 @@ void AFPSGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Get all player starts
 	//TODO: feels horrible here... please find another way to implement this without using GetAllActorsOfClass() crap
 	TArray<AActor*> PlayerStarts;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AFPSPlayerStart::StaticClass(), PlayerStarts);
@@ -49,25 +49,84 @@ void AFPSGameMode::BeginPlay()
 		}
 	}
 
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
 	if (!ensure(MarvelTeamCharacter != nullptr) || !ensure(DCTeamCharacter != nullptr))
 	{
 		return;
 	}
+
+	// players to pool
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	for (int i = 0; i < MaxPlayerPerTeam; i++)
+	{
+		AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(MarvelTeamCharacter, GetRandomPlayerStarts(ETeam::Marvel), SpawnParams);
+		SpawnedCharacter->SetActorHiddenInGame(true);
+		MarvelTeamPlayers.Add(SpawnedCharacter);
+	}
+
+	for (int i = 0; i < MaxPlayerPerTeam; i++)
+	{
+		AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(DCTeamCharacter, GetRandomPlayerStarts(ETeam::DC), SpawnParams);
+		SpawnedCharacter->SetActorHiddenInGame(true);
+		DCTeamPlayers.Add(SpawnedCharacter);
+	}
 }
 
-void AFPSGameMode::SpawnPlayer(APlayerController* PlayerController, ETeam Team)
+bool AFPSGameMode::SpawnPlayer(APlayerController* PlayerController, ETeam Team)
 {
+	AFPSCharacter* PooledPlayer = PoolPlayer(Team);
+	if (PooledPlayer == nullptr)
+	{
+		return false;
+	}
+
 	if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
 	{
 		if (Team == ETeam::Marvel)
 		{
-			IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, MarvelTeamCharacter);
+			IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, PooledPlayer);
 		}
 		else if (Team == ETeam::DC)
 		{
-			IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, DCTeamCharacter);
+			IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, PooledPlayer);
 		}
 	}
+
+	return true;
+}
+
+AFPSCharacter* AFPSGameMode::PoolPlayer(ETeam Team)
+{
+	if (Team == ETeam::Marvel)
+	{
+		for (int i = 0; i < MarvelTeamPlayers.Num(); i++)
+		{
+			if (MarvelTeamPlayers[i] != nullptr && MarvelTeamPlayers[i]->GetController() == nullptr)
+			{
+				MarvelTeamPlayers[i]->SetActorHiddenInGame(false);
+				return MarvelTeamPlayers[i];
+			}
+		}
+	}
+	else if (Team == ETeam::DC)
+	{
+		for (int i = 0; i < DCTeamPlayers.Num(); i++)
+		{
+			if (DCTeamPlayers[i] != nullptr && DCTeamPlayers[i]->GetController() == nullptr)
+			{
+				DCTeamPlayers[i]->SetActorHiddenInGame(false);
+				return DCTeamPlayers[i];
+			}
+		}
+	}
+
+	return nullptr;
 }
 
 FTransform AFPSGameMode::GetRandomPlayerStarts(ETeam Team)
@@ -99,30 +158,67 @@ void AFPSGameMode::OnPlayerDeath(APlayerController* PlayerController, ETeam Team
 	else if (Team == ETeam::DC)
 	{
 		CurrentMarvelScore++;
-	}	
+	}
 
 	CheckGameOver(PlayerController);
 }
 
-void AFPSGameMode::CheckGameOver(APlayerController* PlayerController)
+bool AFPSGameMode::CanJoin(ETeam Team)
 {
-	bool bIsGameOver = false;
-	if (CurrentDCScore >= KillScoreToWin)
+	if (Team == ETeam::Marvel)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("DC Team Won!!!"));
-		bIsGameOver = true;
+		for (int i = 0; i < MarvelTeamPlayers.Num(); i++)
+		{
+			if (MarvelTeamPlayers[i] != nullptr && MarvelTeamPlayers[i]->GetController() == nullptr)
+			{
+				return true;
+			}
+		}
+
 	}
-	else if (CurrentMarvelScore >= KillScoreToWin)
+	else if (Team == ETeam::DC)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Marvel Team Won!!!"));
-		bIsGameOver = true;
+		for (int i = 0; i < DCTeamPlayers.Num(); i++)
+		{
+			if (DCTeamPlayers[i] != nullptr && DCTeamPlayers[i]->GetController() == nullptr)
+			{
+				return true;
+			}
+		}
 	}
 
-	if (bIsGameOver)
+	return false;
+}
+
+void AFPSGameMode::CheckGameOver(APlayerController* PlayerController)
+{
+	bool MarvelWon = CurrentMarvelScore >= KillScoreToWin;
+	bool DCWon = CurrentDCScore >= KillScoreToWin;
+
+	if (MarvelWon || DCWon)
 	{
-		for (int i = 0; i < PlayerControllers.Num(); i++)
+		for (int i = 0; i < MarvelTeamPlayers.Num(); i++)
 		{
-			IFPSPlayerControllerInterface::Execute_LoadGameOver(PlayerControllers[i]);
+			if (MarvelTeamPlayers[i] != nullptr)
+			{
+				AController* Controller = MarvelTeamPlayers[i]->GetController();
+				if (Controller != nullptr && UKismetSystemLibrary::DoesImplementInterface(Controller, UFPSPlayerControllerInterface::StaticClass()))
+				{
+					IFPSPlayerControllerInterface::Execute_LoadGameOver(Controller, MarvelWon);
+				}
+			}
+		}
+
+		for (int i = 0; i < DCTeamPlayers.Num(); i++)
+		{
+			if (DCTeamPlayers[i] != nullptr)
+			{
+				AController* Controller = DCTeamPlayers[i]->GetController();
+				if (Controller != nullptr && UKismetSystemLibrary::DoesImplementInterface(Controller, UFPSPlayerControllerInterface::StaticClass()))
+				{
+					IFPSPlayerControllerInterface::Execute_LoadGameOver(Controller, DCWon);
+				}
+			}
 		}
 	}
 }

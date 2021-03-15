@@ -6,6 +6,7 @@
 #include "Widgets/FPSWidgetBase.h"
 #include "GameOverWidget.generated.h"
 
+class UWidgetSwitcher;
 class UButton;
 
 UCLASS()
@@ -16,7 +17,12 @@ class GWANG_FPS_API UGameOverWidget : public UFPSWidgetBase
 public:
 	virtual bool Initialize() override;
 
+	void SetResultText(bool Victory);
+
 private:
+	UPROPERTY(meta = (BindWidget))
+	UWidgetSwitcher* WidgetSwitcher_Result;
+
 	UPROPERTY(meta = (BindWidget))
 	UButton* Button_Restart;
 

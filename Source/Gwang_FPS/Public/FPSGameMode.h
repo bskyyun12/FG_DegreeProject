@@ -19,12 +19,15 @@ public:
 
 	void BeginPlay() override;
 
-	void SpawnPlayer(APlayerController* PlayerController, ETeam Team);
+	bool SpawnPlayer(APlayerController* PlayerController, ETeam Team);
 
 	FTransform GetRandomPlayerStarts(ETeam Team);
 
 	// Game over
 	void OnPlayerDeath(APlayerController* PlayerController, ETeam Team);
+
+	bool CanJoin(ETeam Team);
+
 
 private:
 	TArray<FTransform> MarvelTeamSpawnTransforms;
@@ -38,12 +41,21 @@ private:
 
 	void CheckGameOver(APlayerController* PlayerController);
 
+	AFPSCharacter* PoolPlayer(ETeam Team);
+
 private:
 	UPROPERTY(EditDefaultsOnly)
 	int KillScoreToWin = 3;
 
+	UPROPERTY(EditDefaultsOnly)
+	int MaxPlayerPerTeam = 2;
+
 	int CurrentMarvelScore;
 	int CurrentDCScore;
 
-	TArray<APlayerController*> PlayerControllers;
+	UPROPERTY()
+	TArray<AFPSCharacter*> MarvelTeamPlayers;
+
+	UPROPERTY()
+	TArray<AFPSCharacter*> DCTeamPlayers;
 };

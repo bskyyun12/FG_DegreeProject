@@ -3,6 +3,7 @@
 
 #include "Widgets/GameOverWidget.h"
 #include "Components/Button.h"
+#include "Components/WidgetSwitcher.h"
 #include "Kismet/KismetSystemLibrary.h" // DoesImplementInterface
 
 #include "FPSPlayerControllerInterface.h"
@@ -22,6 +23,14 @@ bool UGameOverWidget::Initialize()
 	Button_Restart->OnClicked.AddDynamic(this, &UGameOverWidget::OnClick_Button_Restart);
 
 	return true;
+}
+
+void UGameOverWidget::SetResultText(bool Victory)
+{
+	if (WidgetSwitcher_Result != nullptr)
+	{
+		WidgetSwitcher_Result->SetActiveWidgetIndex(Victory);
+	}
 }
 
 void UGameOverWidget::OnClick_Button_Restart()

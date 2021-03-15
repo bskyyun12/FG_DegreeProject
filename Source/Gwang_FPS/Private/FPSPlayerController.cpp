@@ -66,7 +66,11 @@ void AFPSPlayerController::Server_OnTeamSelected_Implementation(ETeam InTeam)
 			return;
 		}
 	}
-	GameMode->SpawnPlayer(this, Team);
+
+	if (GameMode->SpawnPlayer(this, Team) == false)
+	{
+		LoadTeamSelection_Implementation();
+	}
 }
 
 void AFPSPlayerController::ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake)
@@ -78,28 +82,16 @@ void AFPSPlayerController::ShakeCamera_Implementation(TSubclassOf<UCameraShakeBa
 	}
 }
 
-void AFPSPlayerController::OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacter> CharacterClass)
+void AFPSPlayerController::OnSpawnPlayer_Implementation(AFPSCharacter* PooledPlayer)
 {
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
+	if (PooledPlayer != nullptr)
 	{
-		return;
-	}
+		FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
+		PooledPlayer->SetActorTransform(SpawnTransform);
 
-	// if this controller already has a pawn, re-position the pawn. (skip SpawnActor)
-	if (GetPawn() != nullptr)
-	{
-		RespawnPlayer_Implementation();
-		// TODO: Mesh is not changed here
-		return;
+		this->Possess(PooledPlayer);
+		PooledPlayer->OnPossessed(this);
 	}
-
-	FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-	AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(CharacterClass, SpawnTransform, SpawnParams);
-	this->Possess(SpawnedCharacter);
-	SpawnedCharacter->OnPossessed(this);;
 }
 
 void AFPSPlayerController::RespawnPlayer_Implementation()
@@ -118,13 +110,13 @@ void AFPSPlayerController::OnPlayerDeath_Implementation()
 	GameMode->OnPlayerDeath(this, Team);
 }
 
-void AFPSPlayerController::LoadGameOver_Implementation()
+void AFPSPlayerController::LoadGameOver_Implementation(bool Victory)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::LoadGameOver_Implementation"));
-	Client_LoadGameOver();
+	Client_LoadGameOver(Victory);
 }
 
-void AFPSPlayerController::Client_LoadGameOver_Implementation()
+void AFPSPlayerController::Client_LoadGameOver_Implementation(bool Victory)
 {
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
@@ -139,4 +131,5 @@ void AFPSPlayerController::Client_LoadGameOver_Implementation()
 	}
 
 	GameOverWidget->Setup();
+	GameOverWidget->SetResultText(Victory);
 }

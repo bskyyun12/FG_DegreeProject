@@ -30,7 +30,7 @@ public:
 	void OnTeamSelected(ETeam InTeam);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnSpawnPlayer(TSubclassOf<AFPSCharacter> CharacterClass);
+	void OnSpawnPlayer(AFPSCharacter* Player);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void RespawnPlayer();
@@ -43,5 +43,5 @@ public:
 	void OnPlayerDeath();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void LoadGameOver();
+	void LoadGameOver(bool Victory);
 };

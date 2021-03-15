@@ -32,7 +32,7 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_OnTeamSelected(ETeam InTeam);
 
-	void OnSpawnPlayer_Implementation(TSubclassOf<AFPSCharacter> CharacterClass) override;
+	void OnSpawnPlayer_Implementation(AFPSCharacter* PooledPlayer) override;
 
 	void RespawnPlayer_Implementation() override;
 
@@ -40,10 +40,12 @@ public:
 
 	// Game over check
 	void OnPlayerDeath_Implementation() override;
-	void LoadGameOver_Implementation() override;
+	void LoadGameOver_Implementation(bool Victory) override;
 	UFUNCTION(Client, Reliable)
-	void Client_LoadGameOver();
+	void Client_LoadGameOver(bool Victory);
 #pragma endregion
+
+
 
 protected:
 	///////////

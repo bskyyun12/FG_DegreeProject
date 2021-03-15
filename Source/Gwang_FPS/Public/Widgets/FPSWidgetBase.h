@@ -7,6 +7,7 @@
 #include "FPSWidgetBase.generated.h"
 
 class APlayerController;
+class AFPSGameMode;
 
 UCLASS()
 class GWANG_FPS_API UFPSWidgetBase : public UUserWidget
@@ -16,9 +17,9 @@ class GWANG_FPS_API UFPSWidgetBase : public UUserWidget
 public:
 	virtual bool Initialize() override;
 
-	void Setup();
+	virtual void Setup();
 
-	void Teardown();
+	virtual void Teardown();
 
 protected:
 	APlayerController* OwningPlayer;
