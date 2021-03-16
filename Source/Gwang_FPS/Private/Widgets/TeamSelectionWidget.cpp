@@ -35,63 +35,18 @@ bool UTeamSelectionWidget::Initialize()
 	return true;
 }
 
-void UTeamSelectionWidget::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void UTeamSelectionWidget::OnTeamFilled(ETeam Team, bool bCanJoinTeam)
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(UTeamSelectionWidget, bCanJoinMarvelTeam);
-	DOREPLIFETIME(UTeamSelectionWidget, bCanJoinDCTeam);
-}
-
-void UTeamSelectionWidget::Setup()
-{
-	Super::Setup();
-
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
+	UE_LOG(LogTemp, Warning, TEXT("UTeamSelectionWidget::OnTeamFilled()"));
+	if (Team == ETeam::Marvel)
 	{
-		return;
+		Image_MarvelTeam->SetOpacity(bCanJoinTeam ? 1.f : 0.2f);
+		Button_MarvelTeam->SetIsEnabled(bCanJoinTeam);
 	}
-	World->GetTimerManager().SetTimer(RefreshTimer, this, &UTeamSelectionWidget::Client_Refresh, 1.f, true);
-}
-
-void UTeamSelectionWidget::Teardown()
-{
-	Super::Teardown();
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
+	else if (Team == ETeam::DC)
 	{
-		return;
-	}
-	World->GetTimerManager().ClearTimer(RefreshTimer);
-}
-
-void UTeamSelectionWidget::Client_Refresh_Implementation()
-{
-	Server_Refresh();	
-
-	Image_MarvelTeam->SetOpacity(bCanJoinMarvelTeam ? 1.f : 0.2f);
-	Image_DCTeam->SetOpacity(bCanJoinDCTeam ? 1.f : 0.2f);
-
-	Button_MarvelTeam->SetIsEnabled(bCanJoinMarvelTeam);
-	Button_DCTeam->SetIsEnabled(bCanJoinDCTeam);
-}
-
-void UTeamSelectionWidget::Server_Refresh_Implementation()
-{
-	if (GameMode == nullptr)
-	{
-		UWorld* World = GetWorld();
-		if (!ensure(World != nullptr))
-		{
-			return;
-		}
-		GameMode = Cast<AFPSGameMode>(UGameplayStatics::GetGameMode(World));
-	}
-
-	if (GameMode != nullptr)
-	{
-		bCanJoinMarvelTeam = GameMode->CanJoin(ETeam::Marvel);	// Replicated Value
-		bCanJoinDCTeam = GameMode->CanJoin(ETeam::DC);	// Replicated Value
+		Image_DCTeam->SetOpacity(bCanJoinTeam ? 1.f : 0.2f);
+		Button_DCTeam->SetIsEnabled(bCanJoinTeam);
 	}
 }
 

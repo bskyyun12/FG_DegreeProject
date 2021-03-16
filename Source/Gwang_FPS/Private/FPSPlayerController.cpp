@@ -19,9 +19,50 @@ void AFPSPlayerController::BeginPlay()
 	Super::BeginPlay();
 }
 
-void AFPSPlayerController::LoadTeamSelection_Implementation()
+void AFPSPlayerController::StartNewGame_Implementation()
 {
+	Server_StartNewGame();
+}
+
+void AFPSPlayerController::Server_StartNewGame_Implementation()
+{
+	if (GameMode == nullptr)
+	{
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		GameMode = Cast<AFPSGameMode>(UGameplayStatics::GetGameMode(World));
+	}
+
+	if (!ensure(GameMode != nullptr))
+	{
+		return;
+	}
+	GameMode->OnUpdateTeamSelectionUI.RemoveAll(this);
+	GameMode->OnUpdateTeamSelectionUI.AddDynamic(this, &AFPSPlayerController::OnUpdateTeamSelectionUI);
+
+	if (GetPawn() != nullptr)
+	{
+		GameMode->FreePlayer(this);
+	}
 	Client_LoadTeamSelection();
+}
+
+void AFPSPlayerController::OnUpdateTeamSelectionUI(ETeam InTeam, bool bCanJoinTeam)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnUpdateTeamSelectionUI()"));
+	Client_OnUpdateTeamSelectionUI(InTeam, bCanJoinTeam);
+}
+
+void AFPSPlayerController::Client_OnUpdateTeamSelectionUI_Implementation(ETeam InTeam, bool bCanJoinTeam)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::Client_OnUpdateTeamSelectionUI_Implementation()"));
+	if (TeamSelection != nullptr)
+	{
+		TeamSelection->OnTeamFilled(InTeam, bCanJoinTeam);
+	}
 }
 
 void AFPSPlayerController::Client_LoadTeamSelection_Implementation()
@@ -53,23 +94,13 @@ void AFPSPlayerController::OnTeamSelected_Implementation(ETeam InTeam)
 void AFPSPlayerController::Server_OnTeamSelected_Implementation(ETeam InTeam)
 {
 	Team = InTeam;
-	if (GameMode == nullptr)
-	{
-		UWorld* World = GetWorld();
-		if (!ensure(World != nullptr))
-		{
-			return;
-		}
-		GameMode = Cast<AFPSGameMode>(UGameplayStatics::GetGameMode(World));
-		if (!ensure(GameMode != nullptr))
-		{
-			return;
-		}
-	}
 
+	// safety call when spawn fails for some reason
 	if (GameMode->SpawnPlayer(this, Team) == false)
 	{
-		LoadTeamSelection_Implementation();
+		UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::Server_OnTeamSelected_Implementation"));
+		UE_LOG(LogTemp, Warning, TEXT("GameMode->SpawnPlayer(this, Team) == false"));
+		StartNewGame_Implementation();
 	}
 }
 

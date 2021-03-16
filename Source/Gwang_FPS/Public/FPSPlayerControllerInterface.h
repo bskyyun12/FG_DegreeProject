@@ -24,7 +24,7 @@ class GWANG_FPS_API IFPSPlayerControllerInterface
 public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void LoadTeamSelection();
+	void StartNewGame();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnTeamSelected(ETeam InTeam);

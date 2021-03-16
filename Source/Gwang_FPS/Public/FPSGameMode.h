@@ -28,6 +28,11 @@ public:
 
 	bool CanJoin(ETeam Team);
 
+	AFPSCharacter* PoolPlayer(ETeam Team);
+	void FreePlayer(APlayerController* PlayerController);
+
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FTeamSelectionDelegate, ETeam, Team, bool, bCanJoinTeam);
+	FTeamSelectionDelegate OnUpdateTeamSelectionUI;
 
 private:
 	TArray<FTransform> MarvelTeamSpawnTransforms;
@@ -40,8 +45,6 @@ private:
 	TSubclassOf<AFPSCharacter> DCTeamCharacter;
 
 	void CheckGameOver(APlayerController* PlayerController);
-
-	AFPSCharacter* PoolPlayer(ETeam Team);
 
 private:
 	UPROPERTY(EditDefaultsOnly)

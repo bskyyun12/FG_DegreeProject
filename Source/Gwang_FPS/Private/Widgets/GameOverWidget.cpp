@@ -40,6 +40,6 @@ void UGameOverWidget::OnClick_Button_Restart()
 	Teardown();
 	if (UKismetSystemLibrary::DoesImplementInterface(OwningPlayer, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_LoadTeamSelection(OwningPlayer);
+		IFPSPlayerControllerInterface::Execute_StartNewGame(OwningPlayer);
 	}
 }

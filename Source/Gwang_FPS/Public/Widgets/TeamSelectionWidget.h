@@ -20,9 +20,7 @@ class GWANG_FPS_API UTeamSelectionWidget : public UFPSWidgetBase
 public:
 	virtual bool Initialize() override;
 
-	void Setup() override;
-
-	void Teardown() override;
+	void OnTeamFilled(ETeam Team, bool bCanJoinTeam);
 
 private:
 	UPROPERTY(meta = (BindWidget))
@@ -40,14 +38,6 @@ private:
 	UPROPERTY()
 	AFPSGameMode* GameMode;
 
-	UPROPERTY(Replicated)
-	bool bCanJoinMarvelTeam = true;
-
-	UPROPERTY(Replicated)
-	bool bCanJoinDCTeam = true;
-
-	FTimerHandle RefreshTimer;
-
 private:
 
 	UFUNCTION()
@@ -55,10 +45,4 @@ private:
 
 	UFUNCTION()
 	void OnClick_Button_DCTeam();
-
-	UFUNCTION(Client, Reliable)
-	void Client_Refresh();
-
-	UFUNCTION(Server, Reliable)
-	void Server_Refresh();
 };

@@ -24,7 +24,10 @@ public:
 	virtual void BeginPlay() override;
 
 #pragma region IFPSPlayerControllerInterface
-	void LoadTeamSelection_Implementation() override;
+	void StartNewGame_Implementation() override;
+	UFUNCTION(Server, Reliable)
+	void Server_StartNewGame();
+
 	UFUNCTION(Client, Reliable)
 	void Client_LoadTeamSelection();
 
@@ -45,8 +48,6 @@ public:
 	void Client_LoadGameOver(bool Victory);
 #pragma endregion
 
-
-
 protected:
 	///////////
 	// Widgets
@@ -66,4 +67,10 @@ protected:
 	ETeam Team;
 
 protected:
+
+	UFUNCTION()
+	void OnUpdateTeamSelectionUI(ETeam InTeam, bool bCanJoinTeam);
+
+	UFUNCTION(Client, Reliable)
+	void Client_OnUpdateTeamSelectionUI(ETeam InTeam, bool bCanJoinTeam);
 };

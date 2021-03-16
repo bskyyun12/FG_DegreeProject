@@ -21,7 +21,7 @@ void AFPSGameMode::PostLogin(APlayerController* NewPlayer)
 
 	if (UKismetSystemLibrary::DoesImplementInterface(NewPlayer, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_LoadTeamSelection(NewPlayer);
+		IFPSPlayerControllerInterface::Execute_StartNewGame(NewPlayer);
 	}
 }
 
@@ -76,6 +76,12 @@ void AFPSGameMode::BeginPlay()
 		SpawnedCharacter->SetActorHiddenInGame(true);
 		DCTeamPlayers.Add(SpawnedCharacter);
 	}
+
+	//// Test
+	//FTimerHandle TestTimer;
+	//World->GetTimerManager().SetTimer(TestTimer, [&](){ OnUpdateTeamSelectionUI.Broadcast(ETeam::Marvel, false); }, 1.f, true);
+	//// Test
+
 }
 
 bool AFPSGameMode::SpawnPlayer(APlayerController* PlayerController, ETeam Team)
@@ -109,6 +115,10 @@ AFPSCharacter* AFPSGameMode::PoolPlayer(ETeam Team)
 		{
 			if (MarvelTeamPlayers[i] != nullptr && MarvelTeamPlayers[i]->GetController() == nullptr)
 			{
+				if (i == MarvelTeamPlayers.Num() - 1)
+				{
+					OnUpdateTeamSelectionUI.Broadcast(Team, false);
+				}
 				MarvelTeamPlayers[i]->SetActorHiddenInGame(false);
 				return MarvelTeamPlayers[i];
 			}
@@ -120,6 +130,10 @@ AFPSCharacter* AFPSGameMode::PoolPlayer(ETeam Team)
 		{
 			if (DCTeamPlayers[i] != nullptr && DCTeamPlayers[i]->GetController() == nullptr)
 			{
+				if (i == DCTeamPlayers.Num() - 1)
+				{
+					OnUpdateTeamSelectionUI.Broadcast(Team, false);
+				}
 				DCTeamPlayers[i]->SetActorHiddenInGame(false);
 				return DCTeamPlayers[i];
 			}
@@ -127,6 +141,18 @@ AFPSCharacter* AFPSGameMode::PoolPlayer(ETeam Team)
 	}
 
 	return nullptr;
+}
+
+void AFPSGameMode::FreePlayer(APlayerController* PlayerController)
+{
+	if (PlayerController != nullptr)
+	{
+		if (PlayerController->GetPawn() != nullptr)
+		{
+			PlayerController->GetPawn()->SetActorHiddenInGame(true);
+		}
+		PlayerController->UnPossess();
+	}
 }
 
 FTransform AFPSGameMode::GetRandomPlayerStarts(ETeam Team)
@@ -174,7 +200,6 @@ bool AFPSGameMode::CanJoin(ETeam Team)
 				return true;
 			}
 		}
-
 	}
 	else if (Team == ETeam::DC)
 	{
