@@ -2,10 +2,10 @@
 
 
 #include "Weapons/FPSRifleBase.h"
-#include <Components/SceneComponent.h>
-#include <DrawDebugHelpers.h>
-#include <Kismet/GameplayStatics.h>
-#include <PhysicalMaterials/PhysicalMaterial.h>
+#include "Components/SceneComponent.h"
+#include "DrawDebugHelpers.h"
+#include "Kismet/GameplayStatics.h"
+#include "PhysicalMaterials/PhysicalMaterial.h"
 
 #include "Components/HealthComponent.h"
 #include "FPSCharacter.h"
@@ -98,7 +98,7 @@ void AFPSRifleBase::Server_OnEndFireWeapon_Implementation()
 void AFPSRifleBase::Fire(AFPSCharacter* FPSCharacter)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Fire"));
-	// Todo: check fire conditions. ammo, reloading etc..
+	// TODO: check fire conditions. ammo, reloading etc..
 
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))

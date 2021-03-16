@@ -15,6 +15,7 @@
 #include "Components/HealthComponent.h"
 #include "FPSPlayerControllerInterface.h"
 #include "FPSPlayerController.h"
+#include "Weapons/FPSWeaponInterface.h"
 
 // Sets default values
 AFPSCharacter::AFPSCharacter()
@@ -30,6 +31,11 @@ AFPSCharacter::AFPSCharacter()
 
 	FPSArmMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPS_Arms"));
 	FPSArmMesh->SetupAttachment(FollowCamera);
+
+	HandCollider = CreateDefaultSubobject<UBoxComponent>(TEXT("HandCollider"));
+	HandCollider->SetupAttachment(FollowCamera);
+	HandCollider->OnComponentBeginOverlap.AddDynamic(this, &AFPSCharacter::OnBeginOverlapHandCollider);
+	HandCollider->OnComponentEndOverlap.AddDynamic(this, &AFPSCharacter::OnEndOverlapHandCollider);
 
 	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
 	HealthComponent->OnDamageReceived.AddDynamic(this, &AFPSCharacter::OnDamageReceived);
@@ -57,11 +63,6 @@ void AFPSCharacter::BeginPlay()
 	DefaultCharacterMeshRelativeTransform = FPSCharacterMesh->GetRelativeTransform();
 }
 
-void AFPSCharacter::OnPossessed(AFPSPlayerController* InFPSController)
-{
-	FPSController = InFPSController;
-}
-
 void AFPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -76,6 +77,7 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
 	PlayerInputComponent->BindAction("Pickup", IE_Pressed, this, &AFPSCharacter::Pickup);
+
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AFPSCharacter::OnBeginFire);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &AFPSCharacter::OnEndFire);
 
@@ -149,21 +151,6 @@ void AFPSCharacter::Multicast_LookUp_Implementation(FRotator CameraRot)
 	}
 }
 
-void AFPSCharacter::Pickup()
-{
-	if (CurrentFocus != nullptr)
-	{
-		PickupWeapon(CurrentFocus->GetWeaponType());
-
-		// Temporary implementation
-		if (bHasAnyWeapons == false)
-		{
-			EquipWeapon(CurrentFocus);
-			bHasAnyWeapons = true;
-		}
-	}
-}
-
 void AFPSCharacter::OnBeginFire()
 {
 	if (CurrentWeapon != nullptr)
@@ -198,104 +185,27 @@ void AFPSCharacter::Server_OnEndFire_Implementation(AFPSWeaponBase* Weapon)
 	}
 }
 
-void AFPSCharacter::OnBeginOverlapWeapon_Implementation(AFPSWeaponBase* Weapon)
+void AFPSCharacter::Pickup()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnBeginOverlapWeapon_Implementation()"));
-
-	NumOfOverlappingWeapons++;
-	UE_LOG(LogTemp, Warning, TEXT("OnBeginOverlapWeapon() NumOfOverlappingWeapons: %i"), NumOfOverlappingWeapons);
-
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
+	if (CurrentWeapon != nullptr)
 	{
+		// TODO: swap weapon here?
 		return;
-	}
-
-	if (World->GetTimerManager().IsTimerActive(PickupTraceTimerHandle))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Timer is already running"));
-		return;
-	}
-
-	World->GetTimerManager().SetTimer(PickupTraceTimerHandle, this, &AFPSCharacter::Client_CheckForWeapon, 0.1f, true, 0.f);
-}
-
-void AFPSCharacter::Client_CheckForWeapon_Implementation()
-{
-	UE_LOG(LogTemp, Warning, TEXT("CheckForWeapon"));
-
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-
-	FHitResult Hit;
-	FVector Start = FollowCamera->GetComponentLocation();
-	FVector End = Start + FollowCamera->GetForwardVector() * 300.f;
-	DrawDebugLine(World, Start, End, FColor::Red, false, 0.1f);
-
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
-	bool bIsHit = World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
-	if (bIsHit)
-	{
-		AFPSWeaponBase* FocusedWeapon = Cast<AFPSWeaponBase>(Hit.GetActor());
-		if (FocusedWeapon != nullptr)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Hit Weapon: %s"), *FocusedWeapon->GetName());
-			CurrentFocus = FocusedWeapon;
-		}
-
-		DrawDebugPoint(World, Hit.ImpactPoint, 10.f, FColor::Green, false, 0.1f);
 	}
 	else
 	{
-		CurrentFocus = nullptr;
-	}
-}
-
-void AFPSCharacter::OnEndOverlapWeapon_Implementation()
-{
-	NumOfOverlappingWeapons--;
-	UE_LOG(LogTemp, Warning, TEXT("OnEndOverlapWeapon() NumOfOverlappingWeapons: %i"), NumOfOverlappingWeapons);
-
-	if (NumOfOverlappingWeapons == 0)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Clear Timer"));
-		UWorld* World = GetWorld();
-		if (!ensure(World != nullptr))
+		if (CurrentFocus != nullptr)
 		{
-			return;
+			EquipWeapon(CurrentFocus);
 		}
-		World->GetTimerManager().ClearTimer(PickupTraceTimerHandle);
 	}
-}
-
-void AFPSCharacter::PickupWeapon(EWeaponType WeaponType)
-{
-	Weapons.Add(WeaponType, 1);
-	int16* Value = Weapons.Find(WeaponType);
-
-	UE_LOG(LogTemp, Warning, TEXT("Player: %s picked up a weapon: %i, new amount: %d"), *this->GetName(), WeaponType, *Value);
-}
-
-bool AFPSCharacter::HasWeapon(EWeaponType WeaponType)
-{
-	return Weapons.Contains(WeaponType);
 }
 
 void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 {
-	if (Weapon != nullptr && HasWeapon(Weapon->GetWeaponType()))
+	if (Weapon != nullptr)
 	{
 		Server_EquipWeapon(Weapon);
-
-		// Local
-		if (!ensure(FPSArmMesh != nullptr))
-		{
-			return;
-		}
 		Weapon->Client_OnFPWeaponEquipped(this);
 
 		CurrentWeapon = Weapon;
@@ -305,6 +215,28 @@ void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
 {
 	Weapon->Server_OnTPWeaponEquipped(this);
+}
+
+void AFPSCharacter::OnBeginOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSWeaponInterface::StaticClass()))
+	{
+		CurrentFocus = IFPSWeaponInterface::Execute_GetWeapon(OtherActor);
+	}
+	// TODO: What if OtherActor is not a weapon? It could be a wall to climb.
+}
+
+void AFPSCharacter::OnEndOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnEndOverlapHandCollider"));
+	UE_LOG(LogTemp, Warning, TEXT("OtherActor: %s"), *OtherActor->GetName());
+	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSWeaponInterface::StaticClass()))
+	{
+		if (CurrentFocus == IFPSWeaponInterface::Execute_GetWeapon(OtherActor))
+		{
+			CurrentFocus = nullptr;
+		}
+	}
 }
 
 void AFPSCharacter::OnDamageReceived()
@@ -323,9 +255,10 @@ void AFPSCharacter::OnDeath()
 	bIsDead = true;	// OnRep_bIsDead()
 	CollisionHandleOnDeath();
 
-	if (FPSController != nullptr && UKismetSystemLibrary::DoesImplementInterface(FPSController, UFPSPlayerControllerInterface::StaticClass()))
+	AController* PlayerController = GetController();
+	if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_OnPlayerDeath(FPSController);
+		IFPSPlayerControllerInterface::Execute_OnPlayerDeath(PlayerController);
 	}
 
 	FTimerHandle RespawnTimer;
@@ -345,9 +278,10 @@ void AFPSCharacter::RespawnPlayer()
 		HealthComponent->Reset();
 	}
 
-	if (FPSController != nullptr && UKismetSystemLibrary::DoesImplementInterface(FPSController, UFPSPlayerControllerInterface::StaticClass()))
+	AController* PlayerController = GetController();
+	if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_RespawnPlayer(FPSController);
+		IFPSPlayerControllerInterface::Execute_RespawnPlayer(PlayerController);
 	}
 }
 

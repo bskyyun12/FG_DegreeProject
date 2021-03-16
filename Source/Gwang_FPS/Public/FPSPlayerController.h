@@ -4,9 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
-#include "FPSPlayerControllerInterface.h"
-#include "FPSPlayerController.generated.h"
 
+#include "FPSPlayerControllerInterface.h"
+
+#include "FPSPlayerController.generated.h"
 
 class UUserWidget;
 class UTeamSelectionWidget;
@@ -18,12 +19,9 @@ class GWANG_FPS_API AFPSPlayerController : public APlayerController, public IFPS
 {
 	GENERATED_BODY()
 	
-public:
-	AFPSPlayerController(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
-	
-	virtual void BeginPlay() override;
-
-#pragma region IFPSPlayerControllerInterface
+public:	
+	////////////////////////////////
+	// IFPSPlayerControllerInterface
 	void StartNewGame_Implementation() override;
 	UFUNCTION(Server, Reliable)
 	void Server_StartNewGame();
@@ -39,14 +37,15 @@ public:
 
 	void RespawnPlayer_Implementation() override;
 
-	void ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake) override;
-
-	// Game over check
 	void OnPlayerDeath_Implementation() override;
+
 	void LoadGameOver_Implementation(bool Victory) override;
 	UFUNCTION(Client, Reliable)
 	void Client_LoadGameOver(bool Victory);
-#pragma endregion
+
+	void ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake) override;
+	// IFPSPlayerControllerInterface
+	////////////////////////////////
 
 protected:
 	///////////
@@ -61,12 +60,13 @@ protected:
 	// Widgets
 	///////////
 
-
+	UPROPERTY()
 	AFPSGameMode* GameMode;
 
 	ETeam Team;
 
 protected:
+	void BeginPlay() override;
 
 	UFUNCTION()
 	void OnUpdateTeamSelectionUI(ETeam InTeam, bool bCanJoinTeam);

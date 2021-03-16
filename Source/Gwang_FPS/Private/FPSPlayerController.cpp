@@ -4,19 +4,23 @@
 #include "FPSPlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
-#include "FPSGameMode.h"
 #include "FPSCharacter.h"
+#include "FPSGameMode.h"
 #include "Widgets/TeamSelectionWidget.h"
 #include "Widgets/GameOverWidget.h"
-
-AFPSPlayerController::AFPSPlayerController(const FObjectInitializer& ObjectInitializer /*= FObjectInitializer::Get()*/)
-{
-
-}
 
 void AFPSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (!ensure(TeamSelectionClass != nullptr))
+	{
+		return;
+	}
+	if (!ensure(GameOverWidgetClass != nullptr))
+	{
+		return;
+	}
 }
 
 void AFPSPlayerController::StartNewGame_Implementation()
@@ -40,13 +44,12 @@ void AFPSPlayerController::Server_StartNewGame_Implementation()
 	{
 		return;
 	}
+
 	GameMode->OnUpdateTeamSelectionUI.RemoveAll(this);
 	GameMode->OnUpdateTeamSelectionUI.AddDynamic(this, &AFPSPlayerController::OnUpdateTeamSelectionUI);
 
-	if (GetPawn() != nullptr)
-	{
-		GameMode->FreePlayer(this);
-	}
+	GameMode->StartNewGame(this);
+
 	Client_LoadTeamSelection();
 }
 
@@ -95,21 +98,10 @@ void AFPSPlayerController::Server_OnTeamSelected_Implementation(ETeam InTeam)
 {
 	Team = InTeam;
 
-	// safety call when spawn fails for some reason
+	// Shouldn't fail to spawn but if does, start over
 	if (GameMode->SpawnPlayer(this, Team) == false)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::Server_OnTeamSelected_Implementation"));
-		UE_LOG(LogTemp, Warning, TEXT("GameMode->SpawnPlayer(this, Team) == false"));
 		StartNewGame_Implementation();
-	}
-}
-
-void AFPSPlayerController::ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake)
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::ShakeCamera_Implementation"));
-	if (CameraShake != nullptr)
-	{
-		ClientStartCameraShake(CameraShake);
 	}
 }
 
@@ -121,7 +113,6 @@ void AFPSPlayerController::OnSpawnPlayer_Implementation(AFPSCharacter* PooledPla
 		PooledPlayer->SetActorTransform(SpawnTransform);
 
 		this->Possess(PooledPlayer);
-		PooledPlayer->OnPossessed(this);
 	}
 }
 
@@ -163,4 +154,13 @@ void AFPSPlayerController::Client_LoadGameOver_Implementation(bool Victory)
 
 	GameOverWidget->Setup();
 	GameOverWidget->SetResultText(Victory);
+}
+
+void AFPSPlayerController::ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::ShakeCamera_Implementation"));
+	if (CameraShake != nullptr)
+	{
+		ClientStartCameraShake(CameraShake);
+	}
 }

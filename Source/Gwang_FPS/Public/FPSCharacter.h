@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "FPSCharacterInterface.h"
+#include "Weapons/FPSWeaponBase.h"
 #include "FPSCharacter.generated.h"
 
 class AFPSPlayerController;
@@ -21,20 +22,22 @@ class GWANG_FPS_API AFPSCharacter : public ACharacter, public IFPSCharacterInter
 public:
 	AFPSCharacter();
 
-	void OnPossessed(AFPSPlayerController* InFPSController);
-
-#pragma region Input binds
+	//////////////////
+	// Input bindings
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
 	void MoveForward(float Value);
+
 	void MoveRight(float Value);
+
 	void Turn(float Value);
+
 	void LookUp(float Value);
 	UFUNCTION(Server, Unreliable)
 	void Server_LookUp(FRotator CameraRot);
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_LookUp(FRotator CameraRot);
 
-	void Pickup();
 	void OnBeginFire();
 	UFUNCTION(Server, Reliable)
 	void Server_OnBeginFire(AFPSWeaponBase* Weapon, AFPSCharacter* FPSCharacter);
@@ -42,25 +45,18 @@ public:
 	void OnEndFire();
 	UFUNCTION(Server, Reliable)
 	void Server_OnEndFire(AFPSWeaponBase* Weapon);
-#pragma endregion
 
+	void Pickup();
+	// Input bindings
+	//////////////////
+
+	///////////
 	// Getters
 	USkeletalMeshComponent* GetArmMesh();
 	USkeletalMeshComponent* GetCharacterMesh();
 	FTransform GetCameraTransform();
 	// Getters
-
-	bool HasWeapon(EWeaponType WeaponType);
-	void PickupWeapon(EWeaponType WeaponType);
-
-	void EquipWeapon(AFPSWeaponBase* Weapon);
-	UFUNCTION(Server, Reliable)
-	void Server_EquipWeapon(AFPSWeaponBase* Weapon);
-
-#pragma region IFPSCharacterInterface
-	void OnBeginOverlapWeapon_Implementation(AFPSWeaponBase* Weapon) override;
-	void OnEndOverlapWeapon_Implementation() override;
-#pragma endregion
+	///////////
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -75,32 +71,35 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UHealthComponent* HealthComponent;
 
-	TMap<EWeaponType, int16> Weapons;
-	AFPSWeaponBase* CurrentWeapon;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UBoxComponent* HandCollider;
 
 	AFPSWeaponBase* CurrentFocus;
-	FTimerHandle PickupTraceTimerHandle;
-	int NumOfOverlappingWeapons;
+	AFPSWeaponBase* CurrentWeapon;
 
 	float RespawnDelay = 5.f;
 
 	// Cache
 	USkeletalMeshComponent* FPSCharacterMesh;
 	UCapsuleComponent* CapsuleComponent;
-	AFPSPlayerController* FPSController;
 	FVector DefaultCameraRelativeLocation;
 	FTransform DefaultCharacterMeshRelativeTransform;
-
-	// Temporary thing
-	bool bHasAnyWeapons;
 
 protected:
 	virtual void BeginPlay() override;
 
-	UFUNCTION(Client, Unreliable)
-	void Client_CheckForWeapon();
+	UFUNCTION()
+	void OnBeginOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
-#pragma region Health & Death
+	UFUNCTION()
+	void OnEndOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	void EquipWeapon(AFPSWeaponBase* Weapon);
+	UFUNCTION(Server, Reliable)
+	void Server_EquipWeapon(AFPSWeaponBase* Weapon);
+
+	/////////////////
+	// Health & Death
 	UFUNCTION()
 	void OnDamageReceived();
 
@@ -119,6 +118,6 @@ protected:
 
 	void CollisionHandleOnDeath();
 	void CollisionHandleOnRespawn();
-
-#pragma endregion Health & Death
+	// Health & Death
+	/////////////////
 };

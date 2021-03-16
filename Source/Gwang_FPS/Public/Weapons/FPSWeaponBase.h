@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "FPSWeaponInterface.h"
 #include "FPSWeaponBase.generated.h"
 
 class UAnimMontage;
@@ -57,7 +58,7 @@ enum class EWeaponType : uint8 {
 };
 
 UCLASS()
-class GWANG_FPS_API AFPSWeaponBase : public AActor
+class GWANG_FPS_API AFPSWeaponBase : public AActor, public IFPSWeaponInterface
 {
 	GENERATED_BODY()
 	
@@ -65,26 +66,29 @@ public:
 	// Sets default values for this actor's properties
 	AFPSWeaponBase();
 
-	EWeaponType GetWeaponType();
+	AFPSWeaponBase* GetWeapon_Implementation() override;
 
-#pragma region FP Weapon (Local Only)
+	EWeaponType GetWeaponType();
+	
+	/////////////////////////
+	// FP Weapon (Local Only)
 	UFUNCTION(Client, Reliable)
 	void Client_OnFPWeaponEquipped(AFPSCharacter* FPSCharacter);
 
 	UFUNCTION(Client, Reliable)
 	void Client_OnFPWeaponDroped(AFPSCharacter* FPSCharacter);
-#pragma endregion
+	// FP Weapon (Local Only)
+	/////////////////////////
 
-#pragma region TP Weapon (Should be replicated)
+	/////////////////////////
+	// TP Weapon (Should be replicated)
 	UFUNCTION(Server, Reliable)
 	void Server_OnTPWeaponEquipped(AFPSCharacter* FPSCharacter);
 
 	UFUNCTION(Server, Reliable)
 	void Server_OnTPWeaponDroped(AFPSCharacter* FPSCharacter);
-#pragma endregion
-
-	//UPROPERTY(ReplicatedUsing = OnRep_OwnerChanged)
-	//USkeletalMeshComponent* OwnerCharacterMesh;
+	// TP Weapon (Should be replicated)
+	/////////////////////////
 
 	UFUNCTION(Server, Reliable)
 	virtual void Server_OnBeginFireWeapon(AFPSCharacter* FPSCharacter);
@@ -95,12 +99,6 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-	UFUNCTION()
-	void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
-	UFUNCTION()
-	void OnEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	UPROPERTY(ReplicatedUsing = OnRep_OwnerChanged)
 	AFPSCharacter* OwnerCharacter;

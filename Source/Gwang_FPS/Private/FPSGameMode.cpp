@@ -25,63 +25,21 @@ void AFPSGameMode::PostLogin(APlayerController* NewPlayer)
 	}
 }
 
+void AFPSGameMode::StartNewGame(APlayerController* PlayerController)
+{
+	FreePlayer(PlayerController);
+	CurrentMarvelScore = 0;
+	CurrentDCScore = 0;
+
+	OnReset.Broadcast();
+}
+
 void AFPSGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Get all player starts
-	//TODO: feels horrible here... please find another way to implement this without using GetAllActorsOfClass() crap
-	TArray<AActor*> PlayerStarts;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AFPSPlayerStart::StaticClass(), PlayerStarts);
-	for (int16 i = 0; i < PlayerStarts.Num(); i++)
-	{
-		AFPSPlayerStart* PlayerStart = Cast<AFPSPlayerStart>(PlayerStarts[i]);
-		if (PlayerStart != nullptr)
-		{
-			if (PlayerStart->Team == ETeam::Marvel)
-			{
-				MarvelTeamSpawnTransforms.Add(PlayerStart->GetActorTransform());
-			}
-			else if (PlayerStart->Team == ETeam::DC)
-			{
-				DCTeamSpawnTransforms.Add(PlayerStart->GetActorTransform());
-			}
-		}
-	}
-
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-
-	if (!ensure(MarvelTeamCharacter != nullptr) || !ensure(DCTeamCharacter != nullptr))
-	{
-		return;
-	}
-
-	// players to pool
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-	for (int i = 0; i < MaxPlayerPerTeam; i++)
-	{
-		AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(MarvelTeamCharacter, GetRandomPlayerStarts(ETeam::Marvel), SpawnParams);
-		SpawnedCharacter->SetActorHiddenInGame(true);
-		MarvelTeamPlayers.Add(SpawnedCharacter);
-	}
-
-	for (int i = 0; i < MaxPlayerPerTeam; i++)
-	{
-		AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(DCTeamCharacter, GetRandomPlayerStarts(ETeam::DC), SpawnParams);
-		SpawnedCharacter->SetActorHiddenInGame(true);
-		DCTeamPlayers.Add(SpawnedCharacter);
-	}
-
-	//// Test
-	//FTimerHandle TestTimer;
-	//World->GetTimerManager().SetTimer(TestTimer, [&](){ OnUpdateTeamSelectionUI.Broadcast(ETeam::Marvel, false); }, 1.f, true);
-	//// Test
-
+	SetupPlayerStarts();
+	SetupPlayerPool();
 }
 
 bool AFPSGameMode::SpawnPlayer(APlayerController* PlayerController, ETeam Team)
@@ -115,7 +73,7 @@ AFPSCharacter* AFPSGameMode::PoolPlayer(ETeam Team)
 		{
 			if (MarvelTeamPlayers[i] != nullptr && MarvelTeamPlayers[i]->GetController() == nullptr)
 			{
-				if (i == MarvelTeamPlayers.Num() - 1)
+				if (i == MarvelTeamPlayers.Num() - 1)	// if this was last available player
 				{
 					OnUpdateTeamSelectionUI.Broadcast(Team, false);
 				}
@@ -130,7 +88,7 @@ AFPSCharacter* AFPSGameMode::PoolPlayer(ETeam Team)
 		{
 			if (DCTeamPlayers[i] != nullptr && DCTeamPlayers[i]->GetController() == nullptr)
 			{
-				if (i == DCTeamPlayers.Num() - 1)
+				if (i == DCTeamPlayers.Num() - 1)	// if this was last available player
 				{
 					OnUpdateTeamSelectionUI.Broadcast(Team, false);
 				}
@@ -157,20 +115,10 @@ void AFPSGameMode::FreePlayer(APlayerController* PlayerController)
 
 FTransform AFPSGameMode::GetRandomPlayerStarts(ETeam Team)
 {
-	FTransform output;
+	TArray<FTransform> SpawnTransforms = (Team == ETeam::Marvel) ? MarvelTeamSpawnTransforms : DCTeamSpawnTransforms;
+	int16 RandomIndex = FMath::RandRange(0, SpawnTransforms.Num() - 1);
 
-	if (Team == ETeam::Marvel)
-	{
-		int16 RandomIndex = FMath::RandRange(0, MarvelTeamSpawnTransforms.Num() - 1);
-		output = MarvelTeamSpawnTransforms[RandomIndex];
-	}
-	else if (Team == ETeam::DC)
-	{
-		int16 RandomIndex = FMath::RandRange(0, DCTeamSpawnTransforms.Num() - 1);
-		output = DCTeamSpawnTransforms[RandomIndex];
-	}
-
-	return output;
+	return SpawnTransforms[RandomIndex];
 }
 
 void AFPSGameMode::OnPlayerDeath(APlayerController* PlayerController, ETeam Team)
@@ -187,32 +135,6 @@ void AFPSGameMode::OnPlayerDeath(APlayerController* PlayerController, ETeam Team
 	}
 
 	CheckGameOver(PlayerController);
-}
-
-bool AFPSGameMode::CanJoin(ETeam Team)
-{
-	if (Team == ETeam::Marvel)
-	{
-		for (int i = 0; i < MarvelTeamPlayers.Num(); i++)
-		{
-			if (MarvelTeamPlayers[i] != nullptr && MarvelTeamPlayers[i]->GetController() == nullptr)
-			{
-				return true;
-			}
-		}
-	}
-	else if (Team == ETeam::DC)
-	{
-		for (int i = 0; i < DCTeamPlayers.Num(); i++)
-		{
-			if (DCTeamPlayers[i] != nullptr && DCTeamPlayers[i]->GetController() == nullptr)
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
 }
 
 void AFPSGameMode::CheckGameOver(APlayerController* PlayerController)
@@ -243,6 +165,60 @@ void AFPSGameMode::CheckGameOver(APlayerController* PlayerController)
 				{
 					IFPSPlayerControllerInterface::Execute_LoadGameOver(Controller, DCWon);
 				}
+			}
+		}
+	}
+}
+
+void AFPSGameMode::SetupPlayerPool()
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	if (!ensure(MarvelTeamCharacter != nullptr) || !ensure(DCTeamCharacter != nullptr))
+	{
+		return;
+	}
+
+	// players to pool
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	for (int i = 0; i < MaxPlayerPerTeam; i++)
+	{
+		AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(MarvelTeamCharacter, GetRandomPlayerStarts(ETeam::Marvel), SpawnParams);
+		SpawnedCharacter->SetActorHiddenInGame(true);
+		MarvelTeamPlayers.Add(SpawnedCharacter);
+	}
+
+	for (int i = 0; i < MaxPlayerPerTeam; i++)
+	{
+		AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(DCTeamCharacter, GetRandomPlayerStarts(ETeam::DC), SpawnParams);
+		SpawnedCharacter->SetActorHiddenInGame(true);
+		DCTeamPlayers.Add(SpawnedCharacter);
+	}
+}
+
+void AFPSGameMode::SetupPlayerStarts()
+{
+	// Get all player starts
+	//TODO: feels horrible here... please find another way to implement this without using GetAllActorsOfClass() crap
+	TArray<AActor*> PlayerStarts;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AFPSPlayerStart::StaticClass(), PlayerStarts);
+	for (int16 i = 0; i < PlayerStarts.Num(); i++)
+	{
+		AFPSPlayerStart* PlayerStart = Cast<AFPSPlayerStart>(PlayerStarts[i]);
+		if (PlayerStart != nullptr)
+		{
+			if (PlayerStart->Team == ETeam::Marvel)
+			{
+				MarvelTeamSpawnTransforms.Add(PlayerStart->GetActorTransform());
+			}
+			else if (PlayerStart->Team == ETeam::DC)
+			{
+				DCTeamSpawnTransforms.Add(PlayerStart->GetActorTransform());
 			}
 		}
 	}

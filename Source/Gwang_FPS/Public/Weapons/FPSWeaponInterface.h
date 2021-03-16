@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
-#include "FPSCharacterInterface.generated.h"
+#include "FPSWeaponInterface.generated.h"
 
 // This class does not need to be modified.
 UINTERFACE(MinimalAPI)
-class UFPSCharacterInterface : public UInterface
+class UFPSWeaponInterface : public UInterface
 {
 	GENERATED_BODY()
 };
@@ -16,12 +16,12 @@ class UFPSCharacterInterface : public UInterface
 /**
  * 
  */
-class GWANG_FPS_API IFPSCharacterInterface
+class GWANG_FPS_API IFPSWeaponInterface
 {
 	GENERATED_BODY()
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
-	
-
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	AFPSWeaponBase* GetWeapon();
 };

@@ -5,11 +5,9 @@
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
-#include "Kismet/KismetSystemLibrary.h" // DoesImplementInterface
 #include "Net/UnrealNetwork.h" // GetLifetimeReplicatedProps
 
 #include "./FPSCharacterInterface.h"
-#include "Components/HealthComponent.h"
 #include "FPSCharacter.h"
 
 // Sets default values
@@ -32,10 +30,8 @@ AFPSWeaponBase::AFPSWeaponBase()
 	TPWeaponMesh->SetupAttachment(RootComp);
 
 	InteractCollider = CreateDefaultSubobject<USphereComponent>(TEXT("Sphere"));
-	InteractCollider->SetSphereRadius(120.f);
+	InteractCollider->SetSphereRadius(80.f);
 	InteractCollider->SetupAttachment(TPWeaponMesh);
-	InteractCollider->OnComponentBeginOverlap.AddDynamic(this, &AFPSWeaponBase::OnBeginOverlap);
-	InteractCollider->OnComponentEndOverlap.AddDynamic(this, &AFPSWeaponBase::OnEndOverlap);
 
 	SetReplicates(true);
 	SetReplicateMovement(true);
@@ -50,30 +46,7 @@ void AFPSWeaponBase::BeginPlay()
 void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	//DOREPLIFETIME(AFPSWeaponBase, OwnerCharacterMesh);
 	DOREPLIFETIME(AFPSWeaponBase, OwnerCharacter);
-}
-
-void AFPSWeaponBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	if (HasAuthority())
-	{
-		if (UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSCharacterInterface::StaticClass()))
-		{
-			IFPSCharacterInterface::Execute_OnBeginOverlapWeapon(OtherActor, this);
-		}
-	}
-}
-
-void AFPSWeaponBase::OnEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	if (HasAuthority())
-	{
-		if (UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSCharacterInterface::StaticClass()))
-		{
-			IFPSCharacterInterface::Execute_OnEndOverlapWeapon(OtherActor);
-		}
-	}
 }
 
 void AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter)
@@ -119,6 +92,11 @@ void AFPSWeaponBase::OnRep_OwnerChanged()
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	TPWeaponMesh->AttachToComponent(OwnerCharacter->GetCharacterMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
+}
+
+AFPSWeaponBase* AFPSWeaponBase::GetWeapon_Implementation()
+{
+	return this;
 }
 
 void AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation(AFPSCharacter* FPSCharacter)

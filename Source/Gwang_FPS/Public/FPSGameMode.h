@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+
 #include "FPSPlayerStart.h"
+
 #include "FPSGameMode.generated.h"
 
 class AFPSCharacter;
@@ -17,22 +19,24 @@ class GWANG_FPS_API AFPSGameMode : public AGameModeBase
 public:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
-	void BeginPlay() override;
-
-	bool SpawnPlayer(APlayerController* PlayerController, ETeam Team);
+	void StartNewGame(APlayerController* PlayerController);
 
 	FTransform GetRandomPlayerStarts(ETeam Team);
 
-	// Game over
+	bool SpawnPlayer(APlayerController* PlayerController, ETeam Team);
+
 	void OnPlayerDeath(APlayerController* PlayerController, ETeam Team);
 
-	bool CanJoin(ETeam Team);
-
-	AFPSCharacter* PoolPlayer(ETeam Team);
 	void FreePlayer(APlayerController* PlayerController);
 
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FTeamSelectionDelegate, ETeam, Team, bool, bCanJoinTeam);
 	FTeamSelectionDelegate OnUpdateTeamSelectionUI;
+
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FResetDelegate);
+	FResetDelegate OnReset;
+
+protected:
+	void BeginPlay() override;
 
 private:
 	TArray<FTransform> MarvelTeamSpawnTransforms;
@@ -44,9 +48,6 @@ private:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<AFPSCharacter> DCTeamCharacter;
 
-	void CheckGameOver(APlayerController* PlayerController);
-
-private:
 	UPROPERTY(EditDefaultsOnly)
 	int KillScoreToWin = 3;
 
@@ -61,4 +62,12 @@ private:
 
 	UPROPERTY()
 	TArray<AFPSCharacter*> DCTeamPlayers;
+
+private:
+	void SetupPlayerStarts();
+	void SetupPlayerPool();
+
+	AFPSCharacter* PoolPlayer(ETeam Team);
+
+	void CheckGameOver(APlayerController* PlayerController);
 };

@@ -7,8 +7,6 @@
 #include "FPSGameMode.h"
 #include "FPSPlayerControllerInterface.generated.h"
 
-class AFPSCharacter;
-
 // This class does not need to be modified.
 UINTERFACE(MinimalAPI)
 class UFPSPlayerControllerInterface : public UInterface
@@ -20,9 +18,7 @@ class GWANG_FPS_API IFPSPlayerControllerInterface
 {
 	GENERATED_BODY()
 
-		// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
-
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void StartNewGame();
 
@@ -36,12 +32,11 @@ public:
 	void RespawnPlayer();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void ShakeCamera(TSubclassOf<UCameraShakeBase> CameraShake);
-
-	// Game over checks
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnPlayerDeath();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void LoadGameOver(bool Victory);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void ShakeCamera(TSubclassOf<UCameraShakeBase> CameraShake);
 };
