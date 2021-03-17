@@ -8,6 +8,7 @@
 #include "FPSWeaponBase.generated.h"
 
 class UAnimMontage;
+class UAnimSequence;
 class USceneComponent;
 class USkeletalMeshComponent;
 class AFPSCharacter;
@@ -31,7 +32,7 @@ struct FWeaponInfo
 	float FireRate;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* EquipAnim;
+	UAnimSequence* EquipAnim;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* HideAnim;
@@ -91,20 +92,30 @@ public:
 	/////////////////////////
 
 	UFUNCTION(Server, Reliable)
-	virtual void Server_OnBeginFireWeapon(AFPSCharacter* FPSCharacter);
+	void Server_OnBeginFireWeapon(AFPSCharacter* FPSCharacter);
 
 	UFUNCTION(Server, Reliable)
-	virtual void Server_OnEndFireWeapon();
+	void Server_OnEndFireWeapon();
+
+	UFUNCTION(Client, Reliable)
+	void Client_OnBeginFireWeapon();
+
+	UFUNCTION(Client, Reliable)
+	void Client_OnEndFireWeapon();
 
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
 	UPROPERTY(ReplicatedUsing = OnRep_OwnerChanged)
 	AFPSCharacter* OwnerCharacter;
 
 	UFUNCTION()
 	void OnRep_OwnerChanged();
+
+	UFUNCTION()
+	bool CanFire();
+
+protected:
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
 
 	UPROPERTY(VisibleAnywhere)
 	USceneComponent* RootComp;

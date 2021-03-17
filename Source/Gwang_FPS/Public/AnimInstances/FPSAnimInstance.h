@@ -15,14 +15,9 @@ class GWANG_FPS_API UFPSAnimInstance : public UAnimInstance, public IFPSAnimInte
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	int BlendIndex;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float CameraPitch;
 
 public:
-	void UpdateBlendPose_Implementation(int NewIndex) override;
-
 	void UpdateSpineAngle_Implementation(float NewPitch) override;
 
 };

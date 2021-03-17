@@ -22,10 +22,6 @@ class GWANG_FPS_API IFPSAnimInterface
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void UpdateBlendPose(int NewIndex);
-
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void UpdateSpineAngle(float Pitch);
 };

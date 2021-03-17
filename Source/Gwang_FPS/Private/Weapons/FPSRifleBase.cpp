@@ -17,7 +17,7 @@ void AFPSRifleBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* FPSC
 	Super::Client_OnFPWeaponEquipped_Implementation(FPSCharacter);
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation()"));
 
-	if (!ensure(FPSCharacter != nullptr))
+	if (FPSCharacter == nullptr)
 	{
 		return;
 	}
@@ -26,13 +26,9 @@ void AFPSRifleBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* FPSC
 	{
 		FPWeaponMesh->AttachToComponent(FPSCharacter->GetArmMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FP_WeaponSocketName);
 
-		UAnimInstance* FPSArmsAnim = FPSCharacter->GetArmMesh()->GetAnimInstance();
-		if (FPSArmsAnim != nullptr)
+		if (WeaponInfo.EquipAnim != nullptr)
 		{
-			if (UKismetSystemLibrary::DoesImplementInterface(FPSArmsAnim, UFPSAnimInterface::StaticClass()))
-			{
-				IFPSAnimInterface::Execute_UpdateBlendPose(FPSArmsAnim, 1);
-			}
+			FPSCharacter->GetArmMesh()->PlayAnimation(WeaponInfo.EquipAnim, false);
 		}
 	}
 }
@@ -79,7 +75,7 @@ void AFPSRifleBase::Server_OnBeginFireWeapon_Implementation(AFPSCharacter* FPSCh
 		return;
 	}
 	RifleFireDelegate = FTimerDelegate::CreateUObject(this, &AFPSRifleBase::Fire, FPSCharacter);
-	World->GetTimerManager().SetTimer(RifleFireTimer, RifleFireDelegate, WeaponInfo.FireRate, true, 0.f);
+	World->GetTimerManager().SetTimer(ServerRifleFireTimer, RifleFireDelegate, WeaponInfo.FireRate, true, 0.f);
 	return;
 }
 
@@ -92,13 +88,18 @@ void AFPSRifleBase::Server_OnEndFireWeapon_Implementation()
 	{
 		return;
 	}
-	World->GetTimerManager().ClearTimer(RifleFireTimer);
+	World->GetTimerManager().ClearTimer(ServerRifleFireTimer);
 }
 
 void AFPSRifleBase::Fire(AFPSCharacter* FPSCharacter)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Fire"));
-	// TODO: check fire conditions. ammo, reloading etc..
+
+	if (CanFire() == false)
+	{
+		Server_OnEndFireWeapon();
+		return;
+	}
 
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
@@ -146,25 +147,105 @@ void AFPSRifleBase::Multicast_FireEffects_Implementation()
 	}
 
 	bool bIsLocalPlayer = UGameplayStatics::GetPlayerPawn(World, 0) == GetOwner();
-	if (bIsLocalPlayer)
+	if (bIsLocalPlayer == false)
 	{
-		UGameplayStatics::SpawnEmitterAttached(FireEmitter, FPWeaponMesh, FP_MuzzleSocketName);
-		UGameplayStatics::SpawnSoundAttached(FireSound, FPWeaponMesh, FP_MuzzleSocketName);
+		PlayFireEmitter(false);
+		PlayFireSound(false);
+	}
+}
 
-		AController* InstigatorController = GetInstigatorController();
-		if (InstigatorController != nullptr)
+void AFPSRifleBase::Client_OnBeginFireWeapon_Implementation()
+{
+	Super::Client_OnBeginFireWeapon_Implementation();
+	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Client_OnBeginFireWeapon_Implementation"));
+
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+	World->GetTimerManager().SetTimer(ClientRifleFireTimer, this, &AFPSRifleBase::Client_FireEffects, WeaponInfo.FireRate, true, 0.f);
+}
+
+void AFPSRifleBase::Client_FireEffects()
+{
+	if (CanFire() == false)
+	{
+		// TODO: play no ammo sound and anim?
+		Client_OnEndFireWeapon();
+		return;
+	}
+
+	PlayFireEmitter(true);
+	PlayFireSound(true);
+	ShakeCamera();
+	Recoil();
+}
+
+void AFPSRifleBase::Client_OnEndFireWeapon_Implementation()
+{
+	Super::Client_OnEndFireWeapon_Implementation();
+	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Client_OnEndFireWeapon_Implementation"));
+
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+	World->GetTimerManager().ClearTimer(ClientRifleFireTimer);
+}
+
+void AFPSRifleBase::PlayFireEmitter(bool FPWeapon)
+{
+	if (FPWeaponMesh != nullptr)
+	{
+		if (FireEmitter != nullptr)
 		{
-			if (UKismetSystemLibrary::DoesImplementInterface(InstigatorController, UFPSPlayerControllerInterface::StaticClass()))
+			if (FPWeapon)
 			{
-				IFPSPlayerControllerInterface::Execute_ShakeCamera(InstigatorController, CameraShakeOnFire);
+				UGameplayStatics::SpawnEmitterAttached(FireEmitter, FPWeaponMesh, FP_MuzzleSocketName);
+			}
+			else
+			{
+				UGameplayStatics::SpawnEmitterAttached(FireEmitter, TPWeaponMesh, TP_MuzzleSocketName);
 			}
 		}
 	}
-	else
+}
+
+void AFPSRifleBase::PlayFireSound(bool FPWeapon)
+{
+	if (FPWeaponMesh != nullptr)
 	{
-		UGameplayStatics::SpawnEmitterAttached(FireEmitter, TPWeaponMesh, TP_MuzzleSocketName);
-		UGameplayStatics::SpawnSoundAttached(FireSound, TPWeaponMesh, TP_MuzzleSocketName);
+		if (FireSound != nullptr)
+		{
+			if (FPWeapon)
+			{
+				UGameplayStatics::SpawnSoundAttached(FireSound, FPWeaponMesh, FP_MuzzleSocketName);
+			}
+			else
+			{
+				UGameplayStatics::SpawnSoundAttached(FireSound, TPWeaponMesh, TP_MuzzleSocketName);
+			}
+		}
 	}
+}
+
+void AFPSRifleBase::ShakeCamera()
+{
+	AController* InstigatorController = GetInstigatorController();
+	if (InstigatorController != nullptr && CameraShakeOnFire != nullptr)
+	{
+		if (UKismetSystemLibrary::DoesImplementInterface(InstigatorController, UFPSPlayerControllerInterface::StaticClass()))
+		{
+			IFPSPlayerControllerInterface::Execute_ShakeCamera(InstigatorController, CameraShakeOnFire);
+		}
+	}
+}
+
+void AFPSRifleBase::Recoil()
+{
+	
 }
 
 float AFPSRifleBase::CalcDamageToApply(const UPhysicalMaterial* PhysMat)

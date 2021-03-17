@@ -94,6 +94,12 @@ void AFPSWeaponBase::OnRep_OwnerChanged()
 	TPWeaponMesh->AttachToComponent(OwnerCharacter->GetCharacterMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
 }
 
+bool AFPSWeaponBase::CanFire()
+{
+	// TODO: implement CanFire
+	return true;
+}
+
 AFPSWeaponBase* AFPSWeaponBase::GetWeapon_Implementation()
 {
 	return this;
@@ -107,7 +113,16 @@ void AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation(AFPSCharacter* FPSC
 void AFPSWeaponBase::Server_OnEndFireWeapon_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnEndFireWeapon_Implementation"));
+}
 
+void AFPSWeaponBase::Client_OnBeginFireWeapon_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnBeginFireWeapon_Implementation"));
+}
+
+void AFPSWeaponBase::Client_OnEndFireWeapon_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnEndFireWeapon_Implementation"));
 }
 
 EWeaponType AFPSWeaponBase::GetWeaponType()

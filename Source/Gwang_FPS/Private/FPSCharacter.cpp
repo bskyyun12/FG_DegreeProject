@@ -155,6 +155,7 @@ void AFPSCharacter::OnBeginFire()
 {
 	if (CurrentWeapon != nullptr)
 	{
+		CurrentWeapon->Client_OnBeginFireWeapon();
 		Server_OnBeginFire(CurrentWeapon, this);
 	}
 }
@@ -172,6 +173,7 @@ void AFPSCharacter::OnEndFire()
 {
 	if (CurrentWeapon != nullptr)
 	{
+		CurrentWeapon->Client_OnEndFireWeapon();
 		Server_OnEndFire(CurrentWeapon);
 	}
 }

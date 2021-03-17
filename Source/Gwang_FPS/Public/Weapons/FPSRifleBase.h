@@ -24,16 +24,12 @@ public:
 	void Server_OnTPWeaponDroped_Implementation(AFPSCharacter* FPSCharacter) override;
 
 	void Server_OnBeginFireWeapon_Implementation(AFPSCharacter* FPSCharacter) override;
-
-	UFUNCTION()
-	void Fire(AFPSCharacter* FPSCharacter);
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_FireEffects();
-
 	void Server_OnEndFireWeapon_Implementation() override;
 
-private:
+	void Client_OnBeginFireWeapon_Implementation() override;
+	void Client_OnEndFireWeapon_Implementation() override;
+
+protected:
 	UPROPERTY(EditDefaultsOnly)
 	UParticleSystem* FireEmitter;
 
@@ -57,8 +53,22 @@ private:
 
 	FTransform OwnerCameraTransform;
 	FTimerDelegate RifleFireDelegate;
-	FTimerHandle RifleFireTimer;
+	FTimerHandle ServerRifleFireTimer;
+	FTimerHandle ClientRifleFireTimer;
 
-private:
+protected:
 	float CalcDamageToApply(const UPhysicalMaterial* PhysMat);
+	
+	UFUNCTION()
+	void Fire(AFPSCharacter* FPSCharacter);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_FireEffects();
+
+	void Client_FireEffects();
+
+	void PlayFireEmitter(bool FPWeapon);
+	void PlayFireSound(bool FPWeapon);
+	void ShakeCamera();
+	void Recoil();
 };
