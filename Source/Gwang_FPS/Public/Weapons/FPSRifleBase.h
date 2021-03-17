@@ -18,16 +18,18 @@ class GWANG_FPS_API AFPSRifleBase : public AFPSWeaponBase
 	
 public:
 
-	void Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter) override;
-	void Client_OnFPWeaponDroped_Implementation(AFPSCharacter* FPSCharacter) override;
-	void Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter) override;
-	void Server_OnTPWeaponDroped_Implementation(AFPSCharacter* FPSCharacter) override;
+	void Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter) override;
+	void Client_OnFPWeaponDroped_Implementation() override;
+	void Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter) override;
+	void Server_OnTPWeaponDroped_Implementation() override;
 
-	void Server_OnBeginFireWeapon_Implementation(AFPSCharacter* FPSCharacter) override;
+	void Server_OnBeginFireWeapon_Implementation() override;
 	void Server_OnEndFireWeapon_Implementation() override;
 
 	void Client_OnBeginFireWeapon_Implementation() override;
 	void Client_OnEndFireWeapon_Implementation() override;
+
+	void Client_Reload_Implementation() override;
 
 protected:
 	UPROPERTY(EditDefaultsOnly)
@@ -58,16 +60,17 @@ protected:
 	UCurveFloat* RecoilCurve_Horizontal;
 
 	FTransform OwnerCameraTransform;
-	FTimerDelegate RifleFireDelegate;
 	FTimerHandle ServerRifleFireTimer;
 	FTimerHandle ClientRifleFireTimer;
 	float RecoilTimer = 0.f;
+
+	void OnRep_Owner() override;
 
 protected:
 	float CalcDamageToApply(const UPhysicalMaterial* PhysMat);
 	
 	UFUNCTION()
-	void Fire(AFPSCharacter* FPSCharacter);
+	void Fire();
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_FireEffects();

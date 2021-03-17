@@ -5,7 +5,8 @@
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
-#include "Net/UnrealNetwork.h" // GetLifetimeReplicatedProps
+#include "Kismet/KismetSystemLibrary.h"
+//#include "Net/UnrealNetwork.h" // GetLifetimeReplicatedProps
 
 #include "./FPSCharacterInterface.h"
 #include "FPSCharacter.h"
@@ -43,55 +44,54 @@ void AFPSWeaponBase::BeginPlay()
 	Super::BeginPlay();
 }
 
-void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AFPSWeaponBase, OwnerCharacter);
-}
+//void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+//{
+//	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+//	DOREPLIFETIME(AFPSWeaponBase, TPWeaponMesh);
+//}
 
-void AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation()"));
+	this->SetOwner(OwnerCharacter);
+	this->SetInstigator(OwnerCharacter);
 }
 
-void AFPSWeaponBase::Client_OnFPWeaponDroped_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSWeaponBase::Client_OnFPWeaponDroped_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnFPWeaponDroped_Implementation()"));
-
 }
 
-void AFPSWeaponBase::Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSWeaponBase::Client_Reload_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_Reload_Implementation()"));
+}
+
+void AFPSWeaponBase::Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnTPWeaponEquipped_Implementation()"));
+	SetOwner(OwnerCharacter);
+	SetInstigator(OwnerCharacter);
 
-	if (!ensure(FPSCharacter != nullptr))
-	{
-		return;
-	}
-
-	SetOwner(FPSCharacter);
-	SetInstigator(FPSCharacter);
-	OwnerCharacter = FPSCharacter; // OnRep_OwnerChanged()
-
+	// Lines below are for the server
+	TPWeaponMesh->SetSimulatePhysics(false);
+	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
-void AFPSWeaponBase::Server_OnTPWeaponDroped_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSWeaponBase::Server_OnTPWeaponDroped_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnTPWeaponDroped_Implementation()"));
 	SetOwner(nullptr);
 	SetInstigator(nullptr);
-	OwnerCharacter = nullptr; // OnRep_OwnerChanged()
 }
 
-void AFPSWeaponBase::OnRep_OwnerChanged()
+void AFPSWeaponBase::OnRep_Owner()
 {
+	Super::OnRep_Owner();
 	TPWeaponMesh->SetSimulatePhysics(false);
 	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	TPWeaponMesh->AttachToComponent(OwnerCharacter->GetCharacterMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TEXT("Weapon_Rifle"));
 }
 
 bool AFPSWeaponBase::CanFire()
@@ -105,7 +105,7 @@ AFPSWeaponBase* AFPSWeaponBase::GetWeapon_Implementation()
 	return this;
 }
 
-void AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation"));
 }

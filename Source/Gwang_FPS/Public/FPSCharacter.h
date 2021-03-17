@@ -40,23 +40,25 @@ public:
 
 	void OnBeginFire();
 	UFUNCTION(Server, Reliable)
-	void Server_OnBeginFire(AFPSWeaponBase* Weapon, AFPSCharacter* FPSCharacter);
+	void Server_OnBeginFire(AFPSWeaponBase* Weapon);
 
 	void OnEndFire();
 	UFUNCTION(Server, Reliable)
 	void Server_OnEndFire(AFPSWeaponBase* Weapon);
 
 	void Pickup();
+
+	void Reload();
 	// Input bindings
 	//////////////////
 
-	///////////
-	// Getters
-	USkeletalMeshComponent* GetArmMesh();
-	USkeletalMeshComponent* GetCharacterMesh();
-	FTransform GetCameraTransform();
-	// Getters
-	///////////
+	//////////////////////////
+	// IFPSCharacterInterface
+	FTransform GetCameraTransform_Implementation() override;
+	USkeletalMeshComponent* GetCharacterMesh_Implementation() override;
+	USkeletalMeshComponent* GetArmMesh_Implementation() override;
+	// IFPSCharacterInterface
+	//////////////////////////
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)

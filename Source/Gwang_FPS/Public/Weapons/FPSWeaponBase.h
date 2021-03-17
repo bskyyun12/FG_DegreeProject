@@ -8,7 +8,6 @@
 #include "FPSWeaponBase.generated.h"
 
 class UAnimMontage;
-class UAnimSequence;
 class USceneComponent;
 class USkeletalMeshComponent;
 class AFPSCharacter;
@@ -32,16 +31,19 @@ struct FWeaponInfo
 	float FireRate;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimSequence* EquipAnim;
+	UAnimMontage* FP_EquipAnim;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAnimMontage* FP_ArmsReploadAnim;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAnimMontage* FP_WeaponReploadAnim;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* HideAnim;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* FireAnim;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* ReploadAnim;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* IdleAnim;
@@ -74,25 +76,28 @@ public:
 	/////////////////////////
 	// FP Weapon (Local Only)
 	UFUNCTION(Client, Reliable)
-	void Client_OnFPWeaponEquipped(AFPSCharacter* FPSCharacter);
+	void Client_OnFPWeaponEquipped(AFPSCharacter* OwnerCharacter);
 
 	UFUNCTION(Client, Reliable)
-	void Client_OnFPWeaponDroped(AFPSCharacter* FPSCharacter);
+	void Client_OnFPWeaponDroped();
+
+	UFUNCTION(Client, Reliable)
+	void Client_Reload();
 	// FP Weapon (Local Only)
 	/////////////////////////
 
 	/////////////////////////
 	// TP Weapon (Should be replicated)
 	UFUNCTION(Server, Reliable)
-	void Server_OnTPWeaponEquipped(AFPSCharacter* FPSCharacter);
+	void Server_OnTPWeaponEquipped(AFPSCharacter* OwnerCharacter);
 
 	UFUNCTION(Server, Reliable)
-	void Server_OnTPWeaponDroped(AFPSCharacter* FPSCharacter);
+	void Server_OnTPWeaponDroped();
 	// TP Weapon (Should be replicated)
 	/////////////////////////
 
 	UFUNCTION(Server, Reliable)
-	void Server_OnBeginFireWeapon(AFPSCharacter* FPSCharacter);
+	void Server_OnBeginFireWeapon();
 
 	UFUNCTION(Server, Reliable)
 	void Server_OnEndFireWeapon();
@@ -104,14 +109,10 @@ public:
 	void Client_OnEndFireWeapon();
 
 protected:
-	UPROPERTY(ReplicatedUsing = OnRep_OwnerChanged)
-	AFPSCharacter* OwnerCharacter;
-
-	UFUNCTION()
-	void OnRep_OwnerChanged();
-
 	UFUNCTION()
 	bool CanFire();
+
+	void OnRep_Owner() override;
 
 protected:
 	// Called when the game starts or when spawned
@@ -120,10 +121,10 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	USceneComponent* RootComp;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	USkeletalMeshComponent* FPWeaponMesh;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	USkeletalMeshComponent* TPWeaponMesh;
 
 	UPROPERTY(VisibleAnywhere)

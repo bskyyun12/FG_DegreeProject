@@ -76,10 +76,12 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
-	PlayerInputComponent->BindAction("Pickup", IE_Pressed, this, &AFPSCharacter::Pickup);
-
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AFPSCharacter::OnBeginFire);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &AFPSCharacter::OnEndFire);
+
+	PlayerInputComponent->BindAction("Pickup", IE_Pressed, this, &AFPSCharacter::Pickup);
+
+	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &AFPSCharacter::Reload);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AFPSCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AFPSCharacter::MoveRight);
@@ -156,16 +158,16 @@ void AFPSCharacter::OnBeginFire()
 	if (CurrentWeapon != nullptr)
 	{
 		CurrentWeapon->Client_OnBeginFireWeapon();
-		Server_OnBeginFire(CurrentWeapon, this);
+		Server_OnBeginFire(CurrentWeapon);
 	}
 }
 
-void AFPSCharacter::Server_OnBeginFire_Implementation(AFPSWeaponBase* Weapon, AFPSCharacter* FPSCharacter)
+void AFPSCharacter::Server_OnBeginFire_Implementation(AFPSWeaponBase* Weapon)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Server_OnBeginFire_Implementation"));
 	if (Weapon != nullptr)
 	{
-		Weapon->Server_OnBeginFireWeapon(FPSCharacter);
+		Weapon->Server_OnBeginFireWeapon();
 	}
 }
 
@@ -200,6 +202,14 @@ void AFPSCharacter::Pickup()
 		{
 			EquipWeapon(CurrentFocus);
 		}
+	}
+}
+
+void AFPSCharacter::Reload()
+{
+	if (CurrentWeapon != nullptr)
+	{
+		CurrentWeapon->Client_Reload();
 	}
 }
 
@@ -323,18 +333,18 @@ void AFPSCharacter::CollisionHandleOnRespawn()
 	CameraContainer->SetRelativeLocation(DefaultCameraRelativeLocation);
 }
 
-// Getters
-USkeletalMeshComponent* AFPSCharacter::GetArmMesh()
+// IFPSCharacterInterface
+FTransform AFPSCharacter::GetCameraTransform_Implementation()
 {
-	return FPSArmMesh;
+	return FollowCamera->GetComponentTransform();
 }
 
-USkeletalMeshComponent* AFPSCharacter::GetCharacterMesh()
+USkeletalMeshComponent* AFPSCharacter::GetCharacterMesh_Implementation()
 {
 	return FPSCharacterMesh;
 }
 
-FTransform AFPSCharacter::GetCameraTransform()
+USkeletalMeshComponent* AFPSCharacter::GetArmMesh_Implementation()
 {
-	return FollowCamera->GetComponentTransform();
+	return FPSArmMesh;
 }

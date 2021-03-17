@@ -7,66 +7,64 @@
 #include "Kismet/GameplayStatics.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 
+#include "AnimInstances/FPSAnimInterface.h"
 #include "Components/HealthComponent.h"
 #include "FPSCharacter.h"
-#include "AnimInstances/FPSAnimInterface.h"
+#include "FPSCharacterInterface.h"
 #include "FPSPlayerControllerInterface.h"
 
-void AFPSRifleBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSRifleBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
 {
-	Super::Client_OnFPWeaponEquipped_Implementation(FPSCharacter);
+	Super::Client_OnFPWeaponEquipped_Implementation(OwnerCharacter);
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation()"));
 
-	if (FPSCharacter == nullptr)
+	if (OwnerCharacter != nullptr && UKismetSystemLibrary::DoesImplementInterface(OwnerCharacter, UFPSCharacterInterface::StaticClass()))
 	{
-		return;
-	}
-
-	if (FPWeaponMesh != nullptr && FPSCharacter->GetArmMesh() != nullptr)
-	{
-		FPWeaponMesh->AttachToComponent(FPSCharacter->GetArmMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FP_WeaponSocketName);
-
-		if (WeaponInfo.EquipAnim != nullptr)
+		USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(OwnerCharacter);
+		if (ArmMesh != nullptr)
 		{
-			FPSCharacter->GetArmMesh()->PlayAnimation(WeaponInfo.EquipAnim, false);
+			FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, FP_WeaponSocketName);
+
+			UAnimInstance* AnimInstance = ArmMesh->GetAnimInstance();
+			if (AnimInstance != nullptr)
+			{
+				if (WeaponInfo.FP_EquipAnim != nullptr)
+				{
+					AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
+				}
+			}
 		}
 	}
 }
 
-void AFPSRifleBase::Client_OnFPWeaponDroped_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSRifleBase::Client_OnFPWeaponDroped_Implementation()
 {
-	Super::Client_OnFPWeaponDroped_Implementation(FPSCharacter);
+	Super::Client_OnFPWeaponDroped_Implementation();
 	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Client_OnFPWeaponDroped_Implementation()"));
 }
 
-void AFPSRifleBase::Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSRifleBase::Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
 {
-	Super::Server_OnTPWeaponEquipped_Implementation(FPSCharacter);
+	Super::Server_OnTPWeaponEquipped_Implementation(OwnerCharacter);
 	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Server_OnTPWeaponEquipped_Implementation()"));
 
-	if (!ensure(FPSCharacter != nullptr))
+	if (OwnerCharacter != nullptr && UKismetSystemLibrary::DoesImplementInterface(OwnerCharacter, UFPSCharacterInterface::StaticClass()))
 	{
-		return;
-	}
+		USkeletalMeshComponent* CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(OwnerCharacter);
 
-	if (TPWeaponMesh != nullptr && FPSCharacter->GetCharacterMesh() != nullptr)
-	{
-		TPWeaponMesh->SetSimulatePhysics(false);
-		TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-		TPWeaponMesh->AttachToComponent(OwnerCharacter->GetCharacterMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, TP_WeaponSocketName);
+		TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, TP_WeaponSocketName);
 	}
 }
 
-void AFPSRifleBase::Server_OnTPWeaponDroped_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSRifleBase::Server_OnTPWeaponDroped_Implementation()
 {
-	Super::Server_OnTPWeaponDroped_Implementation(FPSCharacter);
+	Super::Server_OnTPWeaponDroped_Implementation();
 	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Server_OnTPWeaponDroped_Implementation()"));
 }
 
-void AFPSRifleBase::Server_OnBeginFireWeapon_Implementation(AFPSCharacter* FPSCharacter)
+void AFPSRifleBase::Server_OnBeginFireWeapon_Implementation()
 {
-	Super::Server_OnBeginFireWeapon_Implementation(FPSCharacter);
+	Super::Server_OnBeginFireWeapon_Implementation();
 	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Server_OnBeginFireWeapon_Implementation"));
 
 	UWorld* World = GetWorld();
@@ -74,8 +72,7 @@ void AFPSRifleBase::Server_OnBeginFireWeapon_Implementation(AFPSCharacter* FPSCh
 	{
 		return;
 	}
-	RifleFireDelegate = FTimerDelegate::CreateUObject(this, &AFPSRifleBase::Fire, FPSCharacter);
-	World->GetTimerManager().SetTimer(ServerRifleFireTimer, RifleFireDelegate, WeaponInfo.FireRate, true, 0.f);
+	World->GetTimerManager().SetTimer(ServerRifleFireTimer, this, &AFPSRifleBase::Fire, WeaponInfo.FireRate, true, 0.f);
 	return;
 }
 
@@ -91,7 +88,7 @@ void AFPSRifleBase::Server_OnEndFireWeapon_Implementation()
 	World->GetTimerManager().ClearTimer(ServerRifleFireTimer);
 }
 
-void AFPSRifleBase::Fire(AFPSCharacter* FPSCharacter)
+void AFPSRifleBase::Fire()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Fire"));
 
@@ -109,31 +106,32 @@ void AFPSRifleBase::Fire(AFPSCharacter* FPSCharacter)
 
 	Multicast_FireEffects();
 
-	FHitResult Hit;
-	FVector Start = FPSCharacter->GetCameraTransform().GetLocation();
-	FVector End = Start + FPSCharacter->GetCameraTransform().GetRotation().GetForwardVector() * WeaponInfo.Range;
-	DrawDebugLine(World, Start, End, FColor::Red, true);
-
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
-	Params.AddIgnoredActor(GetOwner());
-	Params.bReturnPhysicalMaterial = true;
-	bool bIsHit = World->LineTraceSingleByChannel(Hit, Start, End, ECC_GameTraceChannel1, Params); // ECC_GameTraceChannel1 = DamageTrace
-	if (bIsHit)
+	if (GetOwner() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
 	{
-		AActor* HitActor = Hit.GetActor();
-		if (HitActor != nullptr)
+		FHitResult Hit;
+		FTransform CameraTransform = IFPSCharacterInterface::Execute_GetCameraTransform(GetOwner());
+		FVector Start = CameraTransform.GetLocation();
+		FVector End = Start + CameraTransform.GetRotation().GetForwardVector() * WeaponInfo.Range;
+
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(this);
+		Params.AddIgnoredActor(GetOwner());
+		Params.bReturnPhysicalMaterial = true;
+		bool bIsHit = World->LineTraceSingleByChannel(Hit, Start, End, ECC_GameTraceChannel1, Params); // ECC_GameTraceChannel1 = DamageTrace
+		if (bIsHit)
 		{
-			UHealthComponent* HealthComp = Cast<UHealthComponent>(HitActor->GetComponentByClass(UHealthComponent::StaticClass()));
-			if (HealthComp != nullptr && !HealthComp->IsDead())
+			AActor* HitActor = Hit.GetActor();
+			if (HitActor != nullptr)
 			{
-				float Damage = CalcDamageToApply(Hit.PhysMaterial.Get());
-				HealthComp->Server_AddHealth(-Damage);
-				UE_LOG(LogTemp, Warning, TEXT("Damage Taken: %f, Attacker: %s, Damaged Actor: %s"), Damage, *GetOwner()->GetName(), *HitActor->GetName());
+				UHealthComponent* HealthComp = Cast<UHealthComponent>(HitActor->GetComponentByClass(UHealthComponent::StaticClass()));
+				if (HealthComp != nullptr && !HealthComp->IsDead())
+				{
+					float Damage = CalcDamageToApply(Hit.PhysMaterial.Get());
+					HealthComp->Server_AddHealth(-Damage);
+					UE_LOG(LogTemp, Warning, TEXT("Damage Taken: %f, Attacker: %s, Damaged Actor: %s"), Damage, *GetOwner()->GetName(), *HitActor->GetName());
+				}
 			}
 		}
-
-		DrawDebugPoint(World, Hit.ImpactPoint, 10.f, FColor::Green, true);
 	}
 }
 
@@ -260,6 +258,44 @@ void AFPSRifleBase::Recoil()
 				RecoilTimer += WeaponInfo.FireRate;
 			}
 			IFPSPlayerControllerInterface::Execute_AddControlRotation(InstigatorController, FRotator(PitchDelta, YawDelta, 0.f));
+		}
+	}
+}
+
+void AFPSRifleBase::OnRep_Owner()
+{
+	Super::OnRep_Owner();
+
+	if (GetOwner() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
+	{
+		USkeletalMeshComponent* CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(GetOwner());
+		TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, TP_WeaponSocketName);
+	}
+}
+
+void AFPSRifleBase::Client_Reload_Implementation()
+{
+	Super::Client_Reload_Implementation();
+
+	AActor* OwnerCharacter = GetOwner();
+	if (OwnerCharacter != nullptr && UKismetSystemLibrary::DoesImplementInterface(OwnerCharacter, UFPSCharacterInterface::StaticClass()))
+	{
+		USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(OwnerCharacter);
+		if (ArmMesh != nullptr)
+		{
+			UAnimInstance* AnimInstance = ArmMesh->GetAnimInstance();
+			if (AnimInstance != nullptr)
+			{
+				if (WeaponInfo.FP_ArmsReploadAnim != nullptr)
+				{
+					AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReploadAnim);
+				}
+
+				if (WeaponInfo.FP_WeaponReploadAnim != nullptr)
+				{
+					FPWeaponMesh->PlayAnimation(WeaponInfo.FP_WeaponReploadAnim, false);
+				}
+			}
 		}
 	}
 }
