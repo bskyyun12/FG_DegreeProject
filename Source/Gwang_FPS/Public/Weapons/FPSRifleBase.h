@@ -51,10 +51,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UCameraShakeBase> CameraShakeOnFire;	
 
+	UPROPERTY(EditDefaultsOnly)
+	UCurveFloat* RecoilCurve_Vertical;
+
+	UPROPERTY(EditDefaultsOnly)
+	UCurveFloat* RecoilCurve_Horizontal;
+
 	FTransform OwnerCameraTransform;
 	FTimerDelegate RifleFireDelegate;
 	FTimerHandle ServerRifleFireTimer;
 	FTimerHandle ClientRifleFireTimer;
+	float RecoilTimer = 0.f;
 
 protected:
 	float CalcDamageToApply(const UPhysicalMaterial* PhysMat);

@@ -39,4 +39,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void ShakeCamera(TSubclassOf<UCameraShakeBase> CameraShake);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void AddControlRotation(const FRotator& RotationToAdd);
 };

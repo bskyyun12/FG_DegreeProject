@@ -193,6 +193,7 @@ void AFPSRifleBase::Client_OnEndFireWeapon_Implementation()
 		return;
 	}
 	World->GetTimerManager().ClearTimer(ClientRifleFireTimer);
+	RecoilTimer = 0.f;
 }
 
 void AFPSRifleBase::PlayFireEmitter(bool FPWeapon)
@@ -245,7 +246,22 @@ void AFPSRifleBase::ShakeCamera()
 
 void AFPSRifleBase::Recoil()
 {
-	
+	AController* InstigatorController = GetInstigatorController();
+	if (InstigatorController != nullptr)
+	{
+		if (UKismetSystemLibrary::DoesImplementInterface(InstigatorController, UFPSPlayerControllerInterface::StaticClass()))
+		{
+			float PitchDelta = 0.f;
+			float YawDelta = 0.f;
+			if (RecoilCurve_Vertical != nullptr && RecoilCurve_Horizontal != nullptr)
+			{
+				PitchDelta = RecoilCurve_Vertical->GetFloatValue(RecoilTimer);
+				YawDelta = RecoilCurve_Horizontal->GetFloatValue(RecoilTimer);
+				RecoilTimer += WeaponInfo.FireRate;
+			}
+			IFPSPlayerControllerInterface::Execute_AddControlRotation(InstigatorController, FRotator(PitchDelta, YawDelta, 0.f));
+		}
+	}
 }
 
 float AFPSRifleBase::CalcDamageToApply(const UPhysicalMaterial* PhysMat)

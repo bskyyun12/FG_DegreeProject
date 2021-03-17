@@ -44,6 +44,8 @@ public:
 	void Client_LoadGameOver(bool Victory);
 
 	void ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake) override;
+
+	void AddControlRotation_Implementation(const FRotator& RotationToAdd) override;
 	// IFPSPlayerControllerInterface
 	////////////////////////////////
 

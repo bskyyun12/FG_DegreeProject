@@ -68,6 +68,12 @@ void AFPSPlayerController::Client_OnUpdateTeamSelectionUI_Implementation(ETeam I
 	}
 }
 
+void AFPSPlayerController::AddControlRotation_Implementation(const FRotator& RotationToAdd)
+{
+	FRotator Rotation = GetControlRotation();
+	SetControlRotation(Rotation + RotationToAdd);
+}
+
 void AFPSPlayerController::Client_LoadTeamSelection_Implementation()
 {
 	UWorld* World = GetWorld();
