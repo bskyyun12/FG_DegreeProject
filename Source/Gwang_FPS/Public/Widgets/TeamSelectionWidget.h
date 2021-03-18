@@ -10,7 +10,6 @@
 
 class UButton;
 class UImage;
-class APlayerController;
 
 UCLASS()
 class GWANG_FPS_API UTeamSelectionWidget : public UFPSWidgetBase
@@ -21,6 +20,9 @@ public:
 	virtual bool Initialize() override;
 
 	void OnTeamFilled(ETeam Team, bool bCanJoinTeam);
+
+	UFUNCTION()
+	void OnUpdateTeamSelectionUI(ETeam Team, bool bCanJoin);
 
 private:
 	UPROPERTY(meta = (BindWidget))
@@ -35,11 +37,7 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	UImage* Image_DCTeam;
 
-	UPROPERTY()
-	AFPSGameMode* GameMode;
-
 private:
-
 	UFUNCTION()
 	void OnClick_Button_MarvelTeam();
 

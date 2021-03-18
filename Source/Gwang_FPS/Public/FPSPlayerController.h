@@ -10,9 +10,10 @@
 #include "FPSPlayerController.generated.h"
 
 class UUserWidget;
+class AFPSGameMode;
 class UTeamSelectionWidget;
 class UGameOverWidget;
-class AFPSGameMode;
+class UGameStatusWidget;
 
 UCLASS()
 class GWANG_FPS_API AFPSPlayerController : public APlayerController, public IFPSPlayerControllerInterface
@@ -46,6 +47,10 @@ public:
 	void ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake) override;
 
 	void AddControlRotation_Implementation(const FRotator& RotationToAdd) override;
+
+	ETeam GetTeam_Implementation() override;
+
+	void HandleGameStatusWidget_Implementation(bool bDisplay) override;
 	// IFPSPlayerControllerInterface
 	////////////////////////////////
 
@@ -59,6 +64,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUserWidget> GameOverWidgetClass;
 	UGameOverWidget* GameOverWidget;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UUserWidget> GameStatusWidgetClass;
+	UGameStatusWidget* GameStatusWidget;
 	// Widgets
 	///////////
 
@@ -72,7 +81,13 @@ protected:
 
 	UFUNCTION()
 	void OnUpdateTeamSelectionUI(ETeam InTeam, bool bCanJoinTeam);
-
 	UFUNCTION(Client, Reliable)
 	void Client_OnUpdateTeamSelectionUI(ETeam InTeam, bool bCanJoinTeam);
+
+	UFUNCTION()
+	void OnEndGame(ETeam WinnerTeam);
+public:
+
+
+
 };

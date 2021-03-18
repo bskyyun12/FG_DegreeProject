@@ -10,6 +10,7 @@
 #include "FPSGameMode.generated.h"
 
 class AFPSCharacter;
+class AFPSGameStateBase;
 
 UCLASS()
 class GWANG_FPS_API AFPSGameMode : public AGameModeBase
@@ -29,11 +30,18 @@ public:
 
 	void FreePlayer(APlayerController* PlayerController);
 
+	bool CanJoin(ETeam Team);
+
+	void CheckGameOver(int MarvelScore, int DCScore);
+
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FTeamSelectionDelegate, ETeam, Team, bool, bCanJoinTeam);
 	FTeamSelectionDelegate OnUpdateTeamSelectionUI;
 
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FResetDelegate);
-	FResetDelegate OnReset;
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStartGameDelegate);
+	FStartGameDelegate OnStartNewGame;
+
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEndGameDelegate, ETeam, WinnerTeam);
+	FEndGameDelegate OnEndGame;
 
 protected:
 	void BeginPlay() override;
@@ -54,9 +62,6 @@ private:
 	UPROPERTY(EditDefaultsOnly)
 	int MaxPlayerPerTeam = 2;
 
-	int CurrentMarvelScore;
-	int CurrentDCScore;
-
 	UPROPERTY()
 	TArray<AFPSCharacter*> MarvelTeamPlayers;
 
@@ -64,10 +69,12 @@ private:
 	TArray<AFPSCharacter*> DCTeamPlayers;
 
 private:
+	UPROPERTY()
+	AFPSGameStateBase* FPSGameState;
+
+private:
 	void SetupPlayerStarts();
 	void SetupPlayerPool();
 
 	AFPSCharacter* PoolPlayer(ETeam Team);
-
-	void CheckGameOver(APlayerController* PlayerController);
 };

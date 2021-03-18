@@ -83,6 +83,9 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &AFPSCharacter::Reload);
 
+	PlayerInputComponent->BindAction<FOneBooleanDelegate>("GameStatusWidget", IE_Pressed, this, &AFPSCharacter::HandleGameStatusWidget, true);
+	PlayerInputComponent->BindAction<FOneBooleanDelegate>("GameStatusWidget", IE_Released, this, &AFPSCharacter::HandleGameStatusWidget, false);
+
 	PlayerInputComponent->BindAxis("MoveForward", this, &AFPSCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AFPSCharacter::MoveRight);
 
@@ -213,6 +216,14 @@ void AFPSCharacter::Reload()
 	}
 }
 
+void AFPSCharacter::HandleGameStatusWidget(bool bDisplay)
+{
+	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
+	{
+		IFPSPlayerControllerInterface::Execute_HandleGameStatusWidget(GetController(), bDisplay);
+	}
+}
+
 void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 {
 	if (Weapon != nullptr)
@@ -267,10 +278,9 @@ void AFPSCharacter::OnDeath()
 	bIsDead = true;	// OnRep_bIsDead()
 	CollisionHandleOnDeath();
 
-	AController* PlayerController = GetController();
-	if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
+	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_OnPlayerDeath(PlayerController);
+		IFPSPlayerControllerInterface::Execute_OnPlayerDeath(GetController());
 	}
 
 	FTimerHandle RespawnTimer;
@@ -290,10 +300,9 @@ void AFPSCharacter::RespawnPlayer()
 		HealthComponent->Reset();
 	}
 
-	AController* PlayerController = GetController();
-	if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
+	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_RespawnPlayer(PlayerController);
+		IFPSPlayerControllerInterface::Execute_RespawnPlayer(GetController());
 	}
 }
 

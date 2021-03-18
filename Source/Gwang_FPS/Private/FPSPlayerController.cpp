@@ -6,8 +6,10 @@
 
 #include "FPSCharacter.h"
 #include "FPSGameMode.h"
+#include "FPSGameStateBase.h"
 #include "Widgets/TeamSelectionWidget.h"
 #include "Widgets/GameOverWidget.h"
+#include "Widgets/GameStatusWidget.h"
 
 void AFPSPlayerController::BeginPlay()
 {
@@ -48,6 +50,9 @@ void AFPSPlayerController::Server_StartNewGame_Implementation()
 	GameMode->OnUpdateTeamSelectionUI.RemoveAll(this);
 	GameMode->OnUpdateTeamSelectionUI.AddDynamic(this, &AFPSPlayerController::OnUpdateTeamSelectionUI);
 
+	GameMode->OnEndGame.RemoveAll(this);
+	GameMode->OnEndGame.AddDynamic(this, &AFPSPlayerController::OnEndGame);
+
 	GameMode->StartNewGame(this);
 
 	Client_LoadTeamSelection();
@@ -62,10 +67,59 @@ void AFPSPlayerController::OnUpdateTeamSelectionUI(ETeam InTeam, bool bCanJoinTe
 void AFPSPlayerController::Client_OnUpdateTeamSelectionUI_Implementation(ETeam InTeam, bool bCanJoinTeam)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::Client_OnUpdateTeamSelectionUI_Implementation()"));
+
 	if (TeamSelection != nullptr)
 	{
-		TeamSelection->OnTeamFilled(InTeam, bCanJoinTeam);
+		TeamSelection->OnUpdateTeamSelectionUI(InTeam, bCanJoinTeam);
 	}
+}
+
+void AFPSPlayerController::OnEndGame(ETeam WinnerTeam)
+{
+	Client_LoadGameOver(WinnerTeam == Team);
+}
+
+void AFPSPlayerController::HandleGameStatusWidget_Implementation(bool bDisplay)
+{
+	if (bDisplay)
+	{
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		GameStatusWidget = CreateWidget<UGameStatusWidget>(World, GameStatusWidgetClass);
+		if (!ensure(GameStatusWidget != nullptr))
+		{
+			return;
+		}
+		GameStatusWidget->Setup(EInputMode::GameOnly, false);
+	}
+	else
+	{
+		if (GameStatusWidget != nullptr)
+		{
+			GameStatusWidget->Teardown();
+		}
+	}
+}
+
+void AFPSPlayerController::Client_LoadGameOver_Implementation(bool Victory)
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	GameOverWidget = CreateWidget<UGameOverWidget>(World, GameOverWidgetClass);
+	if (!ensure(GameOverWidget != nullptr))
+	{
+		return;
+	}
+
+	GameOverWidget->Setup();
+	GameOverWidget->SetResultText(Victory);
 }
 
 void AFPSPlayerController::AddControlRotation_Implementation(const FRotator& RotationToAdd)
@@ -144,24 +198,6 @@ void AFPSPlayerController::LoadGameOver_Implementation(bool Victory)
 	Client_LoadGameOver(Victory);
 }
 
-void AFPSPlayerController::Client_LoadGameOver_Implementation(bool Victory)
-{
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-
-	GameOverWidget = CreateWidget<UGameOverWidget>(World, GameOverWidgetClass);
-	if (!ensure(GameOverWidget != nullptr))
-	{
-		return;
-	}
-
-	GameOverWidget->Setup();
-	GameOverWidget->SetResultText(Victory);
-}
-
 void AFPSPlayerController::ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::ShakeCamera_Implementation"));
@@ -169,4 +205,9 @@ void AFPSPlayerController::ShakeCamera_Implementation(TSubclassOf<UCameraShakeBa
 	{
 		ClientStartCameraShake(CameraShake);
 	}
+}
+
+ETeam AFPSPlayerController::GetTeam_Implementation()
+{
+	return Team;
 }

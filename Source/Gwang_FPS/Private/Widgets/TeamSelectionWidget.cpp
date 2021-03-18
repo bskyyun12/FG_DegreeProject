@@ -9,6 +9,7 @@
 #include "Net/UnrealNetwork.h"
 
 #include "FPSGameMode.h"
+#include "FPSGameStateBase.h"
 #include "FPSPlayerControllerInterface.h"
 #include "FPSPlayerStart.h"
 
@@ -35,21 +36,6 @@ bool UTeamSelectionWidget::Initialize()
 	return true;
 }
 
-void UTeamSelectionWidget::OnTeamFilled(ETeam Team, bool bCanJoinTeam)
-{
-	UE_LOG(LogTemp, Warning, TEXT("UTeamSelectionWidget::OnTeamFilled()"));
-	if (Team == ETeam::Marvel)
-	{
-		Image_MarvelTeam->SetOpacity(bCanJoinTeam ? 1.f : 0.2f);
-		Button_MarvelTeam->SetIsEnabled(bCanJoinTeam);
-	}
-	else if (Team == ETeam::DC)
-	{
-		Image_DCTeam->SetOpacity(bCanJoinTeam ? 1.f : 0.2f);
-		Button_DCTeam->SetIsEnabled(bCanJoinTeam);
-	}
-}
-
 void UTeamSelectionWidget::OnClick_Button_MarvelTeam()
 {
 	if (UKismetSystemLibrary::DoesImplementInterface(OwningPlayer, UFPSPlayerControllerInterface::StaticClass()))
@@ -63,5 +49,20 @@ void UTeamSelectionWidget::OnClick_Button_DCTeam()
 	if (UKismetSystemLibrary::DoesImplementInterface(OwningPlayer, UFPSPlayerControllerInterface::StaticClass()))
 	{
 		IFPSPlayerControllerInterface::Execute_OnTeamSelected(OwningPlayer, ETeam::DC);
+	}
+}
+
+void UTeamSelectionWidget::OnUpdateTeamSelectionUI(ETeam Team, bool bCanJoin)
+{
+	UE_LOG(LogTemp, Warning, TEXT("UTeamSelectionWidget::OnUpdateTeamSelectionUI()"));
+	if (Team == ETeam::Marvel)
+	{
+		Image_MarvelTeam->SetOpacity(bCanJoin ? 1.f : 0.2f);
+		Button_MarvelTeam->SetIsEnabled(bCanJoin);
+	}
+	else if (Team == ETeam::DC)
+	{
+		Image_DCTeam->SetOpacity(bCanJoin ? 1.f : 0.2f);
+		Button_DCTeam->SetIsEnabled(bCanJoin);
 	}
 }

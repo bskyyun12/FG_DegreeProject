@@ -9,6 +9,14 @@
 class APlayerController;
 class AFPSGameMode;
 
+UENUM(BlueprintType)
+enum class EInputMode : uint8
+{
+	UIOnly,
+	GameOnly,
+	GameAndUI,
+};
+
 UCLASS()
 class GWANG_FPS_API UFPSWidgetBase : public UUserWidget
 {
@@ -17,7 +25,7 @@ class GWANG_FPS_API UFPSWidgetBase : public UUserWidget
 public:
 	virtual bool Initialize() override;
 
-	virtual void Setup();
+	virtual void Setup(EInputMode InputMode = EInputMode::UIOnly, bool bShowCursor = true);
 
 	virtual void Teardown();
 

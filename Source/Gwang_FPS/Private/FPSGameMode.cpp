@@ -6,6 +6,7 @@
 #include "Kismet/KismetSystemLibrary.h" // DoesImplementInterface
 
 #include "FPSCharacter.h"
+#include "FPSGameStateBase.h"
 #include "FPSPlayerController.h"
 #include "FPSPlayerControllerInterface.h"
 #include "FPSPlayerStart.h"
@@ -27,16 +28,23 @@ void AFPSGameMode::PostLogin(APlayerController* NewPlayer)
 
 void AFPSGameMode::StartNewGame(APlayerController* PlayerController)
 {
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::StartNewGame()"));
 	FreePlayer(PlayerController);
-	CurrentMarvelScore = 0;
-	CurrentDCScore = 0;
 
-	OnReset.Broadcast();
+	OnStartNewGame.Broadcast();
 }
 
 void AFPSGameMode::BeginPlay()
 {
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::BeginPlay()"));
 	Super::BeginPlay();
+
+	FPSGameState = GetGameState<AFPSGameStateBase>();
+	if (!ensure(FPSGameState != nullptr))
+	{
+		return;
+	}
+	FPSGameState->Initialize(this);
 
 	SetupPlayerStarts();
 	SetupPlayerPool();
@@ -62,6 +70,8 @@ bool AFPSGameMode::SpawnPlayer(APlayerController* PlayerController, ETeam Team)
 		}
 	}
 
+	OnUpdateTeamSelectionUI.Broadcast(Team, CanJoin(Team));
+
 	return true;
 }
 
@@ -73,10 +83,6 @@ AFPSCharacter* AFPSGameMode::PoolPlayer(ETeam Team)
 		{
 			if (MarvelTeamPlayers[i] != nullptr && MarvelTeamPlayers[i]->GetController() == nullptr)
 			{
-				if (i == MarvelTeamPlayers.Num() - 1)	// if this was last available player
-				{
-					OnUpdateTeamSelectionUI.Broadcast(Team, false);
-				}
 				MarvelTeamPlayers[i]->SetActorHiddenInGame(false);
 				return MarvelTeamPlayers[i];
 			}
@@ -88,10 +94,6 @@ AFPSCharacter* AFPSGameMode::PoolPlayer(ETeam Team)
 		{
 			if (DCTeamPlayers[i] != nullptr && DCTeamPlayers[i]->GetController() == nullptr)
 			{
-				if (i == DCTeamPlayers.Num() - 1)	// if this was last available player
-				{
-					OnUpdateTeamSelectionUI.Broadcast(Team, false);
-				}
 				DCTeamPlayers[i]->SetActorHiddenInGame(false);
 				return DCTeamPlayers[i];
 			}
@@ -99,6 +101,32 @@ AFPSCharacter* AFPSGameMode::PoolPlayer(ETeam Team)
 	}
 
 	return nullptr;
+}
+
+bool AFPSGameMode::CanJoin(ETeam Team)
+{
+	if (Team == ETeam::Marvel)
+	{
+		for (int i = 0; i < MarvelTeamPlayers.Num(); i++)
+		{
+			if (MarvelTeamPlayers[i] != nullptr && MarvelTeamPlayers[i]->GetController() == nullptr)
+			{
+				return true;
+			}
+		}
+	}
+	else if (Team == ETeam::DC)
+	{
+		for (int i = 0; i < DCTeamPlayers.Num(); i++)
+		{
+			if (DCTeamPlayers[i] != nullptr && DCTeamPlayers[i]->GetController() == nullptr)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 void AFPSGameMode::FreePlayer(APlayerController* PlayerController)
@@ -125,48 +153,20 @@ void AFPSGameMode::OnPlayerDeath(APlayerController* PlayerController, ETeam Team
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::OnPlayerDeath()"));
 
-	if (Team == ETeam::Marvel)
-	{
-		CurrentDCScore++;
-	}
-	else if (Team == ETeam::DC)
-	{
-		CurrentMarvelScore++;
-	}
-
-	CheckGameOver(PlayerController);
+	FPSGameState->OnPlayerDeath(Team);
 }
 
-void AFPSGameMode::CheckGameOver(APlayerController* PlayerController)
+void AFPSGameMode::CheckGameOver(int MarvelScore, int DCScore)
 {
-	bool MarvelWon = CurrentMarvelScore >= KillScoreToWin;
-	bool DCWon = CurrentDCScore >= KillScoreToWin;
-
-	if (MarvelWon || DCWon)
+	bool MarvelWon = MarvelScore >= KillScoreToWin;
+	bool DCWon = DCScore >= KillScoreToWin;
+	if (MarvelWon)
 	{
-		for (int i = 0; i < MarvelTeamPlayers.Num(); i++)
-		{
-			if (MarvelTeamPlayers[i] != nullptr)
-			{
-				AController* Controller = MarvelTeamPlayers[i]->GetController();
-				if (Controller != nullptr && UKismetSystemLibrary::DoesImplementInterface(Controller, UFPSPlayerControllerInterface::StaticClass()))
-				{
-					IFPSPlayerControllerInterface::Execute_LoadGameOver(Controller, MarvelWon);
-				}
-			}
-		}
-
-		for (int i = 0; i < DCTeamPlayers.Num(); i++)
-		{
-			if (DCTeamPlayers[i] != nullptr)
-			{
-				AController* Controller = DCTeamPlayers[i]->GetController();
-				if (Controller != nullptr && UKismetSystemLibrary::DoesImplementInterface(Controller, UFPSPlayerControllerInterface::StaticClass()))
-				{
-					IFPSPlayerControllerInterface::Execute_LoadGameOver(Controller, DCWon);
-				}
-			}
-		}
+		OnEndGame.Broadcast(ETeam::Marvel);
+	}
+	else
+	{
+		OnEndGame.Broadcast(ETeam::DC);
 	}
 }
 

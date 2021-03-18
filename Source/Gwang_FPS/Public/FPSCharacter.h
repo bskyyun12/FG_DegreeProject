@@ -49,6 +49,9 @@ public:
 	void Pickup();
 
 	void Reload();
+
+	DECLARE_DELEGATE_OneParam(FOneBooleanDelegate, bool)
+	void HandleGameStatusWidget(bool bDisplay);
 	// Input bindings
 	//////////////////
 

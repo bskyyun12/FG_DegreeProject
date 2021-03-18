@@ -20,27 +20,32 @@ bool UFPSWidgetBase::Initialize()
 	return true;
 }
 
-void UFPSWidgetBase::Setup()
+void UFPSWidgetBase::Setup(EInputMode InputMode/* = EInputMode::UIOnly*/, bool bShowCursor/* = true*/)
 {
 	this->AddToViewport();
 	this->bIsFocusable = true;
 
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
+	if (InputMode == EInputMode::UIOnly)
 	{
-		return;
+		FInputModeUIOnly InputModeData;
+		InputModeData.SetWidgetToFocus(this->TakeWidget());
+		InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		OwningPlayer->SetInputMode(InputModeData);
 	}
-	APlayerController* PlayerController = World->GetFirstPlayerController();
-	if (!ensure(PlayerController != nullptr))
+	else if (InputMode == EInputMode::GameOnly)
 	{
-		return;
+		FInputModeGameOnly InputModeData;
+		OwningPlayer->SetInputMode(InputModeData);
 	}
-	FInputModeUIOnly InputModeData;
-	InputModeData.SetWidgetToFocus(this->TakeWidget());
-	InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-	PlayerController->SetInputMode(InputModeData);
+	else if (InputMode == EInputMode::GameAndUI)
+	{
+		FInputModeGameAndUI InputModeData;
+		InputModeData.SetWidgetToFocus(this->TakeWidget());
+		InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+		OwningPlayer->SetInputMode(InputModeData);
+	}
 
-	PlayerController->bShowMouseCursor = true;
+	OwningPlayer->bShowMouseCursor = bShowCursor;
 }
 
 void UFPSWidgetBase::Teardown()
@@ -48,18 +53,8 @@ void UFPSWidgetBase::Teardown()
 	this->RemoveFromViewport();
 	this->bIsFocusable = false;
 
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-	APlayerController* PlayerController = World->GetFirstPlayerController();
-	if (!ensure(PlayerController != nullptr))
-	{
-		return;
-	}
 	FInputModeGameOnly InputModeData;
-	PlayerController->SetInputMode(InputModeData);
+	OwningPlayer->SetInputMode(InputModeData);
 
-	PlayerController->bShowMouseCursor = false;
+	OwningPlayer->bShowMouseCursor = false;
 }

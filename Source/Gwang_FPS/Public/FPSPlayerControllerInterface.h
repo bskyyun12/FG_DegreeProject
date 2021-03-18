@@ -42,4 +42,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void AddControlRotation(const FRotator& RotationToAdd);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	ETeam GetTeam();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void HandleGameStatusWidget(bool bDisplay);
 };
