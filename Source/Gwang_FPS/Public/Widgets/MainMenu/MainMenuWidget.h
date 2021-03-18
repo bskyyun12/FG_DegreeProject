@@ -8,6 +8,8 @@
 
 class UFPSGameInstance;
 class UButton;
+class UUserWidget;
+class UScrollBox;
 
 UCLASS()
 class GWANG_FPS_API UMainMenuWidget : public UFPSWidgetBase
@@ -16,13 +18,28 @@ class GWANG_FPS_API UMainMenuWidget : public UFPSWidgetBase
 	
 public:
 	void Setup(EInputMode InputMode = EInputMode::UIOnly, bool bShowCursor = true) override;
+	void SetSessionInfoRowClass(TSubclassOf<UUserWidget> InSessionInfoRowClass);
 
 private:
 	UFPSGameInstance* FPSGameInstance;
+
+	TSubclassOf<UUserWidget> SessionInfoRowClass;
 	
 	UPROPERTY(meta = (BindWidget))
-	UButton* Button_Host;
+	UScrollBox* ScrollBox_SessionList;
 
+	UPROPERTY(meta = (BindWidget))
+	UButton* Button_Host;
 	UFUNCTION()
 	void OnClicked_Button_Host();
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Button_Find;
+	UFUNCTION()
+	void OnClicked_Button_Find();
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Button_Join;
+	UFUNCTION()
+	void OnClicked_Button_Join();
 };

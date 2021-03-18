@@ -7,7 +7,7 @@
 
 #include "GameFramework/PlayerController.h"
 #include "Engine/Engine.h"
-#include "Widgets/MainMenuWidget.h"
+#include "Widgets/MainMenu/MainMenuWidget.h"
 
 UFPSGameInstance::UFPSGameInstance(const FObjectInitializer& ObjectIn)
 {
@@ -27,6 +27,7 @@ void UFPSGameInstance::Init()
 		{
 			SessionInterface->OnCreateSessionCompleteDelegates.AddUObject(this, &UFPSGameInstance::OnCreateSessionComplete);
 			SessionInterface->OnDestroySessionCompleteDelegates.AddUObject(this, &UFPSGameInstance::OnDestroySessionComplete);
+			SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(this, &UFPSGameInstance::OnFindSessionComplete);
 		}
 	}
 }
@@ -36,6 +37,9 @@ void UFPSGameInstance::CreateSession()
 	if (SessionInterface != nullptr)
 	{
 		FOnlineSessionSettings SessionSettings;
+		SessionSettings.bIsLANMatch = true;
+		SessionSettings.NumPublicConnections = 6;
+		SessionSettings.bShouldAdvertise = true;
 		SessionInterface->CreateSession(0, SessionName, SessionSettings);
 	}
 }
@@ -45,7 +49,7 @@ void UFPSGameInstance::OnCreateSessionComplete(FName Name, bool bSuccess)
 	UE_LOG(LogTemp, Warning, TEXT("UFPSGameInstance::OnCreateSessionComplete"));
 	if (!bSuccess)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Could not create the session!"));
+		UE_LOG(LogTemp, Warning, TEXT("Could not create session!"));
 		return;
 	}
 }
@@ -55,38 +59,33 @@ void UFPSGameInstance::OnDestroySessionComplete(FName Name, bool bSuccess)
 	UE_LOG(LogTemp, Warning, TEXT("UFPSGameInstance::OnDestroySessionComplete"));
 	if (!bSuccess)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Could not destroy the session!"));
+		UE_LOG(LogTemp, Warning, TEXT("Could not destroy session!"));
 		return;
 	}
 	CreateSession();
 }
 
-void UFPSGameInstance::LoadMenuwidget()
+void UFPSGameInstance::OnFindSessionComplete(bool bSuccess)
 {
+	UE_LOG(LogTemp, Warning, TEXT("UFPSGameInstance::OnFindSessionComplete"));
+	if (!bSuccess)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Could not find session!"));
+		return;
+	}	
 
+	if (SessionSearch != nullptr)
+	{
+		for (const FOnlineSessionSearchResult& Result : SessionSearch->SearchResults)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Found: %s"), *Result.GetSessionIdStr());
+		}
+	}
 }
 
-void UFPSGameInstance::JoinWithIP(const FString& IPAddress)
-{
-	UEngine* Engine = GetEngine();
-	if (!ensure(Engine != nullptr))
-	{
-		return;
-	}
-	Engine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, FString::Printf(TEXT("Joinning: %s"), *IPAddress));
-
-	APlayerController* PlayerController = GetFirstLocalPlayerController();
-	if (!ensure(PlayerController != nullptr))
-	{
-		return;
-	}
-	PlayerController->ClientTravel(IPAddress, ETravelType::TRAVEL_Absolute);
-}
-
-void UFPSGameInstance::SetMainMenuWidget(TSubclassOf<UUserWidget> MainMenuClass)
+void UFPSGameInstance::LoadMainMenu(TSubclassOf<UUserWidget> MainMenuWidgetClass, TSubclassOf<UUserWidget> SessionInfoRowClass)
 {
 	UE_LOG(LogTemp, Warning, TEXT("UFPSGameInstance::SetMainMenuWidget"));
-	MainMenuWidgetClass = MainMenuClass;
 
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
@@ -99,6 +98,20 @@ void UFPSGameInstance::SetMainMenuWidget(TSubclassOf<UUserWidget> MainMenuClass)
 		return;
 	}
 	MainMenu->Setup();
+	MainMenu->SetSessionInfoRowClass(SessionInfoRowClass);
+}
+
+void UFPSGameInstance::Find_Implementation()
+{
+	if (SessionInterface != nullptr)
+	{
+		SessionSearch = MakeShareable(new FOnlineSessionSearch());
+		SessionSearch->bIsLanQuery = true;
+		if (SessionSearch != nullptr)
+		{
+			SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
+		}
+	}
 }
 
 void UFPSGameInstance::Host_Implementation()

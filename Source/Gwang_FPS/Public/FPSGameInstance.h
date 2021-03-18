@@ -5,11 +5,12 @@
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
 #include "OnlineSubSystem.h"
-#include "Widgets/MainMenuInterface.h"
+#include "Widgets/MainMenu/MainMenuInterface.h"
 #include "FPSGameInstance.generated.h"
 
 class UUserWidget;
 class UMainMenuWidget;
+class FOnlineSessionSearch;
 
 UCLASS()
 class GWANG_FPS_API UFPSGameInstance : public UGameInstance, public IMainMenuInterface
@@ -21,32 +22,27 @@ public:
 
 	void Init() override;
 
-	UFUNCTION(BlueprintCallable)
-	void LoadMenuwidget();
-
-	UFUNCTION(Exec)
-	void JoinWithIP(const FString& IPAddress);
-
-	void SetMainMenuWidget(TSubclassOf<UUserWidget> MainMenuClass);
+	void LoadMainMenu(TSubclassOf<UUserWidget> MainMenuWidgetClass, TSubclassOf<UUserWidget> SessionInfoRowClass);
 
 	//////////////////////
 	// IMainMenuInterface
-
 	void Host_Implementation() override;
-
+	void Find_Implementation() override;
 	// IMainMenuInterface
 	//////////////////////
 
 private:
 	IOnlineSessionPtr SessionInterface;
 
+	TSharedPtr<FOnlineSessionSearch> SessionSearch;
+
 	FName SessionName = TEXT("Gwang Session Game");
 
-	TSubclassOf<UUserWidget> MainMenuWidgetClass;
 	UMainMenuWidget* MainMenu;
 
 private:
 	void CreateSession();
 	void OnCreateSessionComplete(FName Name, bool bSuccess);
 	void OnDestroySessionComplete(FName Name, bool bSuccess);
+	void OnFindSessionComplete(bool bSuccess);
 };

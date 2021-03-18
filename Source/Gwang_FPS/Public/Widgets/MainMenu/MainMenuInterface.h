@@ -24,4 +24,7 @@ class GWANG_FPS_API IMainMenuInterface
 public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void Host();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void Find();
 };

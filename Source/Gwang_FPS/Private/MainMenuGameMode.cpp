@@ -12,7 +12,13 @@ void AMainMenuGameMode::BeginPlay()
 	Super::BeginPlay();
 
 	UE_LOG(LogTemp, Warning, TEXT("AMainMenuGameMode::BeginPlay()"));
+
 	if (!ensure(MainMenuWidgetClass != nullptr))
+	{
+		return;
+	}
+
+	if (!ensure(SessionInfoRowClass != nullptr))
 	{
 		return;
 	}
@@ -26,6 +32,6 @@ void AMainMenuGameMode::BeginPlay()
 	UFPSGameInstance* FPSGameInstance = Cast<UFPSGameInstance>(UGameplayStatics::GetGameInstance(World));
 	if (FPSGameInstance != nullptr)
 	{
-		FPSGameInstance->SetMainMenuWidget(MainMenuWidgetClass);
+		FPSGameInstance->LoadMainMenu(MainMenuWidgetClass, SessionInfoRowClass);
 	}
 }
