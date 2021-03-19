@@ -164,7 +164,8 @@ void AFPSGameMode::CheckGameOver(int MarvelScore, int DCScore)
 	{
 		OnEndGame.Broadcast(ETeam::Marvel);
 	}
-	else
+
+	if (DCWon)
 	{
 		OnEndGame.Broadcast(ETeam::DC);
 	}

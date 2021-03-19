@@ -58,7 +58,7 @@ void UFPSGameInstance::OnCreateSessionComplete(FName Name, bool bSuccess)
 	{
 		return;
 	}
-	World->ServerTravel("/Game/FPSGame/Maps/Gwang_FPS?listen");
+	World->ServerTravel("/Game/Maps/Gwang_FPS?listen");
 }
 
 void UFPSGameInstance::OnDestroySessionComplete(FName Name, bool bSuccess)
@@ -176,7 +176,7 @@ void UFPSGameInstance::Find_Implementation()
 	if (SessionInterface != nullptr)
 	{
 		SessionSearch = MakeShareable(new FOnlineSessionSearch());
-		SessionSearch->bIsLanQuery = true;
+		//SessionSearch->bIsLanQuery = true;
 		if (SessionSearch != nullptr)
 		{
 			SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
