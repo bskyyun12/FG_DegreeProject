@@ -51,7 +51,20 @@ struct FWeaponInfo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* WalkAnim;
 
-	FWeaponInfo() {}
+	FWeaponInfo() 
+	{
+		Damage = 10.f;
+		MaxAmmo = 20;
+		Range = 10000.f;
+		FireRate = 0.2f;
+		FP_EquipAnim = nullptr;
+		FP_ArmsReploadAnim = nullptr;
+		FP_WeaponReploadAnim = nullptr;
+		HideAnim = nullptr;
+		FireAnim = nullptr;
+		IdleAnim = nullptr;
+		WalkAnim = nullptr;
+	}
 };
 
 UENUM(BlueprintType)

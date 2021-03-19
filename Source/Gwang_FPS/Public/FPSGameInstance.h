@@ -4,8 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
+
 #include "OnlineSubSystem.h"
+#include "Interfaces/OnlineSessionInterface.h"
 #include "Widgets/MainMenu/MainMenuInterface.h"
+
 #include "FPSGameInstance.generated.h"
 
 class UUserWidget;
@@ -28,6 +31,7 @@ public:
 	// IMainMenuInterface
 	void Host_Implementation() override;
 	void Find_Implementation() override;
+	void Join_Implementation(int SessionindexToJoin) override;
 	// IMainMenuInterface
 	//////////////////////
 
@@ -45,4 +49,5 @@ private:
 	void OnCreateSessionComplete(FName Name, bool bSuccess);
 	void OnDestroySessionComplete(FName Name, bool bSuccess);
 	void OnFindSessionComplete(bool bSuccess);
+	void OnJoinSessionComplete(FName Name, EOnJoinSessionCompleteResult::Type Type);
 };

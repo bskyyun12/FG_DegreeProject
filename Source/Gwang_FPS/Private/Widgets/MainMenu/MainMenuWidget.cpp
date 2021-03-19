@@ -5,6 +5,7 @@
 #include "Components/Button.h"
 #include "Components/ScrollBox.h"
 #include "Kismet/GameplayStatics.h"
+#include "OnlineSessionSettings.h"
 
 #include "FPSGameInstance.h"
 #include "Widgets/MainMenu/MainMenuInterface.h"
@@ -35,6 +36,34 @@ void UMainMenuWidget::SetSessionInfoRowClass(TSubclassOf<UUserWidget> InSessionI
 	SessionInfoRowClass = InSessionInfoRowClass;
 }
 
+void UMainMenuWidget::UpdateSessionList(TArray<FOnlineSessionSearchResult> SearchResults)
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	ScrollBox_SessionList->ClearChildren();
+	for (int i = 0; i < SearchResults.Num(); i++)
+	{
+		USessionInfoRow* Row = CreateWidget<USessionInfoRow>(World, SessionInfoRowClass);
+		if (!ensure(Row != nullptr))
+		{
+			return;
+		}
+		Row->InitializeRow(this, i);
+		Row->SetSessionName(SearchResults[i].GetSessionIdStr());
+		ScrollBox_SessionList->AddChild(Row);
+	}
+}
+
+void UMainMenuWidget::SetSelectIndex(int Index)
+{
+	SelectedIndex = Index;
+	OnUpdateUI.Broadcast(SelectedIndex);
+}
+
 void UMainMenuWidget::OnClicked_Button_Host()
 {
 	UE_LOG(LogTemp, Warning, TEXT("UMainMenuWidget::OnClicked_Button_Host()"));
@@ -56,16 +85,17 @@ void UMainMenuWidget::OnClicked_Button_Find()
 void UMainMenuWidget::OnClicked_Button_Join()
 {
 	UE_LOG(LogTemp, Warning, TEXT("UMainMenuWidget::OnClicked_Button_Join()"));
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
+	if (SelectedIndex != -1)
 	{
-		return;
+		UE_LOG(LogTemp, Warning, TEXT("SelectedIndex: %d"), SelectedIndex);
 	}
-	USessionInfoRow* Row = CreateWidget<USessionInfoRow>(World, SessionInfoRowClass);
-	if (!ensure(Row != nullptr))
+	else
 	{
-		return;
+		UE_LOG(LogTemp, Warning, TEXT("SelectedIndex: %d"), SelectedIndex);
 	}
 
-	ScrollBox_SessionList->AddChild(Row);
+	if (FPSGameInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(FPSGameInstance, UMainMenuInterface::StaticClass()))
+	{
+		IMainMenuInterface::Execute_Join(FPSGameInstance, SelectedIndex);
+	}
 }

@@ -10,6 +10,7 @@ class UFPSGameInstance;
 class UButton;
 class UUserWidget;
 class UScrollBox;
+class FOnlineSessionSearchResult;
 
 UCLASS()
 class GWANG_FPS_API UMainMenuWidget : public UFPSWidgetBase
@@ -19,6 +20,11 @@ class GWANG_FPS_API UMainMenuWidget : public UFPSWidgetBase
 public:
 	void Setup(EInputMode InputMode = EInputMode::UIOnly, bool bShowCursor = true) override;
 	void SetSessionInfoRowClass(TSubclassOf<UUserWidget> InSessionInfoRowClass);
+	void UpdateSessionList(TArray<FOnlineSessionSearchResult> SearchResults);
+	void SetSelectIndex(int Index);
+
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSessionListDelegate, int, SelectedIndex);
+	FSessionListDelegate OnUpdateUI;
 
 private:
 	UFPSGameInstance* FPSGameInstance;
@@ -42,4 +48,6 @@ private:
 	UButton* Button_Join;
 	UFUNCTION()
 	void OnClicked_Button_Join();
+
+	int SelectedIndex;
 };

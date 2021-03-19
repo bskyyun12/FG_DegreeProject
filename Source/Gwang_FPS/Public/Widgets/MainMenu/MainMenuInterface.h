@@ -27,4 +27,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void Find();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void Join(int SessionindexToJoin);
 };

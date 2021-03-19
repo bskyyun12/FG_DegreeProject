@@ -11,17 +11,20 @@ bool UFPSWidgetBase::Initialize()
 		return false;
 	}
 
-	OwningPlayer = GetOwningPlayer();
-	if (!ensure(OwningPlayer != nullptr))
-	{
-		return false;
-	}
-
 	return true;
 }
 
 void UFPSWidgetBase::Setup(EInputMode InputMode/* = EInputMode::UIOnly*/, bool bShowCursor/* = true*/)
 {
+	if (OwningPlayer == nullptr)
+	{
+		OwningPlayer = GetOwningPlayer();
+		if (!ensure(OwningPlayer != nullptr))
+		{
+			return;
+		}
+	}
+
 	this->AddToViewport();
 	this->bIsFocusable = true;
 
@@ -50,6 +53,15 @@ void UFPSWidgetBase::Setup(EInputMode InputMode/* = EInputMode::UIOnly*/, bool b
 
 void UFPSWidgetBase::Teardown()
 {
+	if (OwningPlayer == nullptr)
+	{
+		OwningPlayer = GetOwningPlayer();
+		if (!ensure(OwningPlayer != nullptr))
+		{
+			return;
+		}
+	}
+
 	this->RemoveFromViewport();
 	this->bIsFocusable = false;
 
