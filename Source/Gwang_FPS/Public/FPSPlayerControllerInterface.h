@@ -23,7 +23,7 @@ public:
 	void StartNewGame();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnTeamSelected(ETeam InTeam);
+	void OnTeamSelected(ETeam Team);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnSpawnPlayer(AFPSCharacter* Player);
@@ -35,7 +35,7 @@ public:
 	void OnPlayerDeath();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void LoadGameOver(bool Victory);
+	ETeam GetTeam();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void ShakeCamera(TSubclassOf<UCameraShakeBase> CameraShake);
@@ -44,8 +44,8 @@ public:
 	void AddControlRotation(const FRotator& RotationToAdd);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	ETeam GetTeam();
+	void HandleGameStatusWidget(bool bDisplay);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void HandleGameStatusWidget(bool bDisplay);
+	void UpdateTeamSelectionUI(ETeam Team);
 };

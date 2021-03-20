@@ -40,10 +40,6 @@ public:
 
 	void OnPlayerDeath_Implementation() override;
 
-	void LoadGameOver_Implementation(bool Victory) override;
-	UFUNCTION(Client, Reliable)
-	void Client_LoadGameOver(bool Victory);
-
 	void ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake) override;
 
 	void AddControlRotation_Implementation(const FRotator& RotationToAdd) override;
@@ -51,6 +47,12 @@ public:
 	ETeam GetTeam_Implementation() override;
 
 	void HandleGameStatusWidget_Implementation(bool bDisplay) override;
+
+	void UpdateTeamSelectionUI_Implementation(ETeam InTeam) override;
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateTeamSelectionUI(ETeam InTeam);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_UpdateTeamSelectionUI(ETeam InTeam, bool bCanJoin);
 	// IFPSPlayerControllerInterface
 	////////////////////////////////
 
@@ -80,14 +82,8 @@ protected:
 	void BeginPlay() override;
 
 	UFUNCTION()
-	void OnUpdateTeamSelectionUI(ETeam InTeam, bool bCanJoinTeam);
-	UFUNCTION(Client, Reliable)
-	void Client_OnUpdateTeamSelectionUI(ETeam InTeam, bool bCanJoinTeam);
-
-	UFUNCTION()
 	void OnEndGame(ETeam WinnerTeam);
-public:
 
-
-
+	UFUNCTION(Client, Reliable)
+	void Client_LoadGameOver(bool Victory);
 };

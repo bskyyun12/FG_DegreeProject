@@ -36,9 +36,36 @@ bool UTeamSelectionWidget::Initialize()
 	return true;
 }
 
+void UTeamSelectionWidget::Setup(EInputMode InputMode /*= EInputMode::UIOnly*/, bool bShowCursor /*= true*/)
+{
+	Super::Setup();
+
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	World->GetTimerManager().SetTimer(UpdateTimer, this, &UTeamSelectionWidget::RequestUIUpdate, 1.f, true);
+}
+
+void UTeamSelectionWidget::Teardown()
+{
+	Super::Teardown();
+
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	World->GetTimerManager().ClearTimer(UpdateTimer);
+}
+
+
 void UTeamSelectionWidget::OnClick_Button_MarvelTeam()
 {
-	if (UKismetSystemLibrary::DoesImplementInterface(OwningPlayer, UFPSPlayerControllerInterface::StaticClass()))
+	if (OwningPlayer != nullptr && UKismetSystemLibrary::DoesImplementInterface(OwningPlayer, UFPSPlayerControllerInterface::StaticClass()))
 	{
 		IFPSPlayerControllerInterface::Execute_OnTeamSelected(OwningPlayer, ETeam::Marvel);
 	}
@@ -46,13 +73,22 @@ void UTeamSelectionWidget::OnClick_Button_MarvelTeam()
 
 void UTeamSelectionWidget::OnClick_Button_DCTeam()
 {
-	if (UKismetSystemLibrary::DoesImplementInterface(OwningPlayer, UFPSPlayerControllerInterface::StaticClass()))
+	if (OwningPlayer != nullptr && UKismetSystemLibrary::DoesImplementInterface(OwningPlayer, UFPSPlayerControllerInterface::StaticClass()))
 	{
 		IFPSPlayerControllerInterface::Execute_OnTeamSelected(OwningPlayer, ETeam::DC);
 	}
 }
 
-void UTeamSelectionWidget::OnUpdateTeamSelectionUI(ETeam Team, bool bCanJoin)
+void UTeamSelectionWidget::RequestUIUpdate()
+{
+	UE_LOG(LogTemp, Warning, TEXT("UTeamSelectionWidget::RequestUIUpdate()"));
+	if (OwningPlayer != nullptr && UKismetSystemLibrary::DoesImplementInterface(OwningPlayer, UFPSPlayerControllerInterface::StaticClass()))
+	{
+		IFPSPlayerControllerInterface::Execute_UpdateTeamSelectionUI(OwningPlayer, ETeam::DC);
+	}
+}
+
+void UTeamSelectionWidget::UpdateTeamSelectionUI(ETeam Team, bool bCanJoin)
 {
 	UE_LOG(LogTemp, Warning, TEXT("UTeamSelectionWidget::OnUpdateTeamSelectionUI()"));
 	if (Team == ETeam::Marvel)

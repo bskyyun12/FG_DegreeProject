@@ -47,9 +47,6 @@ void AFPSPlayerController::Server_StartNewGame_Implementation()
 		return;
 	}
 
-	GameMode->OnUpdateTeamSelectionUI.RemoveAll(this);
-	GameMode->OnUpdateTeamSelectionUI.AddDynamic(this, &AFPSPlayerController::OnUpdateTeamSelectionUI);
-
 	GameMode->OnEndGame.RemoveAll(this);
 	GameMode->OnEndGame.AddDynamic(this, &AFPSPlayerController::OnEndGame);
 
@@ -58,27 +55,102 @@ void AFPSPlayerController::Server_StartNewGame_Implementation()
 	Client_LoadTeamSelection();
 }
 
-void AFPSPlayerController::OnUpdateTeamSelectionUI(ETeam InTeam, bool bCanJoinTeam)
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnUpdateTeamSelectionUI()"));
-	Client_OnUpdateTeamSelectionUI(InTeam, bCanJoinTeam);
-}
-
-void AFPSPlayerController::Client_OnUpdateTeamSelectionUI_Implementation(ETeam InTeam, bool bCanJoinTeam)
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::Client_OnUpdateTeamSelectionUI_Implementation()"));
-
-	if (TeamSelection != nullptr)
-	{
-		TeamSelection->OnUpdateTeamSelectionUI(InTeam, bCanJoinTeam);
-	}
-}
-
+#pragma region Gamemode delegate bindings
 void AFPSPlayerController::OnEndGame(ETeam WinnerTeam)
 {
 	Client_LoadGameOver(WinnerTeam == Team);
 }
 
+void AFPSPlayerController::Client_LoadGameOver_Implementation(bool Victory)
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	GameOverWidget = CreateWidget<UGameOverWidget>(World, GameOverWidgetClass);
+	if (!ensure(GameOverWidget != nullptr))
+	{
+		return;
+	}
+
+	GameOverWidget->Setup();
+	GameOverWidget->SetResultText(Victory);
+}
+
+#pragma endregion
+
+#pragma region Spawn player
+void AFPSPlayerController::OnTeamSelected_Implementation(ETeam InTeam)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnTeamSelected_Implementation()"));
+	if (TeamSelection != nullptr)
+	{
+		TeamSelection->Teardown();
+		Server_OnTeamSelected(InTeam);
+	}
+}
+
+void AFPSPlayerController::Server_OnTeamSelected_Implementation(ETeam InTeam)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::Server_OnTeamSelected_Implementation()"));
+	Team = InTeam;
+	GameMode->SpawnPlayer(this, Team);
+}
+
+void AFPSPlayerController::OnSpawnPlayer_Implementation(AFPSCharacter* PooledPlayer)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnSpawnPlayer_Implementation()"));
+	if (PooledPlayer != nullptr)
+	{
+		FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
+		PooledPlayer->SetActorTransform(SpawnTransform);
+
+		this->Possess(PooledPlayer);
+	}
+}
+#pragma endregion
+
+#pragma region Widgets load/unload
+void AFPSPlayerController::Client_LoadTeamSelection_Implementation()
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	TeamSelection = CreateWidget<UTeamSelectionWidget>(World, TeamSelectionClass);
+	if (!ensure(TeamSelection != nullptr))
+	{
+		return;
+	}
+
+	TeamSelection->Setup();
+}
+
+void AFPSPlayerController::UpdateTeamSelectionUI_Implementation(ETeam InTeam)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::UpdateTeamSelectionUI_Implementation()"));
+	Server_UpdateTeamSelectionUI(Team);
+}
+
+void AFPSPlayerController::Server_UpdateTeamSelectionUI_Implementation(ETeam InTeam)
+{
+	Multicast_UpdateTeamSelectionUI(InTeam, GameMode->CanJoin(InTeam));
+}
+
+void AFPSPlayerController::Multicast_UpdateTeamSelectionUI_Implementation(ETeam InTeam, bool bCanJoin)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::Multicast_UpdateTeamSelectionUI_Implementation()"));
+	if (TeamSelection != nullptr)
+	{
+		TeamSelection->UpdateTeamSelectionUI(InTeam, bCanJoin);
+	}
+}
+
+// Game status widget(score board / tap widget)
 void AFPSPlayerController::HandleGameStatusWidget_Implementation(bool bDisplay)
 {
 	if (bDisplay)
@@ -103,77 +175,12 @@ void AFPSPlayerController::HandleGameStatusWidget_Implementation(bool bDisplay)
 		}
 	}
 }
+#pragma endregion
 
-void AFPSPlayerController::Client_LoadGameOver_Implementation(bool Victory)
+#pragma region Death and Respawn
+void AFPSPlayerController::OnPlayerDeath_Implementation()
 {
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-
-	GameOverWidget = CreateWidget<UGameOverWidget>(World, GameOverWidgetClass);
-	if (!ensure(GameOverWidget != nullptr))
-	{
-		return;
-	}
-
-	GameOverWidget->Setup();
-	GameOverWidget->SetResultText(Victory);
-}
-
-void AFPSPlayerController::AddControlRotation_Implementation(const FRotator& RotationToAdd)
-{
-	FRotator Rotation = GetControlRotation();
-	SetControlRotation(Rotation + RotationToAdd);
-}
-
-void AFPSPlayerController::Client_LoadTeamSelection_Implementation()
-{
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-
-	TeamSelection = CreateWidget<UTeamSelectionWidget>(World, TeamSelectionClass);
-	if (!ensure(TeamSelection != nullptr))
-	{
-		return;
-	}
-
-	TeamSelection->Setup();
-}
-
-void AFPSPlayerController::OnTeamSelected_Implementation(ETeam InTeam)
-{
-	if (TeamSelection != nullptr)
-	{
-		TeamSelection->Teardown();
-		Server_OnTeamSelected(InTeam);
-	}
-}
-
-void AFPSPlayerController::Server_OnTeamSelected_Implementation(ETeam InTeam)
-{
-	Team = InTeam;
-
-	// Shouldn't fail to spawn but if does, start over
-	if (GameMode->SpawnPlayer(this, Team) == false)
-	{
-		StartNewGame_Implementation();
-	}
-}
-
-void AFPSPlayerController::OnSpawnPlayer_Implementation(AFPSCharacter* PooledPlayer)
-{
-	if (PooledPlayer != nullptr)
-	{
-		FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
-		PooledPlayer->SetActorTransform(SpawnTransform);
-
-		this->Possess(PooledPlayer);
-	}
+	GameMode->OnPlayerDeath(this, Team);
 }
 
 void AFPSPlayerController::RespawnPlayer_Implementation()
@@ -186,17 +193,7 @@ void AFPSPlayerController::RespawnPlayer_Implementation()
 		GetPawn()->SetActorTransform(SpawnTransform);
 	}
 }
-
-void AFPSPlayerController::OnPlayerDeath_Implementation()
-{
-	GameMode->OnPlayerDeath(this, Team);
-}
-
-void AFPSPlayerController::LoadGameOver_Implementation(bool Victory)
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::LoadGameOver_Implementation"));
-	Client_LoadGameOver(Victory);
-}
+#pragma endregion
 
 void AFPSPlayerController::ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake)
 {
@@ -205,6 +202,12 @@ void AFPSPlayerController::ShakeCamera_Implementation(TSubclassOf<UCameraShakeBa
 	{
 		ClientStartCameraShake(CameraShake);
 	}
+}
+
+void AFPSPlayerController::AddControlRotation_Implementation(const FRotator& RotationToAdd)
+{
+	FRotator Rotation = GetControlRotation();
+	SetControlRotation(Rotation + RotationToAdd);
 }
 
 ETeam AFPSPlayerController::GetTeam_Implementation()

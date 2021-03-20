@@ -26,14 +26,6 @@ void AFPSGameMode::PostLogin(APlayerController* NewPlayer)
 	}
 }
 
-void AFPSGameMode::StartNewGame(APlayerController* PlayerController)
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::StartNewGame()"));
-	FreePlayer(PlayerController);
-
-	OnStartNewGame.Broadcast();
-}
-
 void AFPSGameMode::BeginPlay()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::BeginPlay()"));
@@ -50,16 +42,29 @@ void AFPSGameMode::BeginPlay()
 	SetupPlayerPool();
 }
 
-bool AFPSGameMode::SpawnPlayer(APlayerController* PlayerController, ETeam Team)
+void AFPSGameMode::StartNewGame(APlayerController* PlayerController)
 {
-	AFPSCharacter* PooledPlayer = PoolPlayer(Team);
-	if (PooledPlayer == nullptr)
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::StartNewGame()"));
+	if (PlayerController != nullptr)
 	{
-		return false;
+		FreePlayer(PlayerController->GetPawn());
 	}
 
+	OnStartNewGame.Broadcast();
+}
+
+void AFPSGameMode::SpawnPlayer(APlayerController* PlayerController, ETeam Team)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::SpawnPlayer()"));
 	if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
 	{
+		AFPSCharacter* PooledPlayer = PoolPlayer(Team);
+		if (PooledPlayer == nullptr)
+		{
+			IFPSPlayerControllerInterface::Execute_StartNewGame(PlayerController);
+			return;
+		}
+
 		if (Team == ETeam::Marvel)
 		{
 			IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, PooledPlayer);
@@ -69,22 +74,20 @@ bool AFPSGameMode::SpawnPlayer(APlayerController* PlayerController, ETeam Team)
 			IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, PooledPlayer);
 		}
 	}
-
-	OnUpdateTeamSelectionUI.Broadcast(Team, CanJoin(Team));
-
-	return true;
 }
 
 AFPSCharacter* AFPSGameMode::PoolPlayer(ETeam Team)
 {
+	AFPSCharacter* PlayerToPool = nullptr;
+
 	if (Team == ETeam::Marvel)
 	{
 		for (int i = 0; i < MarvelTeamPlayers.Num(); i++)
 		{
 			if (MarvelTeamPlayers[i] != nullptr && MarvelTeamPlayers[i]->GetController() == nullptr)
 			{
-				MarvelTeamPlayers[i]->SetActorHiddenInGame(false);
-				return MarvelTeamPlayers[i];
+				PlayerToPool = MarvelTeamPlayers[i];
+				break;
 			}
 		}
 	}
@@ -94,13 +97,19 @@ AFPSCharacter* AFPSGameMode::PoolPlayer(ETeam Team)
 		{
 			if (DCTeamPlayers[i] != nullptr && DCTeamPlayers[i]->GetController() == nullptr)
 			{
-				DCTeamPlayers[i]->SetActorHiddenInGame(false);
-				return DCTeamPlayers[i];
+				PlayerToPool = DCTeamPlayers[i];
+				break;
 			}
 		}
 	}
 
-	return nullptr;
+	if (PlayerToPool != nullptr)
+	{
+		PlayerToPool->SetActorHiddenInGame(false);
+		PlayerToPool->SetActorEnableCollision(true);
+	}
+
+	return PlayerToPool;
 }
 
 bool AFPSGameMode::CanJoin(ETeam Team)
@@ -129,15 +138,17 @@ bool AFPSGameMode::CanJoin(ETeam Team)
 	return false;
 }
 
-void AFPSGameMode::FreePlayer(APlayerController* PlayerController)
+void AFPSGameMode::FreePlayer(APawn* Player)
 {
-	if (PlayerController != nullptr)
+	if (Player != nullptr)
 	{
-		if (PlayerController->GetPawn() != nullptr)
+		Player->SetActorHiddenInGame(true);
+		Player->SetActorEnableCollision(false);
+
+		if (Player->GetController() != nullptr)
 		{
-			PlayerController->GetPawn()->SetActorHiddenInGame(true);
+			Player->GetController()->UnPossess();
 		}
-		PlayerController->UnPossess();
 	}
 }
 
@@ -153,7 +164,10 @@ void AFPSGameMode::OnPlayerDeath(APlayerController* PlayerController, ETeam Team
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::OnPlayerDeath()"));
 
-	FPSGameState->OnPlayerDeath(Team);
+	if (FPSGameState != nullptr)
+	{
+		FPSGameState->OnPlayerDeath(Team);
+	}
 }
 
 void AFPSGameMode::CheckGameOver(int MarvelScore, int DCScore)
@@ -190,14 +204,14 @@ void AFPSGameMode::SetupPlayerPool()
 	for (int i = 0; i < MaxPlayerPerTeam; i++)
 	{
 		AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(MarvelTeamCharacter, GetRandomPlayerStarts(ETeam::Marvel), SpawnParams);
-		SpawnedCharacter->SetActorHiddenInGame(true);
+		FreePlayer(SpawnedCharacter);
 		MarvelTeamPlayers.Add(SpawnedCharacter);
 	}
 
 	for (int i = 0; i < MaxPlayerPerTeam; i++)
 	{
 		AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(DCTeamCharacter, GetRandomPlayerStarts(ETeam::DC), SpawnParams);
-		SpawnedCharacter->SetActorHiddenInGame(true);
+		FreePlayer(SpawnedCharacter);
 		DCTeamPlayers.Add(SpawnedCharacter);
 	}
 }

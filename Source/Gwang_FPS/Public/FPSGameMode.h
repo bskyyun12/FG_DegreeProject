@@ -24,18 +24,15 @@ public:
 
 	FTransform GetRandomPlayerStarts(ETeam Team);
 
-	bool SpawnPlayer(APlayerController* PlayerController, ETeam Team);
+	void SpawnPlayer(APlayerController* PlayerController, ETeam Team);
 
 	void OnPlayerDeath(APlayerController* PlayerController, ETeam Team);
 
-	void FreePlayer(APlayerController* PlayerController);
+	void FreePlayer(APawn* Player);
 
 	bool CanJoin(ETeam Team);
 
 	void CheckGameOver(int MarvelScore, int DCScore);
-
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FTeamSelectionDelegate, ETeam, Team, bool, bCanJoinTeam);
-	FTeamSelectionDelegate OnUpdateTeamSelectionUI;
 
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStartGameDelegate);
 	FStartGameDelegate OnStartNewGame;

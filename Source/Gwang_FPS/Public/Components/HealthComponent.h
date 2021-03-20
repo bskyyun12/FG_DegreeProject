@@ -16,6 +16,8 @@ public:
 	// Sets default values for this component's properties
 	UHealthComponent();
 
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	void Reset();
 
 	UFUNCTION(Server, Reliable)
@@ -41,6 +43,12 @@ protected:
 private:
 	UPROPERTY(EditDefaultsOnly)
 	float MaxHealth = 100.f;
+
+	UPROPERTY(ReplicatedUsing=OnRep_bIsDead)
+	bool bIsDead;
+
+	UFUNCTION()
+	void OnRep_bIsDead();
 
 	float CurrentHealth;
 };

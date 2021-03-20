@@ -19,10 +19,12 @@ class GWANG_FPS_API UTeamSelectionWidget : public UFPSWidgetBase
 public:
 	virtual bool Initialize() override;
 
-	void OnTeamFilled(ETeam Team, bool bCanJoinTeam);
+	void Setup(EInputMode InputMode = EInputMode::UIOnly, bool bShowCursor = true) override;
+
+	void Teardown() override;
 
 	UFUNCTION()
-	void OnUpdateTeamSelectionUI(ETeam Team, bool bCanJoin);
+	void UpdateTeamSelectionUI(ETeam Team, bool bCanJoin);
 
 private:
 	UPROPERTY(meta = (BindWidget))
@@ -37,10 +39,18 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	UImage* Image_DCTeam;
 
+	FTimerHandle UpdateTimer;
+
 private:
 	UFUNCTION()
 	void OnClick_Button_MarvelTeam();
 
 	UFUNCTION()
 	void OnClick_Button_DCTeam();
+
+	UFUNCTION()
+	void RequestUIUpdate();
+
+
+	AFPSGameStateBase* FPSGameState;
 };

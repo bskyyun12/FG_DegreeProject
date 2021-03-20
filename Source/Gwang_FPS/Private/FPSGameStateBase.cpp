@@ -52,14 +52,3 @@ void AFPSGameStateBase::OnPlayerDeath(ETeam Team)
 		}
 	}
 }
-
-void AFPSGameStateBase::OnRep_MarvelScore()
-{
-	UE_LOG(LogTemp, Warning, TEXT("Client: MarvelScore(%i), DCScore(%i)"), MarvelScore, DCScore);
-	// TODO: Update score UI
-}
-
-void AFPSGameStateBase::OnRep_DCScore()
-{
-	UE_LOG(LogTemp, Warning, TEXT("Client: MarvelScore(%i), DCScore(%i)"), MarvelScore, DCScore);
-}

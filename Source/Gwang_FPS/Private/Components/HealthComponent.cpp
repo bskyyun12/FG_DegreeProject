@@ -2,6 +2,7 @@
 
 
 #include "Components/HealthComponent.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values for this component's properties
 UHealthComponent::UHealthComponent()
@@ -16,11 +17,19 @@ void UHealthComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	SetIsReplicated(true);
 	Reset();
+}
+
+void UHealthComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(UHealthComponent, bIsDead);
 }
 
 void UHealthComponent::Reset()
 {
+	bIsDead = false; // OnRep_bIsDead
 	CurrentHealth = MaxHealth;
 }
 
@@ -40,11 +49,20 @@ void UHealthComponent::Server_AddHealth_Implementation(float ValueToAdd)
 
 	if (CurrentHealth <= 0.f)
 	{
+		bIsDead = true;	// OnRep_bIsDead
 		OnDeath.Broadcast();
 	}
 }
 
 bool UHealthComponent::IsDead()
 {
-	return CurrentHealth <= 0.f;
+	return bIsDead;
+}
+
+void UHealthComponent::OnRep_bIsDead()
+{
+	if (bIsDead)
+	{
+		OnDeath.Broadcast();
+	}
 }

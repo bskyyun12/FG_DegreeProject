@@ -7,7 +7,6 @@
 #include "FPSWidgetBase.generated.h"
 
 class APlayerController;
-class AFPSGameMode;
 
 UENUM(BlueprintType)
 enum class EInputMode : uint8

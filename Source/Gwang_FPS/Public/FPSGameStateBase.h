@@ -20,20 +20,14 @@ public:
 	void OnPlayerDeath(ETeam Team);
 
 private:
-	UPROPERTY(ReplicatedUsing = OnRep_MarvelScore)
-	int MarvelScore;
-
-	UFUNCTION()
-	void OnRep_MarvelScore();
-
-	UPROPERTY(ReplicatedUsing = OnRep_DCScore)
-	int DCScore;
-
-	UFUNCTION()
-	void OnRep_DCScore();
-
 	UPROPERTY()
 	AFPSGameMode* FPSGameMode;
+
+	UPROPERTY(Replicated)
+	int MarvelScore;
+
+	UPROPERTY(Replicated)
+	int DCScore;
 
 private:
 	UFUNCTION()

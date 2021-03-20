@@ -8,7 +8,6 @@
 #include "Components/CapsuleComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "Net/UnrealNetwork.h" // GetLifetimeReplicatedProps
 
 #include "Animation/AnimInstance.h"
 #include "AnimInstances/FPSAnimInterface.h"
@@ -61,12 +60,6 @@ void AFPSCharacter::BeginPlay()
 
 	DefaultCameraRelativeLocation = CameraContainer->GetRelativeLocation();
 	DefaultCharacterMeshRelativeTransform = FPSCharacterMesh->GetRelativeTransform();
-}
-
-void AFPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AFPSCharacter, bIsDead);
 }
 
 // Called to bind functionality to input
@@ -158,6 +151,11 @@ void AFPSCharacter::Multicast_LookUp_Implementation(FRotator CameraRot)
 
 void AFPSCharacter::OnBeginFire()
 {
+	if (HealthComponent != nullptr && HealthComponent->IsDead())
+	{
+		return;
+	}
+
 	if (CurrentWeapon != nullptr)
 	{
 		CurrentWeapon->Client_OnBeginFireWeapon();
@@ -176,6 +174,11 @@ void AFPSCharacter::Server_OnBeginFire_Implementation(AFPSWeaponBase* Weapon)
 
 void AFPSCharacter::OnEndFire()
 {
+	if (HealthComponent != nullptr && HealthComponent->IsDead())
+	{
+		return;
+	}
+
 	if (CurrentWeapon != nullptr)
 	{
 		CurrentWeapon->Client_OnEndFireWeapon();
@@ -194,6 +197,11 @@ void AFPSCharacter::Server_OnEndFire_Implementation(AFPSWeaponBase* Weapon)
 
 void AFPSCharacter::Pickup()
 {
+	if (HealthComponent != nullptr && HealthComponent->IsDead())
+	{
+		return;
+	}
+
 	if (CurrentWeapon != nullptr)
 	{
 		// TODO: swap weapon here?
@@ -210,6 +218,11 @@ void AFPSCharacter::Pickup()
 
 void AFPSCharacter::Reload()
 {
+	if (HealthComponent != nullptr && HealthComponent->IsDead())
+	{
+		return;
+	}
+
 	if (CurrentWeapon != nullptr)
 	{
 		CurrentWeapon->Client_Reload();
@@ -226,6 +239,11 @@ void AFPSCharacter::HandleGameStatusWidget(bool bDisplay)
 
 void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 {
+	if (HealthComponent != nullptr && HealthComponent->IsDead())
+	{
+		return;
+	}
+
 	if (Weapon != nullptr)
 	{
 		Server_EquipWeapon(Weapon);
@@ -275,46 +293,38 @@ void AFPSCharacter::OnHealthAcquired()
 
 void AFPSCharacter::OnDeath()
 {
-	bIsDead = true;	// OnRep_bIsDead()
 	CollisionHandleOnDeath();
-
-	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
-	{
-		IFPSPlayerControllerInterface::Execute_OnPlayerDeath(GetController());
-	}
 
 	FTimerHandle RespawnTimer;
 	GetWorld()->GetTimerManager().SetTimer(RespawnTimer, [&]()
 		{
 			RespawnPlayer();
 		}, RespawnDelay, false);
+
+	if (HasAuthority())
+	{
+		if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
+		{
+			IFPSPlayerControllerInterface::Execute_OnPlayerDeath(GetController());
+		}
+	}
 }
 
 void AFPSCharacter::RespawnPlayer()
 {
-	bIsDead = false;	// OnRep_bIsDead()
 	CollisionHandleOnRespawn();
 
-	if (HealthComponent != nullptr)
+	if (HasAuthority())
 	{
-		HealthComponent->Reset();
-	}
+		if (HealthComponent != nullptr)
+		{
+			HealthComponent->Reset();
+		}
 
-	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
-	{
-		IFPSPlayerControllerInterface::Execute_RespawnPlayer(GetController());
-	}
-}
-
-void AFPSCharacter::OnRep_bIsDead()
-{
-	if (bIsDead)
-	{
-		CollisionHandleOnDeath();
-	}
-	else
-	{
-		CollisionHandleOnRespawn();
+		if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
+		{
+			IFPSPlayerControllerInterface::Execute_RespawnPlayer(GetController());
+		}
 	}
 }
 
