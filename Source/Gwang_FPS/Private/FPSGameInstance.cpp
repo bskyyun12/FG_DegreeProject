@@ -20,7 +20,7 @@ void UFPSGameInstance::Init()
 	IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
 	if (Subsystem != nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Subsystem: %s okay!"), *Subsystem->GetSubsystemName().ToString());
+		UE_LOG(LogTemp, Warning, TEXT("Found Subsystem: %s"), *Subsystem->GetSubsystemName().ToString());
 		SessionInterface = Subsystem->GetSessionInterface();
 		if (SessionInterface != nullptr)
 		{
@@ -37,9 +37,10 @@ void UFPSGameInstance::CreateSession()
 	if (SessionInterface != nullptr)
 	{
 		FOnlineSessionSettings SessionSettings;
-		SessionSettings.bIsLANMatch = true;
+		SessionSettings.bIsLANMatch = false;
 		SessionSettings.NumPublicConnections = 6;
 		SessionSettings.bShouldAdvertise = true;
+		SessionSettings.bUsesPresence = true;
 		SessionInterface->CreateSession(0, SessionName, SessionSettings);
 	}
 }
@@ -176,7 +177,9 @@ void UFPSGameInstance::Find_Implementation()
 	if (SessionInterface != nullptr)
 	{
 		SessionSearch = MakeShareable(new FOnlineSessionSearch());
-		//SessionSearch->bIsLanQuery = true;
+		SessionSearch->bIsLanQuery = false;
+		SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
+		SessionSearch->MaxSearchResults = 100;
 		if (SessionSearch != nullptr)
 		{
 			SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
