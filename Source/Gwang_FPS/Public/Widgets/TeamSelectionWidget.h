@@ -10,6 +10,7 @@
 
 class UButton;
 class UImage;
+class AFPSGameStateBase;
 
 UCLASS()
 class GWANG_FPS_API UTeamSelectionWidget : public UFPSWidgetBase
@@ -50,7 +51,6 @@ private:
 
 	UFUNCTION()
 	void RequestUIUpdate();
-
 
 	AFPSGameStateBase* FPSGameState;
 };

@@ -5,11 +5,13 @@
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 //#include "Net/UnrealNetwork.h" // GetLifetimeReplicatedProps
 
-#include "./FPSCharacterInterface.h"
 #include "FPSCharacter.h"
+#include "FPSCharacterInterface.h"
+#include "FPSPlayerControllerInterface.h"
 
 // Sets default values
 AFPSWeaponBase::AFPSWeaponBase()
@@ -44,6 +46,11 @@ void AFPSWeaponBase::BeginPlay()
 	Super::BeginPlay();
 }
 
+EWeaponType AFPSWeaponBase::GetWeaponType()
+{
+	return WeaponType;
+}
+
 //void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 //{
 //	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -55,16 +62,29 @@ void AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* Own
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation()"));
 	this->SetOwner(OwnerCharacter);
 	this->SetInstigator(OwnerCharacter);
+
+	if (OwnerCharacter != nullptr && UKismetSystemLibrary::DoesImplementInterface(OwnerCharacter, UFPSCharacterInterface::StaticClass()))
+	{
+		USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(OwnerCharacter);
+		if (ArmMesh != nullptr)
+		{
+			FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.FP_ArmsSocketName);
+
+			UAnimInstance* AnimInstance = ArmMesh->GetAnimInstance();
+			if (AnimInstance != nullptr)
+			{
+				if (WeaponInfo.FP_EquipAnim != nullptr)
+				{
+					AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
+				}
+			}
+		}
+	}
 }
 
 void AFPSWeaponBase::Client_OnFPWeaponDroped_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnFPWeaponDroped_Implementation()"));
-}
-
-void AFPSWeaponBase::Client_Reload_Implementation()
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_Reload_Implementation()"));
 }
 
 void AFPSWeaponBase::Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
@@ -77,6 +97,13 @@ void AFPSWeaponBase::Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* Own
 	TPWeaponMesh->SetSimulatePhysics(false);
 	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	if (OwnerCharacter != nullptr && UKismetSystemLibrary::DoesImplementInterface(OwnerCharacter, UFPSCharacterInterface::StaticClass()))
+	{
+		USkeletalMeshComponent* CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(OwnerCharacter);
+
+		TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
+	}
 }
 
 void AFPSWeaponBase::Server_OnTPWeaponDroped_Implementation()
@@ -94,38 +121,207 @@ void AFPSWeaponBase::OnRep_Owner()
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
+AFPSWeaponBase* AFPSWeaponBase::GetWeapon_Implementation()
+{
+	return this;
+}
+
+#pragma region Server Fire
+void AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation"));
+
+	if (CanFire() == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CanFire() == false"));
+		return;
+	}
+
+	if (WeaponInfo.bIsAutomatic)
+	{
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		World->GetTimerManager().SetTimer(ServerAutomaticFireTimer, this, &AFPSWeaponBase::Server_Fire, WeaponInfo.FireRate, true, 0.f);
+	}
+	else
+	{
+		Server_Fire();
+	}
+}
+
+void AFPSWeaponBase::Server_Fire_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_Fire_Implementation"));
+	if (CanFire() == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CanFire() == false"));
+		Server_OnEndFireWeapon();
+	}
+
+	Multicast_FireEffects();
+}
+
+void AFPSWeaponBase::Multicast_FireEffects_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Multicast_FireEffects_Implementation"));
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	bool bIsLocalPlayer = UGameplayStatics::GetPlayerPawn(World, 0) == GetOwner();
+	if (bIsLocalPlayer == false)
+	{
+		PlayFireEmitter(false);
+		PlayFireSound(false);
+	}
+}
+
+void AFPSWeaponBase::Server_OnEndFireWeapon_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnEndFireWeapon_Implementation"));
+	if (WeaponInfo.bIsAutomatic)
+	{
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		World->GetTimerManager().ClearTimer(ServerAutomaticFireTimer);
+	}
+}
+#pragma endregion
+
+#pragma region Client Fire
+void AFPSWeaponBase::Client_OnBeginFireWeapon_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnBeginFireWeapon_Implementation"));
+	if (CanFire() == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CanFire() == false"));
+		return;
+	}
+
+	if (WeaponInfo.bIsAutomatic)
+	{
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		World->GetTimerManager().SetTimer(ClientAutomaticFireTimer, this, &AFPSWeaponBase::Client_Fire, WeaponInfo.FireRate, true, 0.f);
+	}
+	else
+	{
+		Client_Fire();
+	}
+}
+
+void AFPSWeaponBase::Client_Fire_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_Fire_Implementation"));
+	if (CanFire() == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CanFire() == false"));
+		Client_OnEndFireWeapon();
+	}
+
+	Client_FireEffects();
+}
+
+void AFPSWeaponBase::Client_FireEffects_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_FireEffects_Implementation"));
+	PlayFireEmitter(true);
+	PlayFireSound(true);
+}
+
+void AFPSWeaponBase::Client_OnEndFireWeapon_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnEndFireWeapon_Implementation"));
+	if (WeaponInfo.bIsAutomatic)
+	{
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		World->GetTimerManager().ClearTimer(ClientAutomaticFireTimer);
+	}
+}
+#pragma endregion
+
 bool AFPSWeaponBase::CanFire()
 {
 	// TODO: implement CanFire
 	return true;
 }
 
-AFPSWeaponBase* AFPSWeaponBase::GetWeapon_Implementation()
+void AFPSWeaponBase::Client_Reload_Implementation()
 {
-	return this;
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_Reload_Implementation()"));
+
+	AActor* OwnerCharacter = GetOwner();
+	if (OwnerCharacter != nullptr && UKismetSystemLibrary::DoesImplementInterface(OwnerCharacter, UFPSCharacterInterface::StaticClass()))
+	{
+		USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(OwnerCharacter);
+		if (ArmMesh != nullptr)
+		{
+			UAnimInstance* AnimInstance = ArmMesh->GetAnimInstance();
+			if (AnimInstance != nullptr)
+			{
+				if (WeaponInfo.FP_ArmsReploadAnim != nullptr)
+				{
+					AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReploadAnim);
+				}
+
+				if (WeaponInfo.FP_WeaponReploadAnim != nullptr)
+				{
+					FPWeaponMesh->PlayAnimation(WeaponInfo.FP_WeaponReploadAnim, false);
+				}
+			}
+		}
+	}
 }
 
-void AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation()
+void AFPSWeaponBase::PlayFireEmitter(bool FPWeapon)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation"));
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::PlayFireEmitter"));
+	if (FPWeaponMesh != nullptr)
+	{
+		if (WeaponInfo.FireEmitter != nullptr)
+		{
+			if (FPWeapon)
+			{
+				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, FPWeaponMesh, WeaponInfo.FP_FireEmitterSocketName);
+			}
+			else
+			{
+				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, TPWeaponMesh, WeaponInfo.TP_FireEmitterSocketName);
+			}
+		}
+	}
 }
 
-void AFPSWeaponBase::Server_OnEndFireWeapon_Implementation()
+void AFPSWeaponBase::PlayFireSound(bool FPWeapon)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnEndFireWeapon_Implementation"));
-}
-
-void AFPSWeaponBase::Client_OnBeginFireWeapon_Implementation()
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnBeginFireWeapon_Implementation"));
-}
-
-void AFPSWeaponBase::Client_OnEndFireWeapon_Implementation()
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnEndFireWeapon_Implementation"));
-}
-
-EWeaponType AFPSWeaponBase::GetWeaponType()
-{
-	return WeaponType;
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::PlayFireSound"));
+	if (FPWeaponMesh != nullptr)
+	{
+		if (WeaponInfo.FireSound != nullptr)
+		{
+			if (FPWeapon)
+			{
+				UGameplayStatics::SpawnSoundAttached(WeaponInfo.FireSound, FPWeaponMesh, WeaponInfo.FP_FireEmitterSocketName);
+			}
+			else
+			{
+				UGameplayStatics::SpawnSoundAttached(WeaponInfo.FireSound, TPWeaponMesh, WeaponInfo.TP_FireEmitterSocketName);
+			}
+		}
+	}
 }

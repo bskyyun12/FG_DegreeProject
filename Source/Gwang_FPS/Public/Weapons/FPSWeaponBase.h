@@ -13,13 +13,22 @@ class USkeletalMeshComponent;
 class AFPSCharacter;
 class USphereComponent;
 
+class UParticleSystem;
+class USoundBase;
+
 USTRUCT(BlueprintType)
 struct FWeaponInfo
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsAutomatic;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Damage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int CurrentAmmo;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int MaxAmmo;
@@ -30,6 +39,34 @@ struct FWeaponInfo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float FireRate;
 
+	///////////////
+	// Equip Weapon
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName FP_ArmsSocketName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName TP_CharacterSocketName;
+	// Equip Weapon
+	///////////////
+
+	//////////////
+	// Fire Effect
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UParticleSystem* FireEmitter;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* FireSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName FP_FireEmitterSocketName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName TP_FireEmitterSocketName;
+	// Fire Effect
+	//////////////
+
+	///////////////
+	// AnimMontages
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* FP_EquipAnim;
 
@@ -50,13 +87,29 @@ struct FWeaponInfo
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* WalkAnim;
+	// AnimMontages
+	///////////////
 
 	FWeaponInfo() 
 	{
+		bIsAutomatic = false;
 		Damage = 10.f;
+		CurrentAmmo = 0;
 		MaxAmmo = 20;
 		Range = 10000.f;
 		FireRate = 0.2f;
+
+		// Equip Weapon
+		FP_ArmsSocketName = "Weapon_Rifle";
+		TP_CharacterSocketName = "Weapon_Rifle";
+
+		// Fire Effect
+		FireEmitter = nullptr;
+		FireSound = nullptr;
+		FP_FireEmitterSocketName = "MuzzleFlash";
+		TP_FireEmitterSocketName = "MuzzleFlash";
+
+		// Anims
 		FP_EquipAnim = nullptr;
 		FP_ArmsReploadAnim = nullptr;
 		FP_WeaponReploadAnim = nullptr;
@@ -122,6 +175,26 @@ public:
 	void Client_OnEndFireWeapon();
 
 protected:
+
+	///////
+	// Fire
+	UFUNCTION(Server, Reliable)
+	void Server_Fire();
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_FireEffects();
+
+	UFUNCTION(Client, Reliable)
+	void Client_Fire();
+
+	UFUNCTION(Client, Unreliable)
+	void Client_FireEffects();
+
+	void PlayFireEmitter(bool FPWeapon);
+	void PlayFireSound(bool FPWeapon);
+	// Fire
+	///////
+
 	UFUNCTION()
 	bool CanFire();
 
@@ -148,4 +221,7 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FWeaponInfo WeaponInfo;
+
+	FTimerHandle ServerAutomaticFireTimer;
+	FTimerHandle ClientAutomaticFireTimer;
 };
