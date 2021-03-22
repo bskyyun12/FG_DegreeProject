@@ -75,6 +75,9 @@ struct FWeaponInfo
 	UAnimMontage* FP_WeaponReloadAnim;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UAnimMontage* TP_ReloadAnim;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* HideAnim;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -110,6 +113,7 @@ struct FWeaponInfo
 		FP_EquipAnim = nullptr;
 		FP_ArmsReloadAnim = nullptr;
 		FP_WeaponReloadAnim = nullptr;
+		TP_ReloadAnim = nullptr;
 		HideAnim = nullptr;
 		FireAnim = nullptr;
 		IdleAnim = nullptr;

@@ -60,8 +60,6 @@ void AFPSWeaponBase::BeginPlay()
 void AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation()"));
-	this->SetOwner(OwnerCharacter);
-	this->SetInstigator(OwnerCharacter);
 
 	if (OwnerCharacter != nullptr && UKismetSystemLibrary::DoesImplementInterface(OwnerCharacter, UFPSCharacterInterface::StaticClass()))
 	{
@@ -85,15 +83,17 @@ void AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* Own
 void AFPSWeaponBase::Client_OnFPWeaponDroped_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnFPWeaponDroped_Implementation()"));
+
+	FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 }
 
 void AFPSWeaponBase::Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnTPWeaponEquipped_Implementation()"));
+
 	SetOwner(OwnerCharacter);
 	SetInstigator(OwnerCharacter);
 
-	// Lines below are for the server
 	TPWeaponMesh->SetSimulatePhysics(false);
 	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -109,16 +109,33 @@ void AFPSWeaponBase::Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* Own
 void AFPSWeaponBase::Server_OnTPWeaponDroped_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnTPWeaponDroped_Implementation()"));
-	SetOwner(nullptr);
+
+	TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
+	InteractCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	TPWeaponMesh->SetSimulatePhysics(true);
+
 	SetInstigator(nullptr);
+	SetOwner(nullptr);
 }
 
 void AFPSWeaponBase::OnRep_Owner()
 {
 	Super::OnRep_Owner();
-	TPWeaponMesh->SetSimulatePhysics(false);
-	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	if (GetOwner() != nullptr)	// OnEquip
+	{
+		TPWeaponMesh->SetSimulatePhysics(false);
+		TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	else // OnDrop
+	{
+		InteractCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		TPWeaponMesh->SetSimulatePhysics(true);
+	}
 }
 
 AFPSWeaponBase* AFPSWeaponBase::GetWeapon_Implementation()

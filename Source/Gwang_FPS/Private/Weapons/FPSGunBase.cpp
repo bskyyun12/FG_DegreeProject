@@ -127,17 +127,7 @@ bool AFPSGunBase::CanFire()
 		return false;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::CanFire"));
-	if (HasAuthority())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("(Server) CurrentAmmo: %i"), CurrentAmmo);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("(Client) CurrentAmmo: %i"), CurrentAmmo);
-	}
-
-	return bHasAmmoClip && CurrentAmmo > 0;
+	return GetOwner() != nullptr && bHasAmmoClip && CurrentAmmo > 0;
 }
 
 void AFPSGunBase::Client_Fire_Implementation()

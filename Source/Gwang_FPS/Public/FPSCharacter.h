@@ -48,6 +48,10 @@ public:
 
 	void Pickup();
 
+	void Drop();
+	UFUNCTION(Server, Reliable)
+	void Server_DropWeapon(AFPSWeaponBase* Weapon);
+
 	void Reload();
 	UFUNCTION(Server, Reliable)
 	void Server_Reload(AFPSWeaponBase* Weapon);

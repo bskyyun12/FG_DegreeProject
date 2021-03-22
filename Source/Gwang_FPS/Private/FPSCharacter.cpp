@@ -74,6 +74,8 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 	PlayerInputComponent->BindAction("Pickup", IE_Pressed, this, &AFPSCharacter::Pickup);
 
+	PlayerInputComponent->BindAction("Drop", IE_Pressed, this, &AFPSCharacter::Drop);
+
 	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &AFPSCharacter::Reload);
 
 	PlayerInputComponent->BindAction<FOneBooleanDelegate>("GameStatusWidget", IE_Pressed, this, &AFPSCharacter::HandleGameStatusWidget, true);
@@ -138,10 +140,10 @@ void AFPSCharacter::Multicast_LookUp_Implementation(FRotator CameraRot)
 	{
 		FollowCamera->SetWorldRotation(CameraRot);
 
-		UAnimInstance* FPSAnimInstance = FPSCharacterMesh->GetAnimInstance();
-		if (FPSAnimInstance != nullptr)
+		if (FPSCharacterMesh != nullptr)
 		{
-			if (UKismetSystemLibrary::DoesImplementInterface(FPSAnimInstance, UFPSAnimInterface::StaticClass()))
+			UAnimInstance* FPSAnimInstance = FPSCharacterMesh->GetAnimInstance();
+			if (FPSAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(FPSAnimInstance, UFPSAnimInterface::StaticClass()))
 			{
 				IFPSAnimInterface::Execute_UpdateSpineAngle(FPSAnimInstance, CameraRot.Pitch);
 			}
@@ -216,6 +218,54 @@ void AFPSCharacter::Pickup()
 	}
 }
 
+void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
+{
+	if (HealthComponent != nullptr && HealthComponent->IsDead())
+	{
+		return;
+	}
+
+	if (Weapon != nullptr)
+	{
+		Server_EquipWeapon(Weapon);
+		Weapon->Client_OnFPWeaponEquipped(this);
+
+		CurrentWeapon = Weapon;
+	}
+}
+
+void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
+{
+	if (Weapon != nullptr)
+	{
+		Weapon->Server_OnTPWeaponEquipped(this);
+	}
+}
+
+void AFPSCharacter::Drop()
+{
+	// TODO: Maybe, if I just disable input when player dies, then I don't need to check code below
+	if (HealthComponent != nullptr && HealthComponent->IsDead())
+	{
+		return;
+	}
+
+	if (CurrentWeapon != nullptr)
+	{
+		CurrentWeapon->Client_OnFPWeaponDroped();
+		Server_DropWeapon(CurrentWeapon);
+		CurrentWeapon = nullptr;
+	}
+}
+
+void AFPSCharacter::Server_DropWeapon_Implementation(AFPSWeaponBase* Weapon)
+{
+	if (Weapon != nullptr)
+	{
+		Weapon->Server_OnTPWeaponDroped();
+	}
+}
+
 void AFPSCharacter::Reload()
 {
 	if (HealthComponent != nullptr && HealthComponent->IsDead())
@@ -243,30 +293,6 @@ void AFPSCharacter::HandleGameStatusWidget(bool bDisplay)
 	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
 	{
 		IFPSPlayerControllerInterface::Execute_HandleGameStatusWidget(GetController(), bDisplay);
-	}
-}
-
-void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
-{
-	if (HealthComponent != nullptr && HealthComponent->IsDead())
-	{
-		return;
-	}
-
-	if (Weapon != nullptr)
-	{
-		Server_EquipWeapon(Weapon);
-		Weapon->Client_OnFPWeaponEquipped(this);
-
-		CurrentWeapon = Weapon;
-	}
-}
-
-void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
-{
-	if (Weapon != nullptr)
-	{
-		Weapon->Server_OnTPWeaponEquipped(this);
 	}
 }
 
