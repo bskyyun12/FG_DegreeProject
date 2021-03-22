@@ -21,6 +21,8 @@ struct FWeaponInfo
 {
 	GENERATED_BODY()
 
+	/////////
+	// Stats
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsAutomatic;
 
@@ -28,16 +30,12 @@ struct FWeaponInfo
 	float Damage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int CurrentAmmo;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int MaxAmmo;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Range;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float FireRate;
+	// Stats
+	/////////
 
 	///////////////
 	// Equip Weapon
@@ -50,7 +48,7 @@ struct FWeaponInfo
 	///////////////
 
 	//////////////
-	// Fire Effect
+	// Fire Effects
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UParticleSystem* FireEmitter;
 
@@ -62,7 +60,7 @@ struct FWeaponInfo
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName TP_FireEmitterSocketName;
-	// Fire Effect
+	// Fire Effects
 	//////////////
 
 	///////////////
@@ -71,10 +69,10 @@ struct FWeaponInfo
 	UAnimMontage* FP_EquipAnim;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* FP_ArmsReploadAnim;
+	UAnimMontage* FP_ArmsReloadAnim;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* FP_WeaponReploadAnim;
+	UAnimMontage* FP_WeaponReloadAnim;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* HideAnim;
@@ -92,10 +90,9 @@ struct FWeaponInfo
 
 	FWeaponInfo() 
 	{
+		// Stats
 		bIsAutomatic = false;
 		Damage = 10.f;
-		CurrentAmmo = 0;
-		MaxAmmo = 20;
 		Range = 10000.f;
 		FireRate = 0.2f;
 
@@ -111,19 +108,13 @@ struct FWeaponInfo
 
 		// Anims
 		FP_EquipAnim = nullptr;
-		FP_ArmsReploadAnim = nullptr;
-		FP_WeaponReploadAnim = nullptr;
+		FP_ArmsReloadAnim = nullptr;
+		FP_WeaponReloadAnim = nullptr;
 		HideAnim = nullptr;
 		FireAnim = nullptr;
 		IdleAnim = nullptr;
 		WalkAnim = nullptr;
 	}
-};
-
-UENUM(BlueprintType)
-enum class EWeaponType : uint8 {
-	Rifle	UMETA(DisplayName = "Rifle"),
-	Pistol	UMETA(DisplayName = "Pistol"),
 };
 
 UCLASS()
@@ -137,73 +128,72 @@ public:
 
 	AFPSWeaponBase* GetWeapon_Implementation() override;
 
-	EWeaponType GetWeaponType();
-	
+	UFUNCTION(Server, Reliable)
+	virtual void Server_OnBeginFireWeapon();
+
+	UFUNCTION(Server, Reliable)
+	virtual void Server_OnEndFireWeapon();
+
+	UFUNCTION(Client, Reliable)
+	virtual void Client_OnBeginFireWeapon();
+
+	UFUNCTION(Client, Reliable)
+	virtual void Client_OnEndFireWeapon();
+
 	/////////////////////////
 	// FP Weapon (Local Only)
 	UFUNCTION(Client, Reliable)
-	void Client_OnFPWeaponEquipped(AFPSCharacter* OwnerCharacter);
+	virtual void Client_OnFPWeaponEquipped(AFPSCharacter* OwnerCharacter);
 
 	UFUNCTION(Client, Reliable)
-	void Client_OnFPWeaponDroped();
+	virtual void Client_OnFPWeaponDroped();
 
 	UFUNCTION(Client, Reliable)
-	void Client_Reload();
+	virtual void Client_Reload();
+		
+	UFUNCTION(Server, Reliable)
+	virtual void Server_Reload();
 	// FP Weapon (Local Only)
 	/////////////////////////
 
 	/////////////////////////
 	// TP Weapon (Should be replicated)
 	UFUNCTION(Server, Reliable)
-	void Server_OnTPWeaponEquipped(AFPSCharacter* OwnerCharacter);
+	virtual void Server_OnTPWeaponEquipped(AFPSCharacter* OwnerCharacter);
 
 	UFUNCTION(Server, Reliable)
-	void Server_OnTPWeaponDroped();
+	virtual void Server_OnTPWeaponDroped();
 	// TP Weapon (Should be replicated)
 	/////////////////////////
-
-	UFUNCTION(Server, Reliable)
-	void Server_OnBeginFireWeapon();
-
-	UFUNCTION(Server, Reliable)
-	void Server_OnEndFireWeapon();
-
-	UFUNCTION(Client, Reliable)
-	void Client_OnBeginFireWeapon();
-
-	UFUNCTION(Client, Reliable)
-	void Client_OnEndFireWeapon();
 
 protected:
+	virtual void BeginPlay() override;
+
+	void OnRep_Owner() override;
 
 	///////
 	// Fire
+	UFUNCTION()
+	virtual bool CanFire();
+
 	UFUNCTION(Server, Reliable)
-	void Server_Fire();
+	virtual void Server_Fire();
 
 	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_FireEffects();
+	virtual void Multicast_FireEffects();
 
 	UFUNCTION(Client, Reliable)
-	void Client_Fire();
+	virtual void Client_Fire();
 
 	UFUNCTION(Client, Unreliable)
-	void Client_FireEffects();
+	virtual void Client_FireEffects();
 
 	void PlayFireEmitter(bool FPWeapon);
 	void PlayFireSound(bool FPWeapon);
 	// Fire
 	///////
 
-	UFUNCTION()
-	bool CanFire();
-
-	void OnRep_Owner() override;
-
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
 	UPROPERTY(VisibleAnywhere)
 	USceneComponent* RootComp;
 
@@ -215,9 +205,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere)
 	USphereComponent* InteractCollider;
-
-	UPROPERTY(EditAnywhere)
-	EWeaponType WeaponType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FWeaponInfo WeaponInfo;

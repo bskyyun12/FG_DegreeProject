@@ -46,10 +46,10 @@ void AFPSWeaponBase::BeginPlay()
 	Super::BeginPlay();
 }
 
-EWeaponType AFPSWeaponBase::GetWeaponType()
-{
-	return WeaponType;
-}
+//EWeaponType AFPSWeaponBase::GetWeaponType()
+//{
+//	return WeaponType;
+//}
 
 //void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 //{
@@ -74,7 +74,7 @@ void AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* Own
 			if (AnimInstance != nullptr)
 			{
 				if (WeaponInfo.FP_EquipAnim != nullptr)
-				{
+				{ 
 					AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
 				}
 			}
@@ -130,7 +130,6 @@ AFPSWeaponBase* AFPSWeaponBase::GetWeapon_Implementation()
 void AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation"));
-
 	if (CanFire() == false)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("CanFire() == false"));
@@ -159,6 +158,7 @@ void AFPSWeaponBase::Server_Fire_Implementation()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("CanFire() == false"));
 		Server_OnEndFireWeapon();
+		return;
 	}
 
 	Multicast_FireEffects();
@@ -257,7 +257,6 @@ void AFPSWeaponBase::Client_OnEndFireWeapon_Implementation()
 
 bool AFPSWeaponBase::CanFire()
 {
-	// TODO: implement CanFire
 	return true;
 }
 
@@ -274,18 +273,23 @@ void AFPSWeaponBase::Client_Reload_Implementation()
 			UAnimInstance* AnimInstance = ArmMesh->GetAnimInstance();
 			if (AnimInstance != nullptr)
 			{
-				if (WeaponInfo.FP_ArmsReploadAnim != nullptr)
+				if (WeaponInfo.FP_ArmsReloadAnim != nullptr)
 				{
-					AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReploadAnim);
+					AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
 				}
 
-				if (WeaponInfo.FP_WeaponReploadAnim != nullptr)
+				if (WeaponInfo.FP_WeaponReloadAnim != nullptr)
 				{
-					FPWeaponMesh->PlayAnimation(WeaponInfo.FP_WeaponReploadAnim, false);
+					FPWeaponMesh->PlayAnimation(WeaponInfo.FP_WeaponReloadAnim, false);
 				}
 			}
 		}
 	}
+}
+
+void AFPSWeaponBase::Server_Reload_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_Reload_Implementation"));
 }
 
 void AFPSWeaponBase::PlayFireEmitter(bool FPWeapon)

@@ -49,6 +49,8 @@ public:
 	void Pickup();
 
 	void Reload();
+	UFUNCTION(Server, Reliable)
+	void Server_Reload(AFPSWeaponBase* Weapon);
 
 	DECLARE_DELEGATE_OneParam(FOneBooleanDelegate, bool)
 	void HandleGameStatusWidget(bool bDisplay);
@@ -79,14 +81,18 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UBoxComponent* HandCollider;
 
-	AFPSWeaponBase* CurrentFocus;
+	TWeakObjectPtr<AFPSWeaponBase> CurrentFocus;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	AFPSWeaponBase* CurrentWeapon;
 
 	float RespawnDelay = 5.f;
 
 	// Cache
+	UPROPERTY()
 	USkeletalMeshComponent* FPSCharacterMesh;
-	UCapsuleComponent* CapsuleComponent;
+	UPROPERTY()
+	UCapsuleComponent* CharacterCapsuleComponent;
 	FVector DefaultCameraRelativeLocation;
 	FTransform DefaultCharacterMeshRelativeTransform;
 

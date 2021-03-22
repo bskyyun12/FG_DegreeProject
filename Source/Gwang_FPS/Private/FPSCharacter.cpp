@@ -52,8 +52,8 @@ void AFPSCharacter::BeginPlay()
 	{
 		return;
 	}
-	CapsuleComponent = GetCapsuleComponent();
-	if (!ensure(CapsuleComponent != nullptr))
+	CharacterCapsuleComponent = GetCapsuleComponent();
+	if (!ensure(CharacterCapsuleComponent != nullptr))
 	{
 		return;
 	}
@@ -211,7 +211,7 @@ void AFPSCharacter::Pickup()
 	{
 		if (CurrentFocus != nullptr)
 		{
-			EquipWeapon(CurrentFocus);
+			EquipWeapon(CurrentFocus.Get());
 		}
 	}
 }
@@ -225,7 +225,16 @@ void AFPSCharacter::Reload()
 
 	if (CurrentWeapon != nullptr)
 	{
+		Server_Reload(CurrentWeapon);
 		CurrentWeapon->Client_Reload();
+	}
+}
+
+void AFPSCharacter::Server_Reload_Implementation(AFPSWeaponBase* Weapon)
+{
+	if (Weapon != nullptr)
+	{
+		Weapon->Server_Reload();
 	}
 }
 
@@ -255,7 +264,10 @@ void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 
 void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
 {
-	Weapon->Server_OnTPWeaponEquipped(this);
+	if (Weapon != nullptr)
+	{
+		Weapon->Server_OnTPWeaponEquipped(this);
+	}
 }
 
 void AFPSCharacter::OnBeginOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -330,7 +342,7 @@ void AFPSCharacter::RespawnPlayer()
 
 void AFPSCharacter::CollisionHandleOnDeath()
 {
-	CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CharacterCapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	FPSCharacterMesh->SetCollisionProfileName(TEXT("Ragdoll"));
 	FPSCharacterMesh->SetSimulatePhysics(true);
 
@@ -340,15 +352,15 @@ void AFPSCharacter::CollisionHandleOnDeath()
 
 void AFPSCharacter::CollisionHandleOnRespawn()
 {
-	CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	CharacterCapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	FPSCharacterMesh->SetSimulatePhysics(false);
 	FPSCharacterMesh->SetCollisionProfileName(TEXT("CharacterMesh"));
-	FPSCharacterMesh->AttachToComponent(CapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
+	FPSCharacterMesh->AttachToComponent(CharacterCapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
 	FPSCharacterMesh->SetRelativeTransform(DefaultCharacterMeshRelativeTransform);
 
 	CameraContainer->SetSimulatePhysics(false);
 	CameraContainer->SetCollisionProfileName(TEXT("NoCollision"));
-	CameraContainer->AttachToComponent(CapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
+	CameraContainer->AttachToComponent(CharacterCapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
 	CameraContainer->SetRelativeLocation(DefaultCameraRelativeLocation);
 }
 

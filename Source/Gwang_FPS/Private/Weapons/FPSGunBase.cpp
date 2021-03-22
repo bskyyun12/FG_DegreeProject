@@ -1,71 +1,32 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Weapons/FPSRifleBase.h"
+#include "Weapons/FPSGunBase.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Net/UnrealNetwork.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 
 #include "Components/HealthComponent.h"
 #include "FPSCharacterInterface.h"
 #include "FPSPlayerControllerInterface.h"
 
-void AFPSRifleBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
+void AFPSGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::Client_OnFPWeaponEquipped_Implementation(OwnerCharacter);
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation()"));
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AFPSGunBase, bHasAmmoClip);
+	DOREPLIFETIME(AFPSGunBase, CurrentAmmo);
 }
 
-void AFPSRifleBase::Client_OnFPWeaponDroped_Implementation()
+void AFPSGunBase::Server_Fire_Implementation()
 {
-	Super::Client_OnFPWeaponDroped_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Client_OnFPWeaponDroped_Implementation()"));
-}
+	--CurrentAmmo;	// Super::Server_Fire_Implementation() will call CanFire() so 
 
-void AFPSRifleBase::Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
-{
-	Super::Server_OnTPWeaponEquipped_Implementation(OwnerCharacter);
-	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Server_OnTPWeaponEquipped_Implementation()"));
-}
-
-void AFPSRifleBase::Server_OnTPWeaponDroped_Implementation()
-{
-	Super::Server_OnTPWeaponDroped_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Server_OnTPWeaponDroped_Implementation()"));
-}
-
-void AFPSRifleBase::Server_OnBeginFireWeapon_Implementation()
-{
-	Super::Server_OnBeginFireWeapon_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Server_OnBeginFireWeapon_Implementation"));
-}
-
-void AFPSRifleBase::Server_OnEndFireWeapon_Implementation()
-{
-	Super::Server_OnEndFireWeapon_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Server_OnEndFireWeapon_Implementation"));
-}
-
-void AFPSRifleBase::Client_OnBeginFireWeapon_Implementation()
-{
-	Super::Client_OnBeginFireWeapon_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Client_OnBeginFireWeapon_Implementation"));
-}
-
-void AFPSRifleBase::Client_OnEndFireWeapon_Implementation()
-{
-	Super::Client_OnEndFireWeapon_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Client_OnEndFireWeapon_Implementation"));
-
-	RecoilTimer = 0.f;
-}
-
-void AFPSRifleBase::Server_Fire_Implementation()
-{
 	Super::Server_Fire_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Server_Fire_Implementation"));
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::Server_Fire_Implementation"));
 
 	if (GetOwner() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
 	{
+		// TODO: In VR, start should be rear sight, end should be front sight
 		FHitResult Hit;
 		FTransform CameraTransform = IFPSCharacterInterface::Execute_GetCameraTransform(GetOwner());
 		FVector Start = CameraTransform.GetLocation();
@@ -98,30 +59,24 @@ void AFPSRifleBase::Server_Fire_Implementation()
 	}
 }
 
-void AFPSRifleBase::Multicast_FireEffects_Implementation()
-{
-	Super::Multicast_FireEffects_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Multicast_FireEffects_Implementation"));
-
-}
-
-void AFPSRifleBase::Client_Fire_Implementation()
-{
-	Super::Client_Fire_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Client_Fire_Implementation"));
-
-}
-
-void AFPSRifleBase::Client_FireEffects_Implementation()
+void AFPSGunBase::Client_FireEffects_Implementation()
 {
 	Super::Client_FireEffects_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSRifleBase::Client_FireEffects_Implementation"));
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::Client_FireEffects_Implementation"));
 
 	ShakeCamera();
 	Recoil();
 }
 
-void AFPSRifleBase::ShakeCamera()
+void AFPSGunBase::Client_OnEndFireWeapon_Implementation()
+{
+	Super::Client_OnEndFireWeapon_Implementation();
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::Client_OnEndFireWeapon_Implementation"));
+
+	RecoilTimer = 0.f;
+}
+
+void AFPSGunBase::ShakeCamera()
 {
 	AController* InstigatorController = GetInstigatorController();
 	if (InstigatorController != nullptr && CameraShakeOnFire != nullptr)
@@ -133,7 +88,7 @@ void AFPSRifleBase::ShakeCamera()
 	}
 }
 
-void AFPSRifleBase::Recoil()
+void AFPSGunBase::Recoil()
 {
 	AController* InstigatorController = GetInstigatorController();
 	if (InstigatorController != nullptr)
@@ -153,7 +108,59 @@ void AFPSRifleBase::Recoil()
 	}
 }
 
-void AFPSRifleBase::OnRep_Owner()
+void AFPSGunBase::EquipAmmoClip()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::EquipAmmoClip"));
+	//bHasAmmoClip = true;
+	//CurrentAmmo = MaxAmmo;
+}
+
+void AFPSGunBase::RemoveAmmoClip()
+{
+	bHasAmmoClip = false;
+}
+
+bool AFPSGunBase::CanFire()
+{
+	if (Super::CanFire() == false)
+	{
+		return false;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::CanFire"));
+	if (HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("(Server) CurrentAmmo: %i"), CurrentAmmo);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("(Client) CurrentAmmo: %i"), CurrentAmmo);
+	}
+
+	return bHasAmmoClip && CurrentAmmo > 0;
+}
+
+void AFPSGunBase::Client_Fire_Implementation()
+{
+	Super::Client_Fire_Implementation();
+}
+
+void AFPSGunBase::Client_Reload_Implementation()
+{
+	Super::Client_Reload_Implementation();
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::Client_Reload_Implementation"));
+}
+
+void AFPSGunBase::Server_Reload_Implementation()
+{
+	Super::Server_Reload_Implementation();
+	bHasAmmoClip = true;
+	CurrentAmmo = MaxAmmo;
+
+	// EquipAmmoClip();
+}
+
+void AFPSGunBase::OnRep_Owner()
 {
 	Super::OnRep_Owner();
 
@@ -164,12 +171,7 @@ void AFPSRifleBase::OnRep_Owner()
 	}
 }
 
-void AFPSRifleBase::Client_Reload_Implementation()
-{
-	Super::Client_Reload_Implementation();
-}
-
-float AFPSRifleBase::CalcDamageToApply(const UPhysicalMaterial* PhysMat)
+float AFPSGunBase::CalcDamageToApply(const UPhysicalMaterial* PhysMat)
 {
 	float DamageMultiplier = 1.f;
 
