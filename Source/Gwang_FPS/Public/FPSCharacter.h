@@ -124,11 +124,6 @@ protected:
 	UFUNCTION()
 	void OnDeath();
 
-	//UPROPERTY(ReplicatedUsing = OnRep_bIsDead)
-	//bool bIsDead;
-	//UFUNCTION()
-	//void OnRep_bIsDead();
-
 	void RespawnPlayer();
 
 	void CollisionHandleOnDeath();

@@ -204,17 +204,9 @@ void AFPSCharacter::Pickup()
 		return;
 	}
 
-	if (CurrentWeapon != nullptr)
+	if (CurrentFocus != nullptr && CurrentWeapon == nullptr)
 	{
-		// TODO: swap weapon here?
-		return;
-	}
-	else
-	{
-		if (CurrentFocus != nullptr)
-		{
-			EquipWeapon(CurrentFocus.Get());
-		}
+		EquipWeapon(CurrentFocus.Get());
 	}
 }
 

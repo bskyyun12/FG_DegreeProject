@@ -111,8 +111,6 @@ void AFPSGunBase::Recoil()
 void AFPSGunBase::EquipAmmoClip()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::EquipAmmoClip"));
-	//bHasAmmoClip = true;
-	//CurrentAmmo = MaxAmmo;
 }
 
 void AFPSGunBase::RemoveAmmoClip()
@@ -146,8 +144,6 @@ void AFPSGunBase::Server_Reload_Implementation()
 	Super::Server_Reload_Implementation();
 	bHasAmmoClip = true;
 	CurrentAmmo = MaxAmmo;
-
-	// EquipAmmoClip();
 }
 
 void AFPSGunBase::OnRep_Owner()
