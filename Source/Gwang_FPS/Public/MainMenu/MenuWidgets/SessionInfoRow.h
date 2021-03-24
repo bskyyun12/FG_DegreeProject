@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/FPSWidgetBase.h"
+#include "MainMenuWidget.h"
 #include "SessionInfoRow.generated.h"
 
 class UMainMenuWidget;
@@ -19,12 +20,22 @@ public:
 	void InitializeRow(UMainMenuWidget* MainMenuWidget, int Index);
 	void SetSessionName(const FString& SessionName);
 
+	void SetSessionInfo(const FServerData& Data);
 private:
 	UPROPERTY(meta = (BindWidget))
 	UButton* Button_Row;
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Text_SessionName;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Text_HostName;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Text_CurrentPlayers;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Text_MaxPlayers;
 
 	UFUNCTION()
 	void OnClicked_Button_Row();

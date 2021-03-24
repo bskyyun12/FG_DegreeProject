@@ -299,8 +299,6 @@ void AFPSCharacter::OnBeginOverlapHandCollider(UPrimitiveComponent* OverlappedCo
 
 void AFPSCharacter::OnEndOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnEndOverlapHandCollider"));
-	UE_LOG(LogTemp, Warning, TEXT("OtherActor: %s"), *OtherActor->GetName());
 	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSWeaponInterface::StaticClass()))
 	{
 		if (CurrentFocus == IFPSWeaponInterface::Execute_GetWeapon(OtherActor))
@@ -325,11 +323,11 @@ void AFPSCharacter::OnDeath()
 {
 	CollisionHandleOnDeath();
 
-	FTimerHandle RespawnTimer;
-	GetWorld()->GetTimerManager().SetTimer(RespawnTimer, [&]()
-		{
-			RespawnPlayer();
-		}, RespawnDelay, false);
+	//FTimerHandle RespawnTimer;
+	//GetWorld()->GetTimerManager().SetTimer(RespawnTimer, [&]()
+	//	{
+	//		RespawnPlayer();
+	//	}, RespawnDelay, false);
 
 	if (HasAuthority())
 	{

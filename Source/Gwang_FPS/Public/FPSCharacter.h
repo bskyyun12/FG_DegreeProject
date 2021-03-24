@@ -90,7 +90,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	AFPSWeaponBase* CurrentWeapon;
 
-	float RespawnDelay = 5.f;
+	//float RespawnDelay = 5.f;
 
 	// Cache
 	UPROPERTY()

@@ -11,14 +11,8 @@ class UUserWidget;
 UCLASS()
 class GWANG_FPS_API AMainMenuGameMode : public AGameModeBase
 {
-	GENERATED_BODY()
-	
+	GENERATED_BODY()	
+
 protected:
-	void BeginPlay() override;
-
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UUserWidget> MainMenuWidgetClass;
-
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UUserWidget> SessionInfoRowClass;
+	void PostLogin(APlayerController* NewPlayer) override;
 };

@@ -7,10 +7,32 @@
 #include "MainMenuWidget.generated.h"
 
 class UFPSGameInstance;
+class UWidgetSwitcher;
 class UButton;
 class UUserWidget;
 class UScrollBox;
-class FOnlineSessionSearchResult;
+class UEditableTextBox;
+
+USTRUCT()
+struct FServerData
+{
+	GENERATED_BODY()
+
+	uint16 Index;
+	FString ServerName;
+	uint16 CurrentPlayers;
+	uint16 MaxPlayers;
+	FString HostUsername;
+
+	FServerData()
+	{
+		Index = 0;
+		ServerName = "Server Name";
+		CurrentPlayers = 0;
+		MaxPlayers = 0;
+		HostUsername = "Gwang";
+	}
+};
 
 UCLASS()
 class GWANG_FPS_API UMainMenuWidget : public UFPSWidgetBase
@@ -19,8 +41,9 @@ class GWANG_FPS_API UMainMenuWidget : public UFPSWidgetBase
 	
 public:
 	void Setup(EInputMode InputMode = EInputMode::UIOnly, bool bShowCursor = true) override;
-	void SetSessionInfoRowClass(TSubclassOf<UUserWidget> InSessionInfoRowClass);
-	void UpdateSessionList(TArray<FOnlineSessionSearchResult> SearchResults);
+
+	void UpdateSessionList(TArray<FServerData> ServerData);
+
 	void SetSelectIndex(int Index);
 
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSessionListDelegate, int, SelectedIndex);
@@ -29,10 +52,27 @@ public:
 private:
 	UFPSGameInstance* FPSGameInstance;
 
+	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUserWidget> SessionInfoRowClass;
-	
+
+	UPROPERTY(meta = (BindWidget))
+	UWidgetSwitcher* WidgetSwitcher_MainMenu;
+
 	UPROPERTY(meta = (BindWidget))
 	UScrollBox* ScrollBox_SessionList;
+
+	UPROPERTY(meta = (BindWidget))
+	UEditableTextBox* EditableText_ServerName;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Button_Create;
+	UFUNCTION()
+	void OnClicked_Button_Create();
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Button_BackToMenu;
+	UFUNCTION()
+	void OnClicked_Button_BackToMenu();
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* Button_Host;

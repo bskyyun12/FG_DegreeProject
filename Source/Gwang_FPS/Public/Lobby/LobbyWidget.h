@@ -1,0 +1,40 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Widgets/FPSWidgetBase.h"
+#include "UserRow.h"
+
+#include "LobbyWidget.generated.h"
+
+class UUserWidget;
+class UVerticalBox;
+class UButton;
+
+UCLASS()
+class GWANG_FPS_API ULobbyWidget : public UFPSWidgetBase
+{
+	GENERATED_BODY()
+	
+public:
+	bool Initialize() override;
+
+	void UpdateUserRowData(TArray<FUserRowData> UserRowData);
+	void UpdateUserRowData_Test(TArray<FString> UserNames);
+
+private:
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UUserWidget> UserRowClass;
+
+	UPROPERTY(meta = (BindWidget))
+	UVerticalBox* VerticalBox_TeamMarvel;
+
+	UPROPERTY(meta = (BindWidget))
+	UVerticalBox* VerticalBox_TeamDC;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Button_ReadyORStart;
+	UFUNCTION()
+	void OnClick_Button_ReadyORStart();
+};

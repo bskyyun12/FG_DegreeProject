@@ -1,12 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "FPSGameInstance.h"
+#include "MainMenu/FPSGameInstance.h"
 #include "OnlineSessionSettings.h"
-
 #include "GameFramework/PlayerController.h"
-#include "Engine/Engine.h"
-#include "Widgets/MainMenu/MainMenuWidget.h"
+
+#include "MainMenu/MenuWidgets/MainMenuWidget.h"
 
 UFPSGameInstance::UFPSGameInstance(const FObjectInitializer& ObjectIn)
 {
@@ -32,15 +31,46 @@ void UFPSGameInstance::Init()
 	}
 }
 
+void UFPSGameInstance::Host_Implementation(const FString& InServerName)
+{
+	ServerName = InServerName;
+	if (SessionInterface != nullptr)
+	{
+		if (SessionInterface->GetNamedSession(SessionName) != nullptr)
+		{
+			SessionInterface->DestroySession(SessionName);
+		}
+		else
+		{
+			CreateSession();
+		}
+	}
+}
+
 void UFPSGameInstance::CreateSession()
 {
+	UE_LOG(LogTemp, Warning, TEXT("UFPSGameInstance::CreateSession"));
 	if (SessionInterface != nullptr)
 	{
 		FOnlineSessionSettings SessionSettings;
-		SessionSettings.bIsLANMatch = false;
+
+		if (IOnlineSubsystem::Get()->GetSubsystemName() != "NULL")
+		{
+			SessionSettings.bIsLANMatch = false;
+			UE_LOG(LogTemp, Warning, TEXT("SessionSettings.bIsLANMatch = false"));
+		}
+		else
+		{
+			SessionSettings.bIsLANMatch = true;
+			UE_LOG(LogTemp, Warning, TEXT("SessionSettings.bIsLANMatch = true"));
+		}
+		SessionSettings.bIsDedicated = false;
 		SessionSettings.NumPublicConnections = 6;
 		SessionSettings.bShouldAdvertise = true;
 		SessionSettings.bUsesPresence = true;
+
+		SessionSettings.Set(ServerNameSettingsKey, ServerName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
 		SessionInterface->CreateSession(0, SessionName, SessionSettings);
 	}
 }
@@ -59,7 +89,7 @@ void UFPSGameInstance::OnCreateSessionComplete(FName Name, bool bSuccess)
 	{
 		return;
 	}
-	World->ServerTravel("/Game/Maps/Gwang_FPS?listen");
+	World->ServerTravel("/Game/Maps/Lobby?listen");
 }
 
 void UFPSGameInstance::OnDestroySessionComplete(FName Name, bool bSuccess)
@@ -73,6 +103,32 @@ void UFPSGameInstance::OnDestroySessionComplete(FName Name, bool bSuccess)
 	CreateSession();
 }
 
+void UFPSGameInstance::Find_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("UFPSGameInstance::Find_Implementation"));
+	if (SessionInterface != nullptr)
+	{
+		SessionSearch = MakeShareable(new FOnlineSessionSearch());
+		if (IOnlineSubsystem::Get()->GetSubsystemName() != "NULL")
+		{
+			SessionSearch->bIsLanQuery = false;
+			UE_LOG(LogTemp, Warning, TEXT("SessionSearch->bIsLanQuery = false"));
+		}
+		else
+		{
+			SessionSearch->bIsLanQuery = true;
+			UE_LOG(LogTemp, Warning, TEXT("SessionSearch->bIsLanQuery = true"));
+		}
+		SessionSearch->MaxSearchResults = 100;
+		SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
+
+		if (SessionSearch != nullptr)
+		{
+			SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
+		}
+	}
+}
+
 void UFPSGameInstance::OnFindSessionComplete(bool bSuccess)
 {
 	UE_LOG(LogTemp, Warning, TEXT("UFPSGameInstance::OnFindSessionComplete"));
@@ -84,13 +140,38 @@ void UFPSGameInstance::OnFindSessionComplete(bool bSuccess)
 
 	if (SessionSearch != nullptr)
 	{
-		MainMenu->UpdateSessionList(SessionSearch->SearchResults);
-
-		// TODO: Delete the code below. It's only for debugging.
 		UE_LOG(LogTemp, Warning, TEXT("Found %i sessions."), SessionSearch->SearchResults.Num());
-		for (const FOnlineSessionSearchResult& Result : SessionSearch->SearchResults)
+		TArray<FServerData> ServerData;
+		for (int i = 0; i < SessionSearch->SearchResults.Num(); i++)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("    > %s"), *Result.GetSessionIdStr());
+			FServerData Data;
+			Data.Index = i;
+			Data.MaxPlayers = SessionSearch->SearchResults[i].Session.SessionSettings.NumPublicConnections;
+			Data.CurrentPlayers = Data.MaxPlayers - SessionSearch->SearchResults[i].Session.NumOpenPublicConnections;
+			Data.HostUsername = SessionSearch->SearchResults[i].Session.OwningUserName;
+
+			FString Name;
+			if (SessionSearch->SearchResults[i].Session.SessionSettings.Get(ServerNameSettingsKey, Name))
+			{
+				Data.ServerName = Name;
+			}
+			
+			ServerData.Add(Data);
+
+			UE_LOG(LogTemp, Warning, TEXT("    > %s"), *SessionSearch->SearchResults[i].GetSessionIdStr());
+		}
+
+		MainMenu->UpdateSessionList(ServerData);
+	}
+}
+
+void UFPSGameInstance::Join_Implementation(int SessionindexToJoin)
+{
+	if (SessionInterface != nullptr)
+	{
+		if (SessionSearch != nullptr)
+		{
+			SessionInterface->JoinSession(0, SessionName, SessionSearch->SearchResults[SessionindexToJoin]);
 		}
 	}
 }
@@ -102,30 +183,27 @@ void UFPSGameInstance::OnJoinSessionComplete(FName Name, EOnJoinSessionCompleteR
 	{
 	case EOnJoinSessionCompleteResult::Success:
 		UE_LOG(LogTemp, Warning, TEXT("Success"));
-
 		break;
+
 	case EOnJoinSessionCompleteResult::SessionIsFull:
 		UE_LOG(LogTemp, Warning, TEXT("SessionIsFull"));
+		return;
 
-		break;
 	case EOnJoinSessionCompleteResult::SessionDoesNotExist:
 		UE_LOG(LogTemp, Warning, TEXT("SessionDoesNotExist"));
+		return;
 
-		break;
 	case EOnJoinSessionCompleteResult::CouldNotRetrieveAddress:
 		UE_LOG(LogTemp, Warning, TEXT("CouldNotRetrieveAddress"));
+		return;
 
-		break;
 	case EOnJoinSessionCompleteResult::AlreadyInSession:
 		UE_LOG(LogTemp, Warning, TEXT("AlreadyInSession"));
+		return;
 
-		break;
 	case EOnJoinSessionCompleteResult::UnknownError:
 		UE_LOG(LogTemp, Warning, TEXT("UnknownError"));
-
-		break;
-	default:
-		break;
+		return;
 	}
 
 	if (SessionInterface != nullptr)
@@ -133,10 +211,16 @@ void UFPSGameInstance::OnJoinSessionComplete(FName Name, EOnJoinSessionCompleteR
 		FString Address;
 		if (SessionInterface->GetResolvedConnectString(SessionName, Address))
 		{
+			UE_LOG(LogTemp, Warning, TEXT("ClientTravel to %s"), *Address);
 			APlayerController* PlayerController = GetFirstLocalPlayerController();
 			PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);
 		}
 	}
+}
+
+void UFPSGameInstance::SetMainMenu(UMainMenuWidget* InMainMenu)
+{
+	MainMenu = InMainMenu;
 }
 
 void UFPSGameInstance::LoadMainMenu(TSubclassOf<UUserWidget> MainMenuWidgetClass, TSubclassOf<UUserWidget> SessionInfoRowClass)
@@ -154,46 +238,12 @@ void UFPSGameInstance::LoadMainMenu(TSubclassOf<UUserWidget> MainMenuWidgetClass
 		return;
 	}
 	MainMenu->Setup();
-	MainMenu->SetSessionInfoRowClass(SessionInfoRowClass);
 }
 
-void UFPSGameInstance::Host_Implementation()
+void UFPSGameInstance::StartSession()
 {
 	if (SessionInterface != nullptr)
 	{
-		if (SessionInterface->GetNamedSession(SessionName) != nullptr)
-		{
-			SessionInterface->DestroySession(SessionName);
-		}
-		else
-		{
-			CreateSession();
-		}
-	}
-}
-
-void UFPSGameInstance::Find_Implementation()
-{
-	if (SessionInterface != nullptr)
-	{
-		SessionSearch = MakeShareable(new FOnlineSessionSearch());
-		SessionSearch->bIsLanQuery = false;
-		SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
-		SessionSearch->MaxSearchResults = 100;
-		if (SessionSearch != nullptr)
-		{
-			SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
-		}
-	}
-}
-
-void UFPSGameInstance::Join_Implementation(int SessionindexToJoin)
-{
-	if (SessionInterface != nullptr)
-	{
-		if (SessionSearch != nullptr)
-		{
-			SessionInterface->JoinSession(0, SessionName, SessionSearch->SearchResults[SessionindexToJoin]);
-		}
+		SessionInterface->StartSession(SessionName);
 	}
 }

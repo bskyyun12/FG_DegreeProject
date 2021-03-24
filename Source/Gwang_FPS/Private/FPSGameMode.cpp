@@ -164,10 +164,10 @@ void AFPSGameMode::OnPlayerDeath(APlayerController* PlayerController, ETeam Team
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::OnPlayerDeath()"));
 
-	if (FPSGameState != nullptr)
-	{
-		FPSGameState->OnPlayerDeath(Team);
-	}
+	//if (FPSGameState != nullptr)
+	//{
+	//	FPSGameState->OnPlayerDeath(Team);
+	//}
 }
 
 void AFPSGameMode::CheckGameOver(int MarvelScore, int DCScore)

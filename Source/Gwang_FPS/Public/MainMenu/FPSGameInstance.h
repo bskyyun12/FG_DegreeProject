@@ -7,7 +7,7 @@
 
 #include "OnlineSubSystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
-#include "Widgets/MainMenu/MainMenuInterface.h"
+#include "MenuWidgets/MainMenuInterface.h"
 
 #include "FPSGameInstance.generated.h"
 
@@ -25,11 +25,15 @@ public:
 
 	void Init() override;
 
+	void SetMainMenu(UMainMenuWidget* InMainMenu);
+
 	void LoadMainMenu(TSubclassOf<UUserWidget> MainMenuWidgetClass, TSubclassOf<UUserWidget> SessionInfoRowClass);
+
+	void StartSession();
 
 	//////////////////////
 	// IMainMenuInterface
-	void Host_Implementation() override;
+	void Host_Implementation(const FString& InServerName) override;
 	void Find_Implementation() override;
 	void Join_Implementation(int SessionindexToJoin) override;
 	// IMainMenuInterface
@@ -41,6 +45,8 @@ private:
 	TSharedPtr<FOnlineSessionSearch> SessionSearch;
 
 	FName SessionName = TEXT("Gwang Session Game");
+	FName ServerNameSettingsKey = TEXT("ServerName");
+	FString ServerName = "NO_NAME";
 
 	UMainMenuWidget* MainMenu;
 
@@ -50,4 +56,5 @@ private:
 	void OnDestroySessionComplete(FName Name, bool bSuccess);
 	void OnFindSessionComplete(bool bSuccess);
 	void OnJoinSessionComplete(FName Name, EOnJoinSessionCompleteResult::Type Type);
+public:
 };

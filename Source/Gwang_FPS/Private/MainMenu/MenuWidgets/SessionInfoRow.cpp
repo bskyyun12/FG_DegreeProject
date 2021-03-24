@@ -1,11 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Widgets/MainMenu/SessionInfoRow.h"
+#include "MainMenu/MenuWidgets/SessionInfoRow.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 
-#include "Widgets/MainMenu/MainMenuWidget.h"
+#include "MainMenu/MenuWidgets/MainMenuWidget.h"
 
 void USessionInfoRow::InitializeRow(UMainMenuWidget* MainMenuWidget, int Index)
 {
@@ -34,7 +34,10 @@ void USessionInfoRow::OnUpdateUI(int SelectedIndex)
 	}
 }
 
-void USessionInfoRow::SetSessionName(const FString& SessionName)
+void USessionInfoRow::SetSessionInfo(const FServerData& Data)
 {
-	Text_SessionName->SetText(FText::FromString(SessionName));
+	Text_SessionName->SetText(FText::FromString(Data.ServerName));
+	Text_HostName->SetText(FText::FromString(Data.HostUsername));
+	Text_CurrentPlayers->SetText(FText::FromString(FString::FromInt(Data.CurrentPlayers)));
+	Text_MaxPlayers->SetText(FText::FromString(FString::FromInt(Data.MaxPlayers)));
 }
