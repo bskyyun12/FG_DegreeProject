@@ -14,24 +14,37 @@ class UScrollBox;
 class UEditableTextBox;
 
 USTRUCT()
-struct FServerData
+struct FSessionInfoData
 {
 	GENERATED_BODY()
 
 	uint16 Index;
-	FString ServerName;
+	FName ServerName;
+	FName HostUsername;
 	uint16 CurrentPlayers;
 	uint16 MaxPlayers;
-	FString HostUsername;
+	uint16 Ping;
 
-	FServerData()
+	FSessionInfoData()
 	{
 		Index = 0;
 		ServerName = "Server Name";
+		HostUsername = "Gwang";
 		CurrentPlayers = 0;
 		MaxPlayers = 0;
-		HostUsername = "Gwang";
+		Ping = 0;
 	}
+};
+
+USTRUCT()
+struct FSessionCreationData
+{
+	GENERATED_BODY()
+
+	bool bIsLan;
+	int NumPublicConnections;
+	FName SessionName;
+
 };
 
 UCLASS()
@@ -42,7 +55,7 @@ class GWANG_FPS_API UMainMenuWidget : public UFPSWidgetBase
 public:
 	void Setup(EInputMode InputMode = EInputMode::UIOnly, bool bShowCursor = true) override;
 
-	void UpdateSessionList(TArray<FServerData> ServerData);
+	void UpdateSessionList(TArray<FSessionInfoData> ServerData);
 
 	void SetSelectIndex(int Index);
 

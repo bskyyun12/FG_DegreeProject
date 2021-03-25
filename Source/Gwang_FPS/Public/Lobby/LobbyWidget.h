@@ -21,7 +21,6 @@ public:
 	bool Initialize() override;
 
 	void UpdateUserRowData(TArray<FUserRowData> UserRowData);
-	void UpdateUserRowData_Test(TArray<FString> UserNames);
 
 private:
 	UPROPERTY(EditDefaultsOnly)

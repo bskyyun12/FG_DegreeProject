@@ -44,28 +44,7 @@ void ULobbyWidget::UpdateUserRowData(TArray<FUserRowData> UserRowData)
 		{
 			return;
 		}
-		UserRow->SetUserName(Data.UserName);
-
-		VerticalBox_TeamMarvel->AddChild(UserRow);
-	}
-}
-
-void ULobbyWidget::UpdateUserRowData_Test(TArray<FString> UserNames)
-{
-	VerticalBox_TeamMarvel->ClearChildren();
-	for (FString UserName : UserNames)
-	{
-		UWorld* World = GetWorld();
-		if (!ensure(World != nullptr))
-		{
-			return;
-		}
-		UUserRow* UserRow = CreateWidget<UUserRow>(World, UserRowClass);
-		if (!ensure(UserRow != nullptr))
-		{
-			return;
-		}
-		UserRow->SetUserName(UserName);
+		UserRow->SetUserName(Data.UserName.ToString());
 
 		VerticalBox_TeamMarvel->AddChild(UserRow);
 	}

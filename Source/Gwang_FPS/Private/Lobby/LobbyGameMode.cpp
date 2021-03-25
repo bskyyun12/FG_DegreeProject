@@ -17,7 +17,7 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 	LobbyPlayerControllers.Add(LobbyPlayerController);
 
 	FUserRowData Data;
-	Data.UserName = LobbyPlayerController->GetName();
+	Data.UserName = *LobbyPlayerController->GetName();
 	UserData.Add(Data);
 }
 
@@ -45,7 +45,7 @@ void ALobbyGameMode::UpdateLobbyUI()
 	UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::UpdateLobbyUI"));
 	for (FUserRowData Data : UserData)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Data.UserName: %s"), *Data.UserName);
+		UE_LOG(LogTemp, Warning, TEXT("Data.UserName: %s"), *Data.UserName.ToString());
 	}
 
 	for (ALobbyPlayerController* LobbyPlayerController : LobbyPlayerControllers)

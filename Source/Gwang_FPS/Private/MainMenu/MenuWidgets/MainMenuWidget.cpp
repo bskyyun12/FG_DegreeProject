@@ -39,7 +39,7 @@ void UMainMenuWidget::Setup(EInputMode InputMode /*= EInputMode::UIOnly*/, bool 
 	}
 }
 
-void UMainMenuWidget::UpdateSessionList(TArray<FServerData> ServerData)
+void UMainMenuWidget::UpdateSessionList(TArray<FSessionInfoData> ServerData)
 {
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
@@ -84,6 +84,10 @@ void UMainMenuWidget::OnClicked_Button_Host()
 	UE_LOG(LogTemp, Warning, TEXT("UMainMenuWidget::OnClicked_Button_Host()"));
 
 	FString SessionName = EditableText_ServerName->GetText().ToString();
+
+	FSessionCreationData SessionCreationData;
+	SessionCreationData.SessionName = *EditableText_ServerName->GetText().ToString();
+
 	if (FPSGameInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(FPSGameInstance, UMainMenuInterface::StaticClass()))
 	{
 		IMainMenuInterface::Execute_Host(FPSGameInstance, SessionName);

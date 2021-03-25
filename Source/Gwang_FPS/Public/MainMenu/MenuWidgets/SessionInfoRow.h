@@ -20,7 +20,7 @@ public:
 	void InitializeRow(UMainMenuWidget* MainMenuWidget, int Index);
 	void SetSessionName(const FString& SessionName);
 
-	void SetSessionInfo(const FServerData& Data);
+	void SetSessionInfo(const FSessionInfoData& Data);
 private:
 	UPROPERTY(meta = (BindWidget))
 	UButton* Button_Row;
@@ -36,6 +36,9 @@ private:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Text_MaxPlayers;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Text_Ping;
 
 	UFUNCTION()
 	void OnClicked_Button_Row();

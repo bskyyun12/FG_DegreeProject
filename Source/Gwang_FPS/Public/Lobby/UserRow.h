@@ -15,7 +15,7 @@ struct FUserRowData
 	GENERATED_BODY()
 
 	UPROPERTY()
-	FString UserName;
+	FName UserName;
 
 	FUserRowData()
 	{

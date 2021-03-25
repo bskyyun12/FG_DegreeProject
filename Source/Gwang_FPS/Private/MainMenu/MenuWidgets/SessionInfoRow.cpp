@@ -34,10 +34,12 @@ void USessionInfoRow::OnUpdateUI(int SelectedIndex)
 	}
 }
 
-void USessionInfoRow::SetSessionInfo(const FServerData& Data)
+void USessionInfoRow::SetSessionInfo(const FSessionInfoData& Data)
 {
-	Text_SessionName->SetText(FText::FromString(Data.ServerName));
-	Text_HostName->SetText(FText::FromString(Data.HostUsername));
+	Text_SessionName->SetText(FText::FromName(Data.ServerName));
+	Text_HostName->SetText(FText::FromName(Data.HostUsername));
 	Text_CurrentPlayers->SetText(FText::FromString(FString::FromInt(Data.CurrentPlayers)));
 	Text_MaxPlayers->SetText(FText::FromString(FString::FromInt(Data.MaxPlayers)));
+	Text_Ping->SetText(FText::FromString(FString::FromInt(Data.Ping)));
+
 }

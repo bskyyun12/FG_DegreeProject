@@ -141,19 +141,20 @@ void UFPSGameInstance::OnFindSessionComplete(bool bSuccess)
 	if (SessionSearch != nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Found %i sessions."), SessionSearch->SearchResults.Num());
-		TArray<FServerData> ServerData;
+		TArray<FSessionInfoData> ServerData;
 		for (int i = 0; i < SessionSearch->SearchResults.Num(); i++)
 		{
-			FServerData Data;
+			FSessionInfoData Data;
 			Data.Index = i;
 			Data.MaxPlayers = SessionSearch->SearchResults[i].Session.SessionSettings.NumPublicConnections;
 			Data.CurrentPlayers = Data.MaxPlayers - SessionSearch->SearchResults[i].Session.NumOpenPublicConnections;
-			Data.HostUsername = SessionSearch->SearchResults[i].Session.OwningUserName;
+			Data.HostUsername = *SessionSearch->SearchResults[i].Session.OwningUserName;
+			Data.Ping = SessionSearch->SearchResults[i].PingInMs;
 
 			FString Name;
 			if (SessionSearch->SearchResults[i].Session.SessionSettings.Get(ServerNameSettingsKey, Name))
 			{
-				Data.ServerName = Name;
+				Data.ServerName = *Name;
 			}
 			
 			ServerData.Add(Data);
