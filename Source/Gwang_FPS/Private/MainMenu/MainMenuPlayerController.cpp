@@ -5,7 +5,7 @@
 #include "Kismet/GameplayStatics.h"
 
 #include "MainMenu/MenuWidgets/MainMenuWidget.h"
-#include "MainMenu/FPSGameInstance.h"
+#include "FPSGameInstance.h"
 
 void AMainMenuPlayerController::Client_LoadMainMenu_Implementation()
 {

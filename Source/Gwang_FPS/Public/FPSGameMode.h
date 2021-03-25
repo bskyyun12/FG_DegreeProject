@@ -4,9 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-
-#include "FPSPlayerStart.h"
-
 #include "FPSGameMode.generated.h"
 
 class AFPSCharacter;

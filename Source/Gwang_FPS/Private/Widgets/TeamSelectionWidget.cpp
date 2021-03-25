@@ -11,7 +11,6 @@
 #include "FPSGameMode.h"
 #include "FPSGameStateBase.h"
 #include "FPSPlayerControllerInterface.h"
-#include "FPSPlayerStart.h"
 
 bool UTeamSelectionWidget::Initialize()
 {

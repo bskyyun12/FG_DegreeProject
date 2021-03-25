@@ -17,12 +17,13 @@ bool ULobbyWidget::Initialize()
 	Super::Initialize();
 	UE_LOG(LogTemp, Warning, TEXT("ULobbyWidget::Initialize"));
 
-	Button_ReadyORStart->OnClicked.AddDynamic(this, &ULobbyWidget::OnClick_Button_ReadyORStart);
-
 	if (!ensure(UserRowClass != nullptr))
 	{
 		return false;
 	}
+
+	Button_MarvelTeam->OnClicked.AddDynamic(this, &ULobbyWidget::OnClicked_Button_MarvelTeam);
+	Button_DCTeam->OnClicked.AddDynamic(this, &ULobbyWidget::OnClicked_Button_DCTeam);
 
 	return true;
 }
@@ -32,6 +33,9 @@ void ULobbyWidget::UpdateUserRowData(TArray<FUserRowData> UserRowData)
 	UE_LOG(LogTemp, Warning, TEXT("ULobbyWidget::UpdateUI"));
 
 	VerticalBox_TeamMarvel->ClearChildren();
+	VerticalBox_TeamDC->ClearChildren();
+
+	bool bIsAllReady = true;
 	for (FUserRowData Data : UserRowData)
 	{
 		UWorld* World = GetWorld();
@@ -44,17 +48,46 @@ void ULobbyWidget::UpdateUserRowData(TArray<FUserRowData> UserRowData)
 		{
 			return;
 		}
-		UserRow->SetUserName(Data.UserName.ToString());
+		UserRow->UpdateRow(Data);
 
-		VerticalBox_TeamMarvel->AddChild(UserRow);
+		if (Data.Team == ETeam::Marvel)
+		{
+			VerticalBox_TeamMarvel->AddChild(UserRow);
+		}
+		else if (Data.Team == ETeam::DC)
+		{
+			VerticalBox_TeamDC->AddChild(UserRow);
+		}
+
+		if (Data.bIsReady == false)
+		{
+			bIsAllReady = false;
+		}
+	}
+
+	if (bIsAllReady)
+	{
+		if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
+		{
+			ILobbyInterface::Execute_StartGame(GetOwningPlayer());
+		}
 	}
 }
 
-void ULobbyWidget::OnClick_Button_ReadyORStart()
+void ULobbyWidget::OnClicked_Button_MarvelTeam()
 {
-	UE_LOG(LogTemp, Warning, TEXT("ULobbyWidget::OnClick_Button_ReadyORStart"));
+	UE_LOG(LogTemp, Warning, TEXT("ULobbyWidget::OnClicked_Button_MarvelTeam"));
 	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
 	{
-		ILobbyInterface::Execute_StartGame(GetOwningPlayer());
+		ILobbyInterface::Execute_SetTeam(GetOwningPlayer(), ETeam::Marvel);
+	}
+}
+
+void ULobbyWidget::OnClicked_Button_DCTeam()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ULobbyWidget::OnClicked_Button_DCTeam"));
+	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
+	{
+		ILobbyInterface::Execute_SetTeam(GetOwningPlayer(), ETeam::DC);
 	}
 }

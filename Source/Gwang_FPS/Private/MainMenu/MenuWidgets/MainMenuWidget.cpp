@@ -5,12 +5,12 @@
 #include "Components/Button.h"
 #include "Components/ScrollBox.h"
 #include "Components/WidgetSwitcher.h"
+#include "Components/EditableTextBox.h"
 #include "Kismet/GameplayStatics.h"
 
-#include "MainMenu/FPSGameInstance.h"
+#include "FPSGameInstance.h"
 #include "MainMenu/MenuWidgets/SessionInfoRow.h"
 #include "MainMenu/MenuWidgets/MainMenuInterface.h"
-#include <Components/EditableTextBox.h>
 
 void UMainMenuWidget::Setup(EInputMode InputMode /*= EInputMode::UIOnly*/, bool bShowCursor /*= true*/)
 {

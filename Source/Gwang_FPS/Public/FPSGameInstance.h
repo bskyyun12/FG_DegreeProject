@@ -7,7 +7,7 @@
 
 #include "OnlineSubSystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
-#include "MenuWidgets/MainMenuInterface.h"
+#include "MainMenu/MenuWidgets/MainMenuInterface.h"
 
 #include "FPSGameInstance.generated.h"
 
@@ -15,12 +15,20 @@ class UUserWidget;
 class UMainMenuWidget;
 class FOnlineSessionSearch;
 
+UENUM(BlueprintType)
+enum class ETeam : uint8 {
+	None, 
+	Marvel,
+	DC,
+};
+
 UCLASS()
 class GWANG_FPS_API UFPSGameInstance : public UGameInstance, public IMainMenuInterface
 {
 	GENERATED_BODY()
 	
 public:
+
 	UFPSGameInstance(const FObjectInitializer& ObjectIn);
 
 	void Init() override;
@@ -30,6 +38,15 @@ public:
 	void LoadMainMenu(TSubclassOf<UUserWidget> MainMenuWidgetClass, TSubclassOf<UUserWidget> SessionInfoRowClass);
 
 	void StartSession();
+
+	void SetTeam(ETeam InTeam) { Team = InTeam; }
+	ETeam GetTeam() { return Team; }
+
+	int UserNameTest = 0;
+	FString GetUserNameTest()
+	{		
+		return "UserName " + FString::FromInt(UserNameTest++);
+	}
 
 	//////////////////////
 	// IMainMenuInterface
@@ -49,6 +66,8 @@ private:
 	FString ServerName = "NO_NAME";
 
 	UMainMenuWidget* MainMenu;
+
+	ETeam Team;
 
 private:
 	void CreateSession();

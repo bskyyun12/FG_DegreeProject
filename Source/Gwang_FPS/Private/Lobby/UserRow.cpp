@@ -3,36 +3,57 @@
 #include "Lobby/UserRow.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
+#include "Kismet/KismetSystemLibrary.h"
+
+#include "Lobby/LobbyPlayerController.h"
+#include "Lobby/LobbyInterface.h"
 
 bool UUserRow::Initialize()
 {
 	Super::Initialize();
+	UE_LOG(LogTemp, Warning, TEXT("UUserRow::Initialize"));
 
 	Button_Ready->OnClicked.AddDynamic(this, &UUserRow::OnClicked_Button_Ready);
-
+	Button_Ready->SetVisibility(ESlateVisibility::Hidden);
 
 	return true;
 }
 
-void UUserRow::SetUserName(const FString& UserName)
+void UUserRow::UpdateRow(const FUserRowData& Data)
 {
-	Text_UserName->SetText(FText::FromString(UserName));
+	UE_LOG(LogTemp, Warning, TEXT("UUserRow::UpdateRow"));
+	Text_UserName->SetText(FText::FromName(Data.UserName));
+	Text_ID->SetText(FText::FromString(FString::FromInt(Data.ControllerID)));
 
-	if (!ensure(GetOwningPlayer() != nullptr))
+	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
 	{
-		return;
+		if (Data.ControllerID == ILobbyInterface::Execute_GetControllerID(GetOwningPlayer()))
+		{
+			Button_Ready->SetVisibility(ESlateVisibility::Visible);
+		}
 	}
-	if (GetOwningPlayer()->GetName() == UserName)
+
+	bIsReady = Data.bIsReady;
+
+	if (bIsReady)
 	{
-		Button_Ready->SetVisibility(ESlateVisibility::Visible);
+		Text_Ready->SetColorAndOpacity(TextColor_Ready);
+		Text_UserName->SetColorAndOpacity(TextColor_Ready);
 	}
 	else
 	{
-		Button_Ready->SetVisibility(ESlateVisibility::Hidden);
+		Text_Ready->SetColorAndOpacity(TextColor_Default);
+		Text_UserName->SetColorAndOpacity(TextColor_Default);
 	}
 }
 
 void UUserRow::OnClicked_Button_Ready()
 {
 	UE_LOG(LogTemp, Warning, TEXT("UUserRow::OnClicked_Button_Ready"));
+
+	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
+	{
+		bIsReady = !bIsReady;
+		ILobbyInterface::Execute_SetIsReady(GetOwningPlayer(), bIsReady);
+	}
 }

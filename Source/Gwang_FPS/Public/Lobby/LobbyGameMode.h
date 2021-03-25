@@ -3,14 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "FPSGameModeBase.h"
+#include "GameFramework/GameModeBase.h"
+
 #include "UserRow.h"
+
 #include "LobbyGameMode.generated.h"
 
 class ALobbyPlayerController;
 
 UCLASS()
-class GWANG_FPS_API ALobbyGameMode : public AFPSGameModeBase
+class GWANG_FPS_API ALobbyGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 	
@@ -20,8 +22,14 @@ public:
 	void StartGame();
 
 	void UpdateLobbyUI();
+	void UpdateReadyStatus(int ID, bool bIsReady);
+	void UpdateTeamStatus(int ID, ETeam Team);
 
 private:
-	TArray<ALobbyPlayerController*> LobbyPlayerControllers;
 	TArray<FUserRowData> UserData;
+
+private:
+	int GetPlayerID(APlayerController* NewPlayer);
+	ETeam GetTeamToJoin();
+	FName GetUserName(APlayerController* NewPlayer);
 };

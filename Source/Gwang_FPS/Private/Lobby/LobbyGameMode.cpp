@@ -2,10 +2,12 @@
 
 
 #include "Lobby/LobbyGameMode.h"
+#include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "GameFramework/PlayerState.h"
 
 #include "Lobby/LobbyPlayerController.h"
-#include "MainMenu/FPSGameInstance.h"
-#include "Kismet/KismetSystemLibrary.h"
+#include "FPSGameInstance.h"
 #include "Lobby/LobbyInterface.h"
 
 void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
@@ -13,12 +15,32 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 	Super::PostLogin(NewPlayer);
 	UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::PostLogin"));
 
-	ALobbyPlayerController* LobbyPlayerController = Cast<ALobbyPlayerController>(NewPlayer);
-	LobbyPlayerControllers.Add(LobbyPlayerController);
+	if (NewPlayer == nullptr)
+	{
+		return;
+	}
 
-	FUserRowData Data;
-	Data.UserName = *LobbyPlayerController->GetName();
-	UserData.Add(Data);
+	//Test		
+	UFPSGameInstance* GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
+	if (!ensure(GameInstance != nullptr))
+	{
+		return;
+	}
+	//Test
+
+	FUserRowData NewUser;
+	//NewUser.UserName = *NewPlayer->GetName();
+	NewUser.UserName = GetUserName(NewPlayer);
+	NewUser.ControllerID = GetPlayerID(NewPlayer);
+	NewUser.Team = GetTeamToJoin();
+	UserData.Add(NewUser);
+
+	if (UKismetSystemLibrary::DoesImplementInterface(NewPlayer, ULobbyInterface::StaticClass()))
+	{
+		ILobbyInterface::Execute_SetControllerID(NewPlayer, NewUser.ControllerID);
+		ILobbyInterface::Execute_SetLobbyGameMode(NewPlayer, this);
+		ILobbyInterface::Execute_LoadLobbyWidget(NewPlayer);
+	}
 }
 
 void ALobbyGameMode::StartGame()
@@ -43,13 +65,87 @@ void ALobbyGameMode::StartGame()
 void ALobbyGameMode::UpdateLobbyUI()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::UpdateLobbyUI"));
-	for (FUserRowData Data : UserData)
+
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Data.UserName: %s"), *Data.UserName.ToString());
+		return;
+	}
+	for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		APlayerController* PlayerController = Iterator->Get();
+		if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, ULobbyInterface::StaticClass()))
+		{
+			ILobbyInterface::Execute_UpdateLobbyUI(PlayerController, UserData);
+		}
+	}
+}
+
+void ALobbyGameMode::UpdateReadyStatus(int ID, bool bIsReady)
+{
+	for (FUserRowData& Data : UserData)
+	{
+		if (Data.ControllerID == ID)
+		{
+			Data.bIsReady = bIsReady;
+			break;
+		}
 	}
 
-	for (ALobbyPlayerController* LobbyPlayerController : LobbyPlayerControllers)
+	UpdateLobbyUI();
+}
+
+void ALobbyGameMode::UpdateTeamStatus(int ID, ETeam Team)
+{
+	for (FUserRowData& Data : UserData)
 	{
-		LobbyPlayerController->Server_UpdateLobbyUI(UserData);
+		if (Data.ControllerID == ID)
+		{
+			Data.Team = Team;
+			break;
+		}
 	}
+
+	UpdateLobbyUI();
+}
+
+int ALobbyGameMode::GetPlayerID(APlayerController* NewPlayer)
+{
+	APlayerState* PlayerState = NewPlayer->GetPlayerState<APlayerState>();
+	int NewPlayerID = -1;
+	if (PlayerState != nullptr)
+	{
+		NewPlayerID = PlayerState->GetPlayerId();
+	}
+	return NewPlayerID;
+}
+
+ETeam ALobbyGameMode::GetTeamToJoin()
+{
+	int MarvelTeamCounter = 0;
+	int DCTeamCounter = 0;
+	for (FUserRowData& Data : UserData)
+	{
+		if (Data.Team == ETeam::Marvel)
+		{
+			MarvelTeamCounter++;
+		}
+		else if (Data.Team == ETeam::DC)
+		{
+			DCTeamCounter++;
+		}
+	}
+
+	return MarvelTeamCounter <= DCTeamCounter ? ETeam::Marvel : ETeam::DC;
+}
+
+FName ALobbyGameMode::GetUserName(APlayerController* NewPlayer)
+{
+	APlayerState* PlayerState = NewPlayer->GetPlayerState<APlayerState>();
+	FName UserName = "Gwang";
+	if (PlayerState != nullptr)
+	{
+		UserName = *PlayerState->GetPlayerName();
+	}
+	return UserName;
 }

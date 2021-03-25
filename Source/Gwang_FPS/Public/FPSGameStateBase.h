@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
-#include "FPSPlayerStart.h"
+#include "FPSGameInstance.h"
 #include "FPSGameStateBase.generated.h"
 
 class AFPSGameMode;

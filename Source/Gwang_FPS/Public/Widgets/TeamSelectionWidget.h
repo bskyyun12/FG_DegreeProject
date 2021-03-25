@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "FPSWidgetBase.h"
-#include "FPSPlayerStart.h"
+#include "FPSGameInstance.h"
 #include "TeamSelectionWidget.generated.h"
 
 class UButton;

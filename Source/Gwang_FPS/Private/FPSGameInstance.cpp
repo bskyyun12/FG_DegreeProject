@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "MainMenu/FPSGameInstance.h"
+#include "FPSGameInstance.h"
 #include "OnlineSessionSettings.h"
 #include "GameFramework/PlayerController.h"
 

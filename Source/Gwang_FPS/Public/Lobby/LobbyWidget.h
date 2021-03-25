@@ -33,7 +33,12 @@ private:
 	UVerticalBox* VerticalBox_TeamDC;
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* Button_ReadyORStart;
+	UButton* Button_MarvelTeam;
 	UFUNCTION()
-	void OnClick_Button_ReadyORStart();
+	void OnClicked_Button_MarvelTeam();
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Button_DCTeam;
+	UFUNCTION()
+	void OnClicked_Button_DCTeam();
 };

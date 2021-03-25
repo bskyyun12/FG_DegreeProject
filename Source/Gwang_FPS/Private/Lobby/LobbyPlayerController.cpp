@@ -2,19 +2,29 @@
 
 
 #include "Lobby/LobbyPlayerController.h"
+#include "Net/UnrealNetwork.h"
 
 #include "Lobby/LobbyWidget.h"
 #include "Lobby/UserRow.h"
 #include "Lobby/LobbyGameMode.h"
-#include <Kismet/GameplayStatics.h>
+#include "Kismet/GameplayStatics.h"
+#include "FPSGameInstance.h"
 
-void ALobbyPlayerController::BeginPlay()
+void ALobbyPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::BeginPlay();
-	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::BeginPlay"));
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ALobbyPlayerController, ControllerID);
+}
 
+ALobbyPlayerController::ALobbyPlayerController(const FObjectInitializer& ObjectInitializer /*= FObjectInitializer::Get()*/)
+{
+	bReplicates = true;
+}
+
+void ALobbyPlayerController::LoadLobbyWidget_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::LoadLobbyWidget_Implementation"));
 	Client_LoadLobbyWidget();
-	Server_OnUserEntered();
 }
 
 void ALobbyPlayerController::Client_LoadLobbyWidget_Implementation()
@@ -38,27 +48,50 @@ void ALobbyPlayerController::Client_LoadLobbyWidget_Implementation()
 	LobbyWidget->Setup();
 }
 
-void ALobbyPlayerController::Server_OnUserEntered_Implementation()
+void ALobbyPlayerController::BeginPlay()
 {
-	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::OnUserEntered_Implementation"));
+	Super::BeginPlay();
 
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-
-	ALobbyGameMode* LobbyGameMode = Cast<ALobbyGameMode>(UGameplayStatics::GetGameMode(World));
-	if (!ensure(LobbyGameMode != nullptr))
-	{
-		return;
-	}
-	LobbyGameMode->UpdateLobbyUI();
+	Server_UpdateLobbyUI();
 }
 
-void ALobbyPlayerController::Server_UpdateLobbyUI_Implementation(const TArray<FUserRowData>& UserRowData)
+void ALobbyPlayerController::Server_UpdateLobbyUI_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::Server_UpdateLobbyUI_Implementation"));
+	if (LobbyGameMode != nullptr)
+	{
+		LobbyGameMode->UpdateLobbyUI();
+	}
+}
+
+void ALobbyPlayerController::SetIsReady_Implementation(bool bIsReady)
+{
+	Server_UpdateReadyStatus(bIsReady);
+}
+
+void ALobbyPlayerController::Server_UpdateReadyStatus_Implementation(bool bIsReady)
+{
+	if (LobbyGameMode != nullptr)
+	{
+		LobbyGameMode->UpdateReadyStatus(ControllerID, bIsReady);
+	}
+}
+
+void ALobbyPlayerController::SetTeam_Implementation(ETeam Team)
+{
+	Server_UpdateTeamStatus(Team);
+}
+
+void ALobbyPlayerController::Server_UpdateTeamStatus_Implementation(ETeam Team)
+{
+	if (LobbyGameMode != nullptr)
+	{
+		LobbyGameMode->UpdateTeamStatus(ControllerID, Team);
+	}
+}
+
+void ALobbyPlayerController::UpdateLobbyUI_Implementation(const TArray<FUserRowData>& UserRowData)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::UpdateLobbyUI_Implementation"));
 	Client_UpdateLobbyUI(UserRowData);
 }
 
@@ -68,9 +101,32 @@ void ALobbyPlayerController::Client_UpdateLobbyUI_Implementation(const TArray<FU
 	LobbyWidget->UpdateUserRowData(UserData);
 }
 
+void ALobbyPlayerController::SetLobbyGameMode_Implementation(ALobbyGameMode* LobbyGM)
+{
+	if (HasAuthority())
+	{
+		LobbyGameMode = LobbyGM;
+	}
+}
+
+int ALobbyPlayerController::GetControllerID_Implementation()
+{
+	return ControllerID;
+}
+
+void ALobbyPlayerController::SetControllerID_Implementation(int ID)
+{
+	ControllerID = ID;
+}
+
 void ALobbyPlayerController::StartGame_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::StartGame_Implementation"));
-	ALobbyGameMode* LobbyGameMode = Cast<ALobbyGameMode>(UGameplayStatics::GetGameMode(GetWorld()));
-	LobbyGameMode->StartGame();
+	if (HasAuthority())
+	{
+		if (LobbyGameMode != nullptr)
+		{
+			LobbyGameMode->StartGame();
+		}
+	}
 }

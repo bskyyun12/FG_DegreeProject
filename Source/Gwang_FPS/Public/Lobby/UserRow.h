@@ -4,12 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/FPSWidgetBase.h"
+#include "FPSGameInstance.h"
 #include "UserRow.generated.h"
 
 class UTextBlock;
 class UButton;
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FUserRowData
 {
 	GENERATED_BODY()
@@ -17,9 +18,21 @@ struct FUserRowData
 	UPROPERTY()
 	FName UserName;
 
+	UPROPERTY()
+	int ControllerID;
+
+	UPROPERTY()
+	bool bIsReady;
+
+	UPROPERTY()
+	ETeam Team;
+
 	FUserRowData()
 	{
 		UserName = "Gwang";
+		ControllerID = 0;
+		bIsReady = false;
+		Team = ETeam::None;
 	}
 };
 
@@ -31,14 +44,28 @@ class GWANG_FPS_API UUserRow : public UFPSWidgetBase
 public:
 	bool Initialize() override;
 
-	void SetUserName(const FString& UserName);
+	void UpdateRow(const FUserRowData& Data);
 
 private:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Text_UserName;
 
 	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Text_ID;
+
+	UPROPERTY(meta = (BindWidget))
 	UButton* Button_Ready;
 	UFUNCTION()
 	void OnClicked_Button_Ready();
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Text_Ready;
+
+	UPROPERTY(EditAnywhere)
+	FSlateColor TextColor_Default;
+
+	UPROPERTY(EditAnywhere)
+	FSlateColor TextColor_Ready;
+
+	bool bIsReady;
 };
