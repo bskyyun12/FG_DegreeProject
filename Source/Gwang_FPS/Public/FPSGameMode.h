@@ -52,10 +52,7 @@ private:
 	TSubclassOf<AFPSCharacter> DCTeamCharacter;
 
 	UPROPERTY(EditDefaultsOnly)
-	int KillScoreToWin = 3;
-
-	UPROPERTY(EditDefaultsOnly)
-	int MaxPlayerPerTeam = 2;
+	int MaxPlayersPerTeam = 6;
 
 	UPROPERTY()
 	TArray<AFPSCharacter*> MarvelPlayers;

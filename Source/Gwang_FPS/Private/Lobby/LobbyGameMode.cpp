@@ -52,7 +52,7 @@ void ALobbyGameMode::StartGame()
 	}
 
 	//bUseSeamlessTravel = true;
-	World->ServerTravel("/Game/Maps/Gwang_FPS?listen");
+	World->ServerTravel("/Game/Maps/Gwang_FPS?listen", true);
 }
 
 void ALobbyGameMode::UpdateLobbyUI()

@@ -147,25 +147,37 @@ void AFPSGameMode::OnPlayerDeath(APlayerController* PlayerController, ETeam Team
 
 ETeam AFPSGameMode::GetWinnerTeam()
 {
+	int MarvelSurvivors = 0;
+	int DCSurvivors = 0;
+
 	for (AFPSCharacter* MarvelPlayer : MarvelPlayers)
 	{
 		if (MarvelPlayer->GetController() != nullptr)
 		{
-			break;
+			MarvelSurvivors++;
 		}
-		return ETeam::DC;
 	}
 
 	for (AFPSCharacter* DCPlayer : DCPlayers)
 	{
 		if (DCPlayer->GetController() != nullptr)
 		{
-			break;
+			DCSurvivors++;
 		}
-		return ETeam::Marvel;
 	}
 
-	return ETeam::None;
+	if (MarvelSurvivors == 0)
+	{
+		return ETeam::DC;
+	}
+	else if (DCSurvivors == 0)
+	{
+		return ETeam::Marvel;
+	}
+	else
+	{
+		return ETeam::None;
+	}
 }
 
 void AFPSGameMode::EndGame(ETeam Winner)
@@ -184,7 +196,7 @@ void AFPSGameMode::EndGame(ETeam Winner)
 		}
 	}
 
-	World->ServerTravel("/Game/Maps/Lobby?listen");
+	World->ServerTravel("/Game/Maps/Gwang_FPS?listen", true);
 }
 
 void AFPSGameMode::SetupPlayerPool()
@@ -203,14 +215,14 @@ void AFPSGameMode::SetupPlayerPool()
 	// players to pool
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-	for (int i = 0; i < MaxPlayerPerTeam; i++)
+	for (int i = 0; i < MaxPlayersPerTeam; i++)
 	{
 		AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(MarvelTeamCharacter, GetRandomPlayerStarts(ETeam::Marvel), SpawnParams);
 		MarvelPlayers.Add(SpawnedCharacter);
 		FreePlayer(SpawnedCharacter);
 	}
 
-	for (int i = 0; i < MaxPlayerPerTeam; i++)
+	for (int i = 0; i < MaxPlayersPerTeam; i++)
 	{
 		AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(DCTeamCharacter, GetRandomPlayerStarts(ETeam::DC), SpawnParams);
 		DCPlayers.Add(SpawnedCharacter);

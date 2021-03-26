@@ -77,10 +77,15 @@ void AFPSPlayerController::OnSpawnPlayer_Implementation(AFPSCharacter* PooledPla
 	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnSpawnPlayer_Implementation()"));
 	if (PooledPlayer != nullptr)
 	{
-		FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
-		PooledPlayer->SetActorTransform(SpawnTransform);
-
 		this->Possess(PooledPlayer);
+
+		FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
+		PooledPlayer->SetActorLocation(SpawnTransform.GetLocation());
+
+		if (HasAuthority())
+		{
+			ClientSetRotation(SpawnTransform.GetRotation().Rotator());
+		}
 	}
 }
 #pragma endregion
