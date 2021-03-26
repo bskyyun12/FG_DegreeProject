@@ -52,6 +52,11 @@ void ALobbyPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	RequestLobbyUIUpdate_Implementation();
+}
+
+void ALobbyPlayerController::RequestLobbyUIUpdate_Implementation()
+{
 	Server_UpdateLobbyUI();
 }
 
@@ -79,6 +84,7 @@ void ALobbyPlayerController::Server_UpdateReadyStatus_Implementation(bool bIsRea
 void ALobbyPlayerController::SetTeam_Implementation(ETeam Team)
 {
 	Server_UpdateTeamStatus(Team);
+	Client_UpdateTeamStatus(Team);
 }
 
 void ALobbyPlayerController::Server_UpdateTeamStatus_Implementation(ETeam Team)
@@ -86,6 +92,29 @@ void ALobbyPlayerController::Server_UpdateTeamStatus_Implementation(ETeam Team)
 	if (LobbyGameMode != nullptr)
 	{
 		LobbyGameMode->UpdateTeamStatus(ControllerID, Team);
+	}
+}
+
+void ALobbyPlayerController::Client_UpdateTeamStatus_Implementation(ETeam Team)
+{
+	UFPSGameInstance* GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
+	if (GameInstance != nullptr)
+	{
+		GameInstance->SetTeam(Team);
+		UE_LOG(LogTemp, Warning, TEXT("----------------------------------------------"));
+		switch (GameInstance->GetTeam())
+		{
+		case ETeam::None:
+			UE_LOG(LogTemp, Warning, TEXT("(Client)ID: %i, Team: ETeam::None"), ControllerID);
+			break;
+		case ETeam::Marvel:
+			UE_LOG(LogTemp, Warning, TEXT("(Client)ID: %i, Team: ETeam::Marvel"), ControllerID);
+			break;
+		case ETeam::DC:
+			UE_LOG(LogTemp, Warning, TEXT("(Client)ID: %i, Team: ETeam::DC"), ControllerID);
+			break;
+		}
+		UE_LOG(LogTemp, Warning, TEXT("----------------------------------------------"));
 	}
 }
 

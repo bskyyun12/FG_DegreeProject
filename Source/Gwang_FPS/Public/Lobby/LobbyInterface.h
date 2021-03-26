@@ -39,7 +39,8 @@ public:
 	void LoadLobbyWidget();
 
 
-
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void RequestLobbyUIUpdate();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void UpdateLobbyUI(const TArray<FUserRowData>& UserRowData);

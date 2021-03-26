@@ -55,5 +55,6 @@ void UUserRow::OnClicked_Button_Ready()
 	{
 		bIsReady = !bIsReady;
 		ILobbyInterface::Execute_SetIsReady(GetOwningPlayer(), bIsReady);
+		ILobbyInterface::Execute_RequestLobbyUIUpdate(GetOwningPlayer());
 	}
 }

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "FPSGameInstance.h"
 #include "FPSGameMode.generated.h"
 
 class AFPSCharacter;
@@ -17,8 +18,6 @@ class GWANG_FPS_API AFPSGameMode : public AGameModeBase
 public:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
-	void StartNewGame(APlayerController* PlayerController);
-
 	FTransform GetRandomPlayerStarts(ETeam Team);
 
 	void SpawnPlayer(APlayerController* PlayerController, ETeam Team);
@@ -27,17 +26,19 @@ public:
 
 	void FreePlayer(APawn* Player);
 
-	bool CanJoin(ETeam Team);
+	ETeam GetWinnerTeam();
 
-	void CheckGameOver(int MarvelScore, int DCScore);
+	void EndGame(ETeam Winner);
 
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStartGameDelegate);
-	FStartGameDelegate OnStartNewGame;
-
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEndGameDelegate, ETeam, WinnerTeam);
-	FEndGameDelegate OnEndGame;
+	/////////////////
+	// Doing this because I want to be able to play from FPS_Gwang map through engine!
+	ETeam GetStartingTeam();
+	/////////////////
+	// Doing this because I want to be able to play from FPS_Gwang map through engine!
 
 protected:
+	void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
+
 	void BeginPlay() override;
 
 private:
@@ -57,10 +58,10 @@ private:
 	int MaxPlayerPerTeam = 2;
 
 	UPROPERTY()
-	TArray<AFPSCharacter*> MarvelTeamPlayers;
+	TArray<AFPSCharacter*> MarvelPlayers;
 
 	UPROPERTY()
-	TArray<AFPSCharacter*> DCTeamPlayers;
+	TArray<AFPSCharacter*> DCPlayers;
 
 private:
 	UPROPERTY()

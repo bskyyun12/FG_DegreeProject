@@ -80,6 +80,7 @@ void ULobbyWidget::OnClicked_Button_MarvelTeam()
 	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
 	{
 		ILobbyInterface::Execute_SetTeam(GetOwningPlayer(), ETeam::Marvel);
+		ILobbyInterface::Execute_RequestLobbyUIUpdate(GetOwningPlayer());
 	}
 }
 
@@ -89,5 +90,6 @@ void ULobbyWidget::OnClicked_Button_DCTeam()
 	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
 	{
 		ILobbyInterface::Execute_SetTeam(GetOwningPlayer(), ETeam::DC);
+		ILobbyInterface::Execute_RequestLobbyUIUpdate(GetOwningPlayer());
 	}
 }

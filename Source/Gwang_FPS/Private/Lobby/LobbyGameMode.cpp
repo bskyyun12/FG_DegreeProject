@@ -20,14 +20,6 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 		return;
 	}
 
-	//Test		
-	UFPSGameInstance* GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
-	if (!ensure(GameInstance != nullptr))
-	{
-		return;
-	}
-	//Test
-
 	FUserRowData NewUser;
 	//NewUser.UserName = *NewPlayer->GetName();
 	NewUser.UserName = GetUserName(NewPlayer);
@@ -37,15 +29,16 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 
 	if (UKismetSystemLibrary::DoesImplementInterface(NewPlayer, ULobbyInterface::StaticClass()))
 	{
-		ILobbyInterface::Execute_SetControllerID(NewPlayer, NewUser.ControllerID);
 		ILobbyInterface::Execute_SetLobbyGameMode(NewPlayer, this);
+		ILobbyInterface::Execute_SetControllerID(NewPlayer, NewUser.ControllerID);
+		ILobbyInterface::Execute_SetTeam(NewPlayer, NewUser.Team);
 		ILobbyInterface::Execute_LoadLobbyWidget(NewPlayer);
 	}
 }
 
 void ALobbyGameMode::StartGame()
 {
-	auto GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
+	UFPSGameInstance* GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
 
 	if (GameInstance != nullptr)
 	{
@@ -91,8 +84,6 @@ void ALobbyGameMode::UpdateReadyStatus(int ID, bool bIsReady)
 			break;
 		}
 	}
-
-	UpdateLobbyUI();
 }
 
 void ALobbyGameMode::UpdateTeamStatus(int ID, ETeam Team)
@@ -105,8 +96,6 @@ void ALobbyGameMode::UpdateTeamStatus(int ID, ETeam Team)
 			break;
 		}
 	}
-
-	UpdateLobbyUI();
 }
 
 int ALobbyGameMode::GetPlayerID(APlayerController* NewPlayer)
@@ -135,7 +124,6 @@ ETeam ALobbyGameMode::GetTeamToJoin()
 			DCTeamCounter++;
 		}
 	}
-
 	return MarvelTeamCounter <= DCTeamCounter ? ETeam::Marvel : ETeam::DC;
 }
 

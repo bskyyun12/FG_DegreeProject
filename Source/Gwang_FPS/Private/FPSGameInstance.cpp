@@ -243,8 +243,18 @@ void UFPSGameInstance::LoadMainMenu(TSubclassOf<UUserWidget> MainMenuWidgetClass
 
 void UFPSGameInstance::StartSession()
 {
-	if (SessionInterface != nullptr)
-	{
-		SessionInterface->StartSession(SessionName);
-	}
+	//if (SessionInterface != nullptr)
+	//{
+	//	SessionInterface->StartSession(SessionName);
+	//}
+}
+
+void UFPSGameInstance::SetTeam(ETeam InTeam)
+{
+	Team = InTeam;
+}
+
+ETeam UFPSGameInstance::GetTeam()
+{
+	return Team;
 }

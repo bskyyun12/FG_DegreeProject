@@ -3,34 +3,29 @@
 
 #include "FPSPlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "Net/UnrealNetwork.h"
 
 #include "FPSCharacter.h"
 #include "FPSGameMode.h"
 #include "FPSGameStateBase.h"
-#include "Widgets/TeamSelectionWidget.h"
 #include "Widgets/GameOverWidget.h"
 #include "Widgets/GameStatusWidget.h"
 
-void AFPSPlayerController::BeginPlay()
-{
-	Super::BeginPlay();
-
-	if (!ensure(TeamSelectionClass != nullptr))
-	{
-		return;
-	}
-	if (!ensure(GameOverWidgetClass != nullptr))
-	{
-		return;
-	}
-}
-
 void AFPSPlayerController::StartNewGame_Implementation()
 {
-	Server_StartNewGame();
+	Client_StartNewGame();
 }
 
-void AFPSPlayerController::Server_StartNewGame_Implementation()
+void AFPSPlayerController::Client_StartNewGame_Implementation()
+{
+	UFPSGameInstance* GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
+	if (GameInstance != nullptr)
+	{
+		Server_StartNewGame(GameInstance->GetTeam());
+	}
+}
+
+void AFPSPlayerController::Server_StartNewGame_Implementation(ETeam InTeam)
 {
 	if (GameMode == nullptr)
 	{
@@ -47,58 +42,36 @@ void AFPSPlayerController::Server_StartNewGame_Implementation()
 		return;
 	}
 
-	GameMode->OnEndGame.RemoveAll(this);
-	GameMode->OnEndGame.AddDynamic(this, &AFPSPlayerController::OnEndGame);
-
-	GameMode->StartNewGame(this);
-
-	Client_LoadTeamSelection();
-}
-
-#pragma region Gamemode delegate bindings
-void AFPSPlayerController::OnEndGame(ETeam WinnerTeam)
-{
-	Client_LoadGameOver(WinnerTeam == Team);
-}
-
-void AFPSPlayerController::Client_LoadGameOver_Implementation(bool Victory)
-{
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
+	/////////////
+	// Doing this because I want to be able to play from FPS_Gwang map through engine!
+	if (InTeam == ETeam::None)
 	{
-		return;
+		InTeam = GameMode->GetStartingTeam();
 	}
+	// Doing this because I want to be able to play from FPS_Gwang map through engine!
+	/////////////
 
-	GameOverWidget = CreateWidget<UGameOverWidget>(World, GameOverWidgetClass);
-	if (!ensure(GameOverWidget != nullptr))
-	{
-		return;
-	}
-
-	GameOverWidget->Setup();
-	GameOverWidget->SetResultText(Victory);
-}
-
-#pragma endregion
-
-#pragma region Spawn player
-void AFPSPlayerController::OnTeamSelected_Implementation(ETeam InTeam)
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnTeamSelected_Implementation()"));
-	if (TeamSelection != nullptr)
-	{
-		TeamSelection->Teardown();
-		Server_OnTeamSelected(InTeam);
-	}
-}
-
-void AFPSPlayerController::Server_OnTeamSelected_Implementation(ETeam InTeam)
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::Server_OnTeamSelected_Implementation()"));
 	Team = InTeam;
 	GameMode->SpawnPlayer(this, Team);
 }
 
+void AFPSPlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (!ensure(GameOverWidgetClass != nullptr))
+	{
+		return;
+	}
+}
+
+void AFPSPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AFPSPlayerController, Team);
+}
+
+#pragma region Spawn player
 void AFPSPlayerController::OnSpawnPlayer_Implementation(AFPSCharacter* PooledPlayer)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnSpawnPlayer_Implementation()"));
@@ -113,43 +86,6 @@ void AFPSPlayerController::OnSpawnPlayer_Implementation(AFPSCharacter* PooledPla
 #pragma endregion
 
 #pragma region Widgets load/unload
-void AFPSPlayerController::Client_LoadTeamSelection_Implementation()
-{
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-
-	TeamSelection = CreateWidget<UTeamSelectionWidget>(World, TeamSelectionClass);
-	if (!ensure(TeamSelection != nullptr))
-	{
-		return;
-	}
-
-	TeamSelection->Setup();
-}
-
-void AFPSPlayerController::UpdateTeamSelectionUI_Implementation(ETeam InTeam)
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::UpdateTeamSelectionUI_Implementation()"));
-	Server_UpdateTeamSelectionUI(Team);
-}
-
-void AFPSPlayerController::Server_UpdateTeamSelectionUI_Implementation(ETeam InTeam)
-{
-	Multicast_UpdateTeamSelectionUI(InTeam, GameMode->CanJoin(InTeam));
-}
-
-void AFPSPlayerController::Multicast_UpdateTeamSelectionUI_Implementation(ETeam InTeam, bool bCanJoin)
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::Multicast_UpdateTeamSelectionUI_Implementation()"));
-	if (TeamSelection != nullptr)
-	{
-		TeamSelection->UpdateTeamSelectionUI(InTeam, bCanJoin);
-	}
-}
-
 // Game status widget(score board / tap widget)
 void AFPSPlayerController::HandleGameStatusWidget_Implementation(bool bDisplay)
 {
@@ -174,6 +110,29 @@ void AFPSPlayerController::HandleGameStatusWidget_Implementation(bool bDisplay)
 			GameStatusWidget->Teardown();
 		}
 	}
+}
+
+void AFPSPlayerController::LoadGameOverWidget_Implementation(ETeam WinnerTeam)
+{
+	Client_LoadGameOver(WinnerTeam);
+}
+
+void AFPSPlayerController::Client_LoadGameOver_Implementation(ETeam WinnerTeam)
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	GameOverWidget = CreateWidget<UGameOverWidget>(World, GameOverWidgetClass);
+	if (!ensure(GameOverWidget != nullptr))
+	{
+		return;
+	}
+
+	GameOverWidget->Setup();
+	GameOverWidget->SetResultText(Team == WinnerTeam);
 }
 #pragma endregion
 

@@ -23,9 +23,6 @@ public:
 	void StartNewGame();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnTeamSelected(ETeam Team);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnSpawnPlayer(AFPSCharacter* Player);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
@@ -47,5 +44,5 @@ public:
 	void HandleGameStatusWidget(bool bDisplay);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void UpdateTeamSelectionUI(ETeam Team);
+	void LoadGameOverWidget(ETeam WinnerTeam);
 };

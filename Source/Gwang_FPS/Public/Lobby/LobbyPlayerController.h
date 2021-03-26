@@ -42,6 +42,8 @@ public:
 
 	void SetLobbyGameMode_Implementation(ALobbyGameMode* LobbyGM) override;
 
+	void RequestLobbyUIUpdate_Implementation() override;
+
 protected:
 	void BeginPlay() override;
 
@@ -51,6 +53,8 @@ protected:
 	void Server_UpdateReadyStatus(bool bIsReady);
 	UFUNCTION(Server, Reliable)
 	void Server_UpdateTeamStatus(ETeam Team);
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateTeamStatus(ETeam Team);
 
 private:
 	UPROPERTY(EditDefaultsOnly)

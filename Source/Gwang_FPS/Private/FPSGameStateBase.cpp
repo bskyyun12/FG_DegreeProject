@@ -6,29 +6,17 @@
 
 #include "FPSGameMode.h"
 
-
 void AFPSGameStateBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AFPSGameStateBase, MarvelScore);
-	DOREPLIFETIME(AFPSGameStateBase, DCScore);
-}
-
-void AFPSGameStateBase::Initialize(AFPSGameMode* GameMode)
-{
-	FPSGameMode = GameMode;
-	if (!ensure(FPSGameMode != nullptr))
-	{
-		return;
-	}
-
-	FPSGameMode->OnStartNewGame.AddDynamic(this, &AFPSGameStateBase::OnStartNewGame);
+	DOREPLIFETIME(AFPSGameStateBase, MarvelTeamRoundScore);
+	DOREPLIFETIME(AFPSGameStateBase, DCTeamRoundScore);
 }
 
 void AFPSGameStateBase::OnStartNewGame()
 {
-	MarvelScore = 0;
-	DCScore = 0;
+	MarvelTeamRoundScore = 0;
+	DCTeamRoundScore = 0;
 }
 
 void AFPSGameStateBase::OnPlayerDeath(ETeam Team)
@@ -38,17 +26,12 @@ void AFPSGameStateBase::OnPlayerDeath(ETeam Team)
 	{
 		if (Team == ETeam::Marvel)
 		{
-			DCScore++;
+			DCTeamRoundScore++;
 		}
 		else if (Team == ETeam::DC)
 		{
-			MarvelScore++;
+			MarvelTeamRoundScore++;
 		}
-		UE_LOG(LogTemp, Warning, TEXT("Server: MarvelScore(%i), DCScore(%i)"), MarvelScore, DCScore);
-
-		if (FPSGameMode != nullptr)
-		{
-			FPSGameMode->CheckGameOver(MarvelScore, DCScore);
-		}
+		UE_LOG(LogTemp, Warning, TEXT("Server: MarvelScore(%i), DCScore(%i)"), MarvelTeamRoundScore, DCTeamRoundScore);
 	}
 }

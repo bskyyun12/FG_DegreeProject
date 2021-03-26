@@ -28,7 +28,6 @@ class GWANG_FPS_API UFPSGameInstance : public UGameInstance, public IMainMenuInt
 	GENERATED_BODY()
 	
 public:
-
 	UFPSGameInstance(const FObjectInitializer& ObjectIn);
 
 	void Init() override;
@@ -39,14 +38,8 @@ public:
 
 	void StartSession();
 
-	void SetTeam(ETeam InTeam) { Team = InTeam; }
-	ETeam GetTeam() { return Team; }
-
-	int UserNameTest = 0;
-	FString GetUserNameTest()
-	{		
-		return "UserName " + FString::FromInt(UserNameTest++);
-	}
+	void SetTeam(ETeam InTeam);
+	ETeam GetTeam();
 
 	//////////////////////
 	// IMainMenuInterface

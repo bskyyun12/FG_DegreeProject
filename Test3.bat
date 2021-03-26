@@ -1,1 +1,0 @@
-START "" "C:\Program Files (x86)\Epic Games\UE4\UE_4.26\Engine\Binaries\Win64\UE4Editor.exe" "C:\Users\OWNER\Desktop\Gwangyeong\FG_DegreeProject\FG_DegreeProject.uproject" -game -ResX=800 -ResY=450 -WinX=20 -WinY=550 -log

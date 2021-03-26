@@ -24,10 +24,10 @@ private:
 	AFPSGameMode* FPSGameMode;
 
 	UPROPERTY(Replicated)
-	int MarvelScore;
+	int MarvelTeamRoundScore;
 
 	UPROPERTY(Replicated)
-	int DCScore;
+	int DCTeamRoundScore;
 
 private:
 	UFUNCTION()

@@ -11,16 +11,21 @@
 #include "FPSPlayerControllerInterface.h"
 #include "FPSPlayerStart.h"
 
+void AFPSGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
+{
+	Super::InitGame(MapName, Options, ErrorMessage);
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::InitGame()"));
+
+	SetupPlayerStarts();
+	SetupPlayerPool();
+}
+
 void AFPSGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::PostLogin()"));
 
-	if (!ensure(NewPlayer != nullptr))
-	{
-		return;
-	}
-
-	if (UKismetSystemLibrary::DoesImplementInterface(NewPlayer, UFPSPlayerControllerInterface::StaticClass()))
+	if (NewPlayer != nullptr && UKismetSystemLibrary::DoesImplementInterface(NewPlayer, UFPSPlayerControllerInterface::StaticClass()))
 	{
 		IFPSPlayerControllerInterface::Execute_StartNewGame(NewPlayer);
 	}
@@ -30,41 +35,25 @@ void AFPSGameMode::BeginPlay()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::BeginPlay()"));
 	Super::BeginPlay();
-
-	FPSGameState = GetGameState<AFPSGameStateBase>();
-	if (!ensure(FPSGameState != nullptr))
-	{
-		return;
-	}
-	FPSGameState->Initialize(this);
-
-	SetupPlayerStarts();
-	SetupPlayerPool();
-}
-
-void AFPSGameMode::StartNewGame(APlayerController* PlayerController)
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::StartNewGame()"));
-	if (PlayerController != nullptr)
-	{
-		FreePlayer(PlayerController->GetPawn());
-	}
-
-	OnStartNewGame.Broadcast();
 }
 
 void AFPSGameMode::SpawnPlayer(APlayerController* PlayerController, ETeam Team)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::SpawnPlayer()"));
+
+	// 1. Free the incoming player controller's pawn
+	FreePlayer(PlayerController->GetPawn());
+
+	// 2. Try to pool a player in given team
+	AFPSCharacter* PooledPlayer = PoolPlayer(Team);
+	if (!ensure(PooledPlayer != nullptr))
+	{
+		return;
+	}
+
+	// 3. Spawn the pooled player
 	if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		AFPSCharacter* PooledPlayer = PoolPlayer(Team);
-		if (PooledPlayer == nullptr)
-		{
-			IFPSPlayerControllerInterface::Execute_StartNewGame(PlayerController);
-			return;
-		}
-
 		if (Team == ETeam::Marvel)
 		{
 			IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, PooledPlayer);
@@ -82,22 +71,22 @@ AFPSCharacter* AFPSGameMode::PoolPlayer(ETeam Team)
 
 	if (Team == ETeam::Marvel)
 	{
-		for (int i = 0; i < MarvelTeamPlayers.Num(); i++)
+		for (int i = 0; i < MarvelPlayers.Num(); i++)
 		{
-			if (MarvelTeamPlayers[i] != nullptr && MarvelTeamPlayers[i]->GetController() == nullptr)
+			if (MarvelPlayers[i] != nullptr && MarvelPlayers[i]->GetController() == nullptr)
 			{
-				PlayerToPool = MarvelTeamPlayers[i];
+				PlayerToPool = MarvelPlayers[i];
 				break;
 			}
 		}
 	}
 	else if (Team == ETeam::DC)
 	{
-		for (int i = 0; i < DCTeamPlayers.Num(); i++)
+		for (int i = 0; i < DCPlayers.Num(); i++)
 		{
-			if (DCTeamPlayers[i] != nullptr && DCTeamPlayers[i]->GetController() == nullptr)
+			if (DCPlayers[i] != nullptr && DCPlayers[i]->GetController() == nullptr)
 			{
-				PlayerToPool = DCTeamPlayers[i];
+				PlayerToPool = DCPlayers[i];
 				break;
 			}
 		}
@@ -110,32 +99,6 @@ AFPSCharacter* AFPSGameMode::PoolPlayer(ETeam Team)
 	}
 
 	return PlayerToPool;
-}
-
-bool AFPSGameMode::CanJoin(ETeam Team)
-{
-	if (Team == ETeam::Marvel)
-	{
-		for (int i = 0; i < MarvelTeamPlayers.Num(); i++)
-		{
-			if (MarvelTeamPlayers[i] != nullptr && MarvelTeamPlayers[i]->GetController() == nullptr)
-			{
-				return true;
-			}
-		}
-	}
-	else if (Team == ETeam::DC)
-	{
-		for (int i = 0; i < DCTeamPlayers.Num(); i++)
-		{
-			if (DCTeamPlayers[i] != nullptr && DCTeamPlayers[i]->GetController() == nullptr)
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
 }
 
 void AFPSGameMode::FreePlayer(APawn* Player)
@@ -155,6 +118,13 @@ void AFPSGameMode::FreePlayer(APawn* Player)
 FTransform AFPSGameMode::GetRandomPlayerStarts(ETeam Team)
 {
 	TArray<FTransform> SpawnTransforms = (Team == ETeam::Marvel) ? MarvelTeamSpawnTransforms : DCTeamSpawnTransforms;
+
+	if (SpawnTransforms.Num() == 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::GetRandomPlayerStarts()"));
+		UE_LOG(LogTemp, Warning, TEXT("SpawnTransforms.Num() == 0"));
+		return FTransform();
+	}
 	int16 RandomIndex = FMath::RandRange(0, SpawnTransforms.Num() - 1);
 
 	return SpawnTransforms[RandomIndex];
@@ -163,26 +133,58 @@ FTransform AFPSGameMode::GetRandomPlayerStarts(ETeam Team)
 void AFPSGameMode::OnPlayerDeath(APlayerController* PlayerController, ETeam Team)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::OnPlayerDeath()"));
+	if (PlayerController != nullptr)
+	{
+		FreePlayer(PlayerController->GetPawn());
+	}
 
-	//if (FPSGameState != nullptr)
-	//{
-	//	FPSGameState->OnPlayerDeath(Team);
-	//}
+	ETeam WinnerTeam = GetWinnerTeam();
+	if (WinnerTeam != ETeam::None)
+	{
+		EndGame(WinnerTeam);
+	}
 }
 
-void AFPSGameMode::CheckGameOver(int MarvelScore, int DCScore)
+ETeam AFPSGameMode::GetWinnerTeam()
 {
-	bool MarvelWon = MarvelScore >= KillScoreToWin;
-	bool DCWon = DCScore >= KillScoreToWin;
-	if (MarvelWon)
+	for (AFPSCharacter* MarvelPlayer : MarvelPlayers)
 	{
-		OnEndGame.Broadcast(ETeam::Marvel);
+		if (MarvelPlayer->GetController() != nullptr)
+		{
+			break;
+		}
+		return ETeam::DC;
 	}
 
-	if (DCWon)
+	for (AFPSCharacter* DCPlayer : DCPlayers)
 	{
-		OnEndGame.Broadcast(ETeam::DC);
+		if (DCPlayer->GetController() != nullptr)
+		{
+			break;
+		}
+		return ETeam::Marvel;
 	}
+
+	return ETeam::None;
+}
+
+void AFPSGameMode::EndGame(ETeam Winner)
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+	for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		APlayerController* PlayerController = Iterator->Get();
+		if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
+		{
+			IFPSPlayerControllerInterface::Execute_LoadGameOverWidget(PlayerController, Winner);
+		}
+	}
+
+	World->ServerTravel("/Game/Maps/Lobby?listen");
 }
 
 void AFPSGameMode::SetupPlayerPool()
@@ -204,15 +206,15 @@ void AFPSGameMode::SetupPlayerPool()
 	for (int i = 0; i < MaxPlayerPerTeam; i++)
 	{
 		AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(MarvelTeamCharacter, GetRandomPlayerStarts(ETeam::Marvel), SpawnParams);
+		MarvelPlayers.Add(SpawnedCharacter);
 		FreePlayer(SpawnedCharacter);
-		MarvelTeamPlayers.Add(SpawnedCharacter);
 	}
 
 	for (int i = 0; i < MaxPlayerPerTeam; i++)
 	{
 		AFPSCharacter* SpawnedCharacter = World->SpawnActor<AFPSCharacter>(DCTeamCharacter, GetRandomPlayerStarts(ETeam::DC), SpawnParams);
+		DCPlayers.Add(SpawnedCharacter);
 		FreePlayer(SpawnedCharacter);
-		DCTeamPlayers.Add(SpawnedCharacter);
 	}
 }
 
@@ -238,3 +240,28 @@ void AFPSGameMode::SetupPlayerStarts()
 		}
 	}
 }
+
+/////////////////
+// Doing this because I want to be able to play from FPS_Gwang map through engine!
+ETeam AFPSGameMode::GetStartingTeam()
+{
+	int MarvelTeamCounter = 0;
+	int DCTeamCounter = 0;
+	for (AFPSCharacter* MarvelPlayer : MarvelPlayers)
+	{
+		if (MarvelPlayer->GetController() != nullptr)
+		{
+			MarvelTeamCounter++;
+		}
+	}
+	for (AFPSCharacter* DCPlayer : DCPlayers)
+	{
+		if (DCPlayer->GetController() != nullptr)
+		{
+			DCTeamCounter++;
+		}
+	}
+	return MarvelTeamCounter <= DCTeamCounter ? ETeam::Marvel : ETeam::DC;
+}
+/////////////////
+// Doing this because I want to be able to play from FPS_Gwang map through engine!

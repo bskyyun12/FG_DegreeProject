@@ -21,18 +21,14 @@ class GWANG_FPS_API AFPSPlayerController : public APlayerController, public IFPS
 	GENERATED_BODY()
 	
 public:	
+
 	////////////////////////////////
 	// IFPSPlayerControllerInterface
 	void StartNewGame_Implementation() override;
-	UFUNCTION(Server, Reliable)
-	void Server_StartNewGame();
-
 	UFUNCTION(Client, Reliable)
-	void Client_LoadTeamSelection();
-
-	void OnTeamSelected_Implementation(ETeam InTeam) override;
+	void Client_StartNewGame();
 	UFUNCTION(Server, Reliable)
-	void Server_OnTeamSelected(ETeam InTeam);
+	void Server_StartNewGame(ETeam InTeam);
 
 	void OnSpawnPlayer_Implementation(AFPSCharacter* PooledPlayer) override;
 
@@ -48,21 +44,15 @@ public:
 
 	void HandleGameStatusWidget_Implementation(bool bDisplay) override;
 
-	void UpdateTeamSelectionUI_Implementation(ETeam InTeam) override;
-	UFUNCTION(Server, Reliable)
-	void Server_UpdateTeamSelectionUI(ETeam InTeam);
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_UpdateTeamSelectionUI(ETeam InTeam, bool bCanJoin);
+	void LoadGameOverWidget_Implementation(ETeam WinnerTeam) override;
+	UFUNCTION(Client, Reliable)
+	void Client_LoadGameOver(ETeam WinnerTeam);
 	// IFPSPlayerControllerInterface
 	////////////////////////////////
 
 protected:
 	///////////
 	// Widgets
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UUserWidget> TeamSelectionClass;
-	UTeamSelectionWidget* TeamSelection;
-
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUserWidget> GameOverWidgetClass;
 	UGameOverWidget* GameOverWidget;
@@ -76,14 +66,12 @@ protected:
 	UPROPERTY()
 	AFPSGameMode* GameMode;
 
+	UPROPERTY(Replicated)
 	ETeam Team;
 
 protected:
 	void BeginPlay() override;
 
-	UFUNCTION()
-	void OnEndGame(ETeam WinnerTeam);
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	UFUNCTION(Client, Reliable)
-	void Client_LoadGameOver(bool Victory);
 };
