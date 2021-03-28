@@ -23,7 +23,7 @@ public:
 	void Reset();
 
 	UFUNCTION(Server, Reliable)
-	void Server_TakeDamage(AActor* DamageSource, float Damage);
+	void Server_TakeDamage(AActor* DamageSource, float DamageOnHealth, float DamageOnArmor);
 
 	UFUNCTION(Server, Reliable)
 	void Server_AcquireHealth(AActor* HealthSource, float Value);

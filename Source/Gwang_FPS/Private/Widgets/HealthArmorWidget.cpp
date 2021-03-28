@@ -10,18 +10,18 @@
 
 void UHealthArmorWidget::UpdateUI(bool bIsDead)
 {
-	float Health = 0.f;
-	float Armor = 0.f;
+	int Health = 0;
+	int Armor = 0;
 
 	if (bIsDead == false)
 	{
 		if (GetOwningPlayerPawn() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayerPawn(), UFPSCharacterInterface::StaticClass()))
 		{
-			Health = IFPSCharacterInterface::Execute_GetHealth(GetOwningPlayerPawn());
-			Armor = IFPSCharacterInterface::Execute_GetArmor(GetOwningPlayerPawn());
+			Health = (int)IFPSCharacterInterface::Execute_GetHealth(GetOwningPlayerPawn());
+			Armor = (int)IFPSCharacterInterface::Execute_GetArmor(GetOwningPlayerPawn());
 		}
 	}
 
-	Text_Health->SetText(UKismetTextLibrary::Conv_FloatToText(Health, ERoundingMode::HalfToZero));
-	Text_Armor->SetText(UKismetTextLibrary::Conv_FloatToText(Armor, ERoundingMode::HalfToZero));	
+	Text_Health->SetText(UKismetTextLibrary::Conv_IntToText(Health));
+	Text_Armor->SetText(UKismetTextLibrary::Conv_IntToText(Armor));
 }

@@ -22,8 +22,7 @@ class GWANG_FPS_API AFPSCharacter : public ACharacter, public IFPSCharacterInter
 public:
 	AFPSCharacter();
 
-	//////////////////
-	// Input bindings
+#pragma region Input bindings
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	void MoveForward(float Value);
@@ -58,8 +57,7 @@ public:
 
 	DECLARE_DELEGATE_OneParam(FOneBooleanDelegate, bool)
 	void ToggleScoreBoardWidget(bool bDisplay);
-	// Input bindings
-	//////////////////
+#pragma endregion Input bindings
 
 	//////////////////////////
 	// IFPSCharacterInterface
@@ -69,6 +67,9 @@ public:
 
 	float GetHealth_Implementation() override;
 	float GetArmor_Implementation() override;
+
+	void TakeDamage_Implementation(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor) override;
+
 	// IFPSCharacterInterface
 	//////////////////////////
 
@@ -93,8 +94,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	AFPSWeaponBase* CurrentWeapon;
 
-	//float RespawnDelay = 5.f;
-
 	// Cache
 	UPROPERTY()
 	USkeletalMeshComponent* FPSCharacterMesh;
@@ -105,8 +104,6 @@ protected:
 
 protected:
 	virtual void BeginPlay() override;
-
-	float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 	UFUNCTION()
 	void OnBeginOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);

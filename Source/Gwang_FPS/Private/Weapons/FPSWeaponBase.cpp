@@ -142,25 +142,7 @@ AFPSWeaponBase* AFPSWeaponBase::GetWeapon_Implementation()
 void AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation"));
-	if (CanFire() == false)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("CanFire() == false"));
-		return;
-	}
-
-	if (WeaponInfo.bIsAutomatic)
-	{
-		UWorld* World = GetWorld();
-		if (!ensure(World != nullptr))
-		{
-			return;
-		}
-		World->GetTimerManager().SetTimer(ServerAutomaticFireTimer, this, &AFPSWeaponBase::Server_Fire, WeaponInfo.FireRate, true, 0.f);
-	}
-	else
-	{
-		Server_Fire();
-	}
+	Server_Fire();
 }
 
 void AFPSWeaponBase::Server_Fire_Implementation()
@@ -196,15 +178,6 @@ void AFPSWeaponBase::Multicast_FireEffects_Implementation()
 void AFPSWeaponBase::Server_OnEndFireWeapon_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnEndFireWeapon_Implementation"));
-	if (WeaponInfo.bIsAutomatic)
-	{
-		UWorld* World = GetWorld();
-		if (!ensure(World != nullptr))
-		{
-			return;
-		}
-		World->GetTimerManager().ClearTimer(ServerAutomaticFireTimer);
-	}
 }
 #pragma endregion
 
@@ -212,25 +185,7 @@ void AFPSWeaponBase::Server_OnEndFireWeapon_Implementation()
 void AFPSWeaponBase::Client_OnBeginFireWeapon_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnBeginFireWeapon_Implementation"));
-	if (CanFire() == false)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("CanFire() == false"));
-		return;
-	}
-
-	if (WeaponInfo.bIsAutomatic)
-	{
-		UWorld* World = GetWorld();
-		if (!ensure(World != nullptr))
-		{
-			return;
-		}
-		World->GetTimerManager().SetTimer(ClientAutomaticFireTimer, this, &AFPSWeaponBase::Client_Fire, WeaponInfo.FireRate, true, 0.f);
-	}
-	else
-	{
-		Client_Fire();
-	}
+	Client_Fire();
 }
 
 void AFPSWeaponBase::Client_Fire_Implementation()
@@ -240,6 +195,7 @@ void AFPSWeaponBase::Client_Fire_Implementation()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("CanFire() == false"));
 		Client_OnEndFireWeapon();
+		return;
 	}
 
 	Client_FireEffects();
@@ -255,21 +211,12 @@ void AFPSWeaponBase::Client_FireEffects_Implementation()
 void AFPSWeaponBase::Client_OnEndFireWeapon_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnEndFireWeapon_Implementation"));
-	if (WeaponInfo.bIsAutomatic)
-	{
-		UWorld* World = GetWorld();
-		if (!ensure(World != nullptr))
-		{
-			return;
-		}
-		World->GetTimerManager().ClearTimer(ClientAutomaticFireTimer);
-	}
 }
 #pragma endregion
 
 bool AFPSWeaponBase::CanFire()
-{
-	return true;
+{	
+	return GetOwner() != nullptr && WeaponInfo.bCanFire;
 }
 
 void AFPSWeaponBase::Client_Reload_Implementation()

@@ -16,7 +16,6 @@
 #include "FPSPlayerController.h"
 #include "Weapons/FPSWeaponInterface.h"
 
-// Sets default values
 AFPSCharacter::AFPSCharacter()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -43,7 +42,6 @@ AFPSCharacter::AFPSCharacter()
 	HealthComponent->OnUpdateHealthArmorUI.AddDynamic(this, &AFPSCharacter::OnUpdateHealthArmorUI);
 }
 
-// Called when the game starts or when spawned
 void AFPSCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -63,7 +61,6 @@ void AFPSCharacter::BeginPlay()
 	DefaultCharacterMeshRelativeTransform = FPSCharacterMesh->GetRelativeTransform();
 }
 
-// Called to bind functionality to input
 void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -329,14 +326,12 @@ void AFPSCharacter::OnEndOverlapHandCollider(UPrimitiveComponent* OverlappedComp
 	}
 }
 
-float AFPSCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+void AFPSCharacter::TakeDamage_Implementation(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor)
 {
-	Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
 	if (HealthComponent != nullptr)
 	{
-		HealthComponent->Server_TakeDamage(DamageCauser, Damage);
+		HealthComponent->Server_TakeDamage(DamageCauser, DamageOnHealth, DamageOnArmor);
 	}
-	return Damage;
 }
 
 // HealthComponent Delegate binding

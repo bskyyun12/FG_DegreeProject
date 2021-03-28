@@ -16,32 +16,28 @@ class GWANG_FPS_API AFPSGunBase : public AFPSWeaponBase
 public:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	void Server_Fire_Implementation() override;
-
 	bool CanFire() override;
-	
+
+	void Server_OnBeginFireWeapon_Implementation() override;
+	void Server_Fire_Implementation() override;
+	void Server_OnEndFireWeapon_Implementation() override;
+		
+	void Client_OnBeginFireWeapon_Implementation() override;
 	void Client_Fire_Implementation() override;
-
 	void Client_FireEffects_Implementation() override;
-
 	void Client_OnEndFireWeapon_Implementation() override;
 
 	void Client_Reload_Implementation() override;
-
 	void Server_Reload_Implementation() override;
 
 protected:
 	void OnRep_Owner() override;
 
-	float CalcDamageToApply(const UPhysicalMaterial* PhysMat);
+	void CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor);
 	
 	void ShakeCamera();
 	
 	void Recoil();
-
-	void EquipAmmoClip();
-
-	void RemoveAmmoClip();
 
 protected:
 	UPROPERTY(EditDefaultsOnly)
@@ -56,12 +52,16 @@ protected:
 	FTransform OwnerCameraTransform;
 	float RecoilTimer = 0.f;
 
-	UPROPERTY(Replicated, EditDefaultsOnly)
-	bool bHasAmmoClip = true;
+	FTimerHandle FireCooldownTimer;
 
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite)
 	int CurrentAmmo = 0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	
 	int MaxAmmo = 20;
+
+	FTimerHandle ServerAutomaticFireTimer;
+	FTimerHandle ClientAutomaticFireTimer;
+
+	FTimerHandle ServerFireCoolDownTimer;
 };

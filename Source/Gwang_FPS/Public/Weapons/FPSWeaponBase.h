@@ -24,10 +24,16 @@ struct FWeaponInfo
 	/////////
 	// Stats
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bCanFire;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsAutomatic;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Damage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ArmorPenetration;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Range;
@@ -94,8 +100,10 @@ struct FWeaponInfo
 	FWeaponInfo() 
 	{
 		// Stats
+		bCanFire = true;
 		bIsAutomatic = false;
 		Damage = 10.f;
+		ArmorPenetration = 0.5f;
 		Range = 10000.f;
 		FireRate = 0.2f;
 
@@ -212,7 +220,4 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FWeaponInfo WeaponInfo;
-
-	FTimerHandle ServerAutomaticFireTimer;
-	FTimerHandle ClientAutomaticFireTimer;
 };

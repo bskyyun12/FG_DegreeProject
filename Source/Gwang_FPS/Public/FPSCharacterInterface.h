@@ -36,4 +36,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	float GetArmor();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void TakeDamage(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor);
 };

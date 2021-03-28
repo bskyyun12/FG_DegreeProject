@@ -45,9 +45,25 @@ void UHealthComponent::Reset()
 	CurrentArmor = MaxArmor;	// OnRep_CurrentArmor
 }
 
-void UHealthComponent::Server_TakeDamage_Implementation(AActor* DamageSource, float Damage)
+void UHealthComponent::Server_TakeDamage_Implementation(AActor* DamageSource, float DamageOnHealth, float DamageOnArmor)
 {
-	CurrentHealth -= Damage;	// OnRep_CurrentHealth
+	UE_LOG(LogTemp, Warning, TEXT("UHealthComponent::Server_TakeDamage_Implementation"));
+
+	float TotalDamageOnHealth = DamageOnHealth;
+	float TotalDamageOnArmor = DamageOnArmor;
+
+	// Take damage on health when incoming armor damage is greater than current armor
+	if (DamageOnArmor > CurrentArmor)
+	{		
+		TotalDamageOnHealth += DamageOnArmor - CurrentArmor;
+		TotalDamageOnArmor = CurrentArmor;
+	}
+
+	CurrentHealth -= TotalDamageOnHealth;	// OnRep_CurrentHealth	
+	CurrentArmor -= TotalDamageOnArmor;	// OnRep_CurrentArmor	
+
+	UE_LOG(LogTemp, Warning, TEXT("%s took %f damage on health, %f damage on armor"), *GetOwner()->GetName(), TotalDamageOnHealth, TotalDamageOnArmor);
+
 	OnTakeDamage.Broadcast(DamageSource);
 	OnUpdateHealthArmorUI.Broadcast();
 
