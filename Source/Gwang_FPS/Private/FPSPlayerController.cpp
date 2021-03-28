@@ -8,8 +8,10 @@
 #include "FPSCharacter.h"
 #include "FPSGameMode.h"
 #include "FPSGameStateBase.h"
+#include "Widgets/DamageReceiveWidget.h"
+#include "Widgets/FPSHUDWidget.h"
 #include "Widgets/GameOverWidget.h"
-#include "Widgets/GameStatusWidget.h"
+#include "Widgets/ScoreBoardWidget.h"
 
 void AFPSPlayerController::StartNewGame_Implementation()
 {
@@ -59,10 +61,63 @@ void AFPSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	Client_SetupWidgets();
+}
+
+void AFPSPlayerController::Client_SetupWidgets_Implementation()
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
 	if (!ensure(GameOverWidgetClass != nullptr))
 	{
 		return;
 	}
+	GameOverWidget = CreateWidget<UGameOverWidget>(World, GameOverWidgetClass);
+	if (!ensure(GameOverWidget != nullptr))
+	{
+		return;
+	}
+	GameOverWidget->Setup(EInputMode::GameOnly, false);
+	GameOverWidget->SetVisibility(ESlateVisibility::Hidden);
+
+	if (!ensure(ScoreBoardWidgetClass != nullptr))
+	{
+		return;
+	}
+	ScoreBoardWidget = CreateWidget<UScoreBoardWidget>(World, ScoreBoardWidgetClass);
+	if (!ensure(ScoreBoardWidget != nullptr))
+	{
+		return;
+	}
+	ScoreBoardWidget->Setup(EInputMode::GameOnly, false);
+	ScoreBoardWidget->SetVisibility(ESlateVisibility::Hidden);
+
+	if (!ensure(DamageReceiveWidgetClass != nullptr))
+	{
+		return;
+	}
+	DamageReceiveWidget = CreateWidget<UDamageReceiveWidget>(World, DamageReceiveWidgetClass);
+	if (!ensure(DamageReceiveWidget != nullptr))
+	{
+		return;
+	}
+	DamageReceiveWidget->Setup(EInputMode::GameOnly, false);
+	DamageReceiveWidget->SetVisibility(ESlateVisibility::Hidden);
+
+	if (!ensure(FPSHUDWidgetClass != nullptr))
+	{
+		return;
+	}
+	FPSHUDWidget = CreateWidget<UFPSHUDWidget>(World, FPSHUDWidgetClass);
+	if (!ensure(FPSHUDWidget != nullptr))
+	{
+		return;
+	}
+	FPSHUDWidget->Setup(EInputMode::GameOnly, false);
 }
 
 void AFPSPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -71,49 +126,78 @@ void AFPSPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME(AFPSPlayerController, Team);
 }
 
-#pragma region Spawn player
 void AFPSPlayerController::OnSpawnPlayer_Implementation(AFPSCharacter* PooledPlayer)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnSpawnPlayer_Implementation()"));
-	if (PooledPlayer != nullptr)
+	if (HasAuthority())
 	{
-		this->Possess(PooledPlayer);
-
-		FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
-		PooledPlayer->SetActorLocation(SpawnTransform.GetLocation());
-
-		if (HasAuthority())
+		if (PooledPlayer != nullptr)
 		{
-			ClientSetRotation(SpawnTransform.GetRotation().Rotator());
+			this->Possess(PooledPlayer);
+
+			FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
+			PooledPlayer->SetActorLocation(SpawnTransform.GetLocation());
+
+			if (HasAuthority())
+			{
+				ClientSetRotation(SpawnTransform.GetRotation().Rotator());
+			}
 		}
 	}
 }
-#pragma endregion
 
-#pragma region Widgets load/unload
-// Game status widget(score board / tap widget)
-void AFPSPlayerController::HandleGameStatusWidget_Implementation(bool bDisplay)
+#pragma region Widget
+void AFPSPlayerController::OnApplyDamage_Implementation()
 {
-	if (bDisplay)
+	Client_OnApplyDamage();
+}
+
+void AFPSPlayerController::Client_OnApplyDamage_Implementation()
+{
+	if (FPSHUDWidget != nullptr)
+	{
+		FPSHUDWidget->OnApplyDamage();
+	}
+}
+
+void AFPSPlayerController::OnTakeDamage_Implementation()
+{
+	// TODO: what to do here?
+}
+
+void AFPSPlayerController::OnUpdateHealthArmorUI_Implementation(bool bIsDead)
+{
+	Client_OnUpdateHealthArmorUI(bIsDead);
+}
+
+void AFPSPlayerController::Client_OnUpdateHealthArmorUI_Implementation(bool bIsDead)
+{
+	if (FPSHUDWidget != nullptr)
+	{
+		FPSHUDWidget->OnTakeDamage(bIsDead);
+	}
+
+	if (DamageReceiveWidget != nullptr)
 	{
 		UWorld* World = GetWorld();
 		if (!ensure(World != nullptr))
 		{
 			return;
 		}
-		GameStatusWidget = CreateWidget<UGameStatusWidget>(World, GameStatusWidgetClass);
-		if (!ensure(GameStatusWidget != nullptr))
-		{
-			return;
-		}
-		GameStatusWidget->Setup(EInputMode::GameOnly, false);
+		DamageReceiveWidget->SetVisibility(ESlateVisibility::Visible);
+		World->GetTimerManager().ClearTimer(DamageReceiveTimer);
+		World->GetTimerManager().SetTimer(DamageReceiveTimer, [&]()
+			{
+				DamageReceiveWidget->SetVisibility(ESlateVisibility::Hidden);
+			}, 2.f, false);
 	}
-	else
+}
+
+void AFPSPlayerController::ToggleScoreBoardWidget_Implementation(bool bVisible)
+{
+	if (ScoreBoardWidget != nullptr)
 	{
-		if (GameStatusWidget != nullptr)
-		{
-			GameStatusWidget->Teardown();
-		}
+		ScoreBoardWidget->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
 	}
 }
 
@@ -124,26 +208,27 @@ void AFPSPlayerController::LoadGameOverWidget_Implementation(ETeam WinnerTeam)
 
 void AFPSPlayerController::Client_LoadGameOver_Implementation(ETeam WinnerTeam)
 {
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
+	if (GameOverWidget != nullptr)
 	{
-		return;
+		GameOverWidget->SetVisibility(ESlateVisibility::Visible);
+		GameOverWidget->SetResultText(Team == WinnerTeam);
 	}
-
-	GameOverWidget = CreateWidget<UGameOverWidget>(World, GameOverWidgetClass);
-	if (!ensure(GameOverWidget != nullptr))
-	{
-		return;
-	}
-
-	GameOverWidget->Setup();
-	GameOverWidget->SetResultText(Team == WinnerTeam);
 }
 #pragma endregion
 
 #pragma region Death and Respawn
 void AFPSPlayerController::OnPlayerDeath_Implementation()
 {
+	Server_OnPlayerDeath();
+}
+
+void AFPSPlayerController::Server_OnPlayerDeath_Implementation()
+{
+	if (!ensure(GameMode != nullptr))
+	{
+		return;
+	}
+
 	GameMode->OnPlayerDeath(this, Team);
 }
 
@@ -151,10 +236,13 @@ void AFPSPlayerController::RespawnPlayer_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::RespawnPlayer_Implementation"));
 
-	FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
-	if (GetPawn() != nullptr)
+	if (HasAuthority())
 	{
-		GetPawn()->SetActorTransform(SpawnTransform);
+		FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
+		if (GetPawn() != nullptr)
+		{
+			GetPawn()->SetActorTransform(SpawnTransform);
+		}
 	}
 }
 #pragma endregion
@@ -172,9 +260,4 @@ void AFPSPlayerController::AddControlRotation_Implementation(const FRotator& Rot
 {
 	FRotator Rotation = GetControlRotation();
 	SetControlRotation(Rotation + RotationToAdd);
-}
-
-ETeam AFPSPlayerController::GetTeam_Implementation()
-{
-	return Team;
 }

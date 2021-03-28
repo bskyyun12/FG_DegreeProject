@@ -57,7 +57,7 @@ public:
 	void Server_Reload(AFPSWeaponBase* Weapon);
 
 	DECLARE_DELEGATE_OneParam(FOneBooleanDelegate, bool)
-	void HandleGameStatusWidget(bool bDisplay);
+	void ToggleScoreBoardWidget(bool bDisplay);
 	// Input bindings
 	//////////////////
 
@@ -66,6 +66,9 @@ public:
 	FTransform GetCameraTransform_Implementation() override;
 	USkeletalMeshComponent* GetCharacterMesh_Implementation() override;
 	USkeletalMeshComponent* GetArmMesh_Implementation() override;
+
+	float GetHealth_Implementation() override;
+	float GetArmor_Implementation() override;
 	// IFPSCharacterInterface
 	//////////////////////////
 
@@ -103,6 +106,8 @@ protected:
 protected:
 	virtual void BeginPlay() override;
 
+	float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
 	UFUNCTION()
 	void OnBeginOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
@@ -115,14 +120,19 @@ protected:
 
 	/////////////////
 	// Health & Death
-	UFUNCTION()
-	void OnDamageReceived();
+	bool IsDead();
 
 	UFUNCTION()
-	void OnHealthAcquired();
-		
+	void OnTakeDamage(AActor* DamageSource);
+
 	UFUNCTION()
-	void OnDeath();
+	void OnHealthAcquired(AActor* HealthSource);
+
+	UFUNCTION()
+	void OnDeath(AActor* DeathSource);
+
+	UFUNCTION()
+	void OnUpdateHealthArmorUI();
 
 	void RespawnPlayer();
 

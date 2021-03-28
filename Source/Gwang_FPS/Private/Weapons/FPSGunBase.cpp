@@ -36,6 +36,7 @@ void AFPSGunBase::Server_Fire_Implementation()
 		Params.AddIgnoredActor(this);
 		Params.AddIgnoredActor(GetOwner());
 		Params.bReturnPhysicalMaterial = true;
+
 		UWorld* World = GetWorld();
 		if (!ensure(World != nullptr))
 		{
@@ -44,16 +45,17 @@ void AFPSGunBase::Server_Fire_Implementation()
 		bool bIsHit = World->LineTraceSingleByChannel(Hit, Start, End, ECC_GameTraceChannel1, Params); // ECC_GameTraceChannel1 = DamageTrace
 		if (bIsHit)
 		{
-			AActor* HitActor = Hit.GetActor();
-			if (HitActor != nullptr)
+			if (Hit.GetActor() != nullptr && UKismetSystemLibrary::DoesImplementInterface(Hit.GetActor(), UFPSCharacterInterface::StaticClass()))
 			{
-				UHealthComponent* HealthComp = Cast<UHealthComponent>(HitActor->GetComponentByClass(UHealthComponent::StaticClass()));
-				if (HealthComp != nullptr && !HealthComp->IsDead())
+				if (GetInstigatorController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetInstigatorController(), UFPSPlayerControllerInterface::StaticClass()))
 				{
-					float Damage = CalcDamageToApply(Hit.PhysMaterial.Get());
-					HealthComp->Server_AddHealth(-Damage);
-					UE_LOG(LogTemp, Warning, TEXT("Damage Taken: %f, Attacker: %s, Damaged Actor: %s"), Damage, *GetOwner()->GetName(), *HitActor->GetName());
+					IFPSPlayerControllerInterface::Execute_OnApplyDamage(GetInstigatorController());
 				}
+
+				float Damage = CalcDamageToApply(Hit.PhysMaterial.Get());
+				FPointDamageEvent DamageEvent;
+				//DamageEvent.ShotDirection = (Hit.ImpactPoint - GetActorLocation()).GetSafeNormal();
+				Hit.GetActor()->TakeDamage(Damage, DamageEvent, GetInstigatorController(), GetOwner());
 			}
 		}
 	}
@@ -167,10 +169,10 @@ float AFPSGunBase::CalcDamageToApply(const UPhysicalMaterial* PhysMat)
 	case SurfaceType_Default:
 		break;
 	case SurfaceType1:	// Head
-		DamageMultiplier = 5.f;
+		DamageMultiplier = 10.f;
 		break;
 	case SurfaceType2:	// Torso
-		DamageMultiplier = 4.f;
+		DamageMultiplier = 3.f;
 		break;
 	case SurfaceType3:	// Arms
 		DamageMultiplier = 1.f;

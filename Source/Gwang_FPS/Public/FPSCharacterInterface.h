@@ -31,4 +31,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	USkeletalMeshComponent* GetArmMesh();
 
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	float GetHealth();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	float GetArmor();
 };

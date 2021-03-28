@@ -64,9 +64,9 @@ void UFPSGameInstance::CreateSession()
 			SessionSettings.bIsLANMatch = true;
 			UE_LOG(LogTemp, Warning, TEXT("SessionSettings.bIsLANMatch = true"));
 		}
-		SessionSettings.bIsDedicated = false;
-		SessionSettings.NumPublicConnections = 6;
 		SessionSettings.bShouldAdvertise = true;
+		SessionSettings.NumPublicConnections = 6;
+		SessionSettings.bIsDedicated = false;
 		SessionSettings.bUsesPresence = true;
 
 		SessionSettings.Set(ServerNameSettingsKey, ServerName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);

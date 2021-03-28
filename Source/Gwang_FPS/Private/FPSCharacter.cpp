@@ -37,9 +37,10 @@ AFPSCharacter::AFPSCharacter()
 	HandCollider->OnComponentEndOverlap.AddDynamic(this, &AFPSCharacter::OnEndOverlapHandCollider);
 
 	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
-	HealthComponent->OnDamageReceived.AddDynamic(this, &AFPSCharacter::OnDamageReceived);
+	HealthComponent->OnTakeDamage.AddDynamic(this, &AFPSCharacter::OnTakeDamage);
 	HealthComponent->OnHealthAcquired.AddDynamic(this, &AFPSCharacter::OnHealthAcquired);
 	HealthComponent->OnDeath.AddDynamic(this, &AFPSCharacter::OnDeath);
+	HealthComponent->OnUpdateHealthArmorUI.AddDynamic(this, &AFPSCharacter::OnUpdateHealthArmorUI);
 }
 
 // Called when the game starts or when spawned
@@ -78,8 +79,8 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &AFPSCharacter::Reload);
 
-	PlayerInputComponent->BindAction<FOneBooleanDelegate>("GameStatusWidget", IE_Pressed, this, &AFPSCharacter::HandleGameStatusWidget, true);
-	PlayerInputComponent->BindAction<FOneBooleanDelegate>("GameStatusWidget", IE_Released, this, &AFPSCharacter::HandleGameStatusWidget, false);
+	PlayerInputComponent->BindAction<FOneBooleanDelegate>("ScoreBoard", IE_Pressed, this, &AFPSCharacter::ToggleScoreBoardWidget, true);
+	PlayerInputComponent->BindAction<FOneBooleanDelegate>("ScoreBoard", IE_Released, this, &AFPSCharacter::ToggleScoreBoardWidget, false);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AFPSCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AFPSCharacter::MoveRight);
@@ -280,12 +281,32 @@ void AFPSCharacter::Server_Reload_Implementation(AFPSWeaponBase* Weapon)
 	}
 }
 
-void AFPSCharacter::HandleGameStatusWidget(bool bDisplay)
+void AFPSCharacter::ToggleScoreBoardWidget(bool bDisplay)
 {
 	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_HandleGameStatusWidget(GetController(), bDisplay);
+		IFPSPlayerControllerInterface::Execute_ToggleScoreBoardWidget(GetController(), bDisplay);
 	}
+}
+
+float AFPSCharacter::GetHealth_Implementation()
+{
+	if (HealthComponent != nullptr)
+	{
+		return HealthComponent->GetHealth();
+	}
+
+	return -1.f;
+}
+
+float AFPSCharacter::GetArmor_Implementation()
+{
+	if (HealthComponent != nullptr)
+	{
+		return HealthComponent->GetArmor();
+	}
+
+	return -1.f;
 }
 
 void AFPSCharacter::OnBeginOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -308,34 +329,60 @@ void AFPSCharacter::OnEndOverlapHandCollider(UPrimitiveComponent* OverlappedComp
 	}
 }
 
-void AFPSCharacter::OnDamageReceived()
+float AFPSCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	UE_LOG(LogTemp, Warning, TEXT("( %s ) received damage."), *this->GetName());
-
-}
-
-void AFPSCharacter::OnHealthAcquired()
-{
-	UE_LOG(LogTemp, Warning, TEXT("( %s ) acquired health."), *this->GetName());
-}
-
-void AFPSCharacter::OnDeath()
-{
-	CollisionHandleOnDeath();
-
-	//FTimerHandle RespawnTimer;
-	//GetWorld()->GetTimerManager().SetTimer(RespawnTimer, [&]()
-	//	{
-	//		RespawnPlayer();
-	//	}, RespawnDelay, false);
-
-	if (HasAuthority())
+	Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
+	if (HealthComponent != nullptr)
 	{
-		if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
-		{
-			IFPSPlayerControllerInterface::Execute_OnPlayerDeath(GetController());
-		}
+		HealthComponent->Server_TakeDamage(DamageCauser, Damage);
 	}
+	return Damage;
+}
+
+// HealthComponent Delegate binding
+void AFPSCharacter::OnTakeDamage(AActor* DamageSource)
+{
+	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("( %s ) is attacked by ( %s )"), *this->GetName(), *DamageSource->GetName());
+		IFPSPlayerControllerInterface::Execute_OnTakeDamage(GetController());
+	}
+}
+
+// HealthComponent Delegate binding
+void AFPSCharacter::OnHealthAcquired(AActor* HealthSource)
+{
+	UE_LOG(LogTemp, Warning, TEXT("( %s ) acquired health from ( %s )"), *this->GetName(), *HealthSource->GetName());
+}
+
+// HealthComponent Delegate binding
+void AFPSCharacter::OnDeath(AActor* DeathSource)
+{
+	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("( %s ) is killed by ( %s )"), *this->GetName(), *DeathSource->GetName());
+		CollisionHandleOnDeath();
+		IFPSPlayerControllerInterface::Execute_OnUpdateHealthArmorUI(GetController(), IsDead());
+		IFPSPlayerControllerInterface::Execute_OnPlayerDeath(GetController());
+	}
+}
+
+// HealthComponent Delegate binding
+void AFPSCharacter::OnUpdateHealthArmorUI()
+{
+	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
+	{
+		IFPSPlayerControllerInterface::Execute_OnUpdateHealthArmorUI(GetController(), IsDead());
+	}
+}
+
+bool AFPSCharacter::IsDead()
+{
+	if (HealthComponent != nullptr)
+	{
+		return HealthComponent->IsDead();
+	}
+	return false;
 }
 
 void AFPSCharacter::RespawnPlayer()

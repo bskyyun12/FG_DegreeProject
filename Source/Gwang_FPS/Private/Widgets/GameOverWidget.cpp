@@ -36,9 +36,9 @@ void UGameOverWidget::SetResultText(bool Victory)
 void UGameOverWidget::OnClick_Button_Restart()
 {
 	UE_LOG(LogTemp, Warning, TEXT("UGameOverWidget::OnClick_Button_Restart"));
-	if (UKismetSystemLibrary::DoesImplementInterface(OwningPlayer, UFPSPlayerControllerInterface::StaticClass()))
+	if (UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_StartNewGame(OwningPlayer);
+		IFPSPlayerControllerInterface::Execute_StartNewGame(GetOwningPlayer());
 	}
 	Teardown();
 }

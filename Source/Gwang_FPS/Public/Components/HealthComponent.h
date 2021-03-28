@@ -16,39 +16,49 @@ public:
 	// Sets default values for this component's properties
 	UHealthComponent();
 
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	float GetHealth();
+
+	float GetArmor();
 
 	void Reset();
 
 	UFUNCTION(Server, Reliable)
-	void Server_AddHealth(float ValueToAdd);
+	void Server_TakeDamage(AActor* DamageSource, float Damage);
+
+	UFUNCTION(Server, Reliable)
+	void Server_AcquireHealth(AActor* HealthSource, float Value);
 
 	bool IsDead();
 
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FHealthDelegate);
-	
-	UPROPERTY(BlueprintAssignable)
-	FHealthDelegate OnDamageReceived;
-
-	UPROPERTY(BlueprintAssignable)
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHealthDelegate, AActor*, Source);
+	FHealthDelegate OnTakeDamage;
 	FHealthDelegate OnHealthAcquired;
-
-	UPROPERTY(BlueprintAssignable)
 	FHealthDelegate OnDeath;
+
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FHealthArmorUIDelegate);
+	FHealthArmorUIDelegate OnUpdateHealthArmorUI;
+
 
 protected:
 	// Called when the game starts
-	virtual void BeginPlay() override;		
+	virtual void BeginPlay() override;
+
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 private:
 	UPROPERTY(EditDefaultsOnly)
 	float MaxHealth = 100.f;
 
-	UPROPERTY(ReplicatedUsing=OnRep_bIsDead)
-	bool bIsDead;
+	UPROPERTY(EditDefaultsOnly)
+	float MaxArmor = 100.f;
 
+	UPROPERTY(ReplicatedUsing=OnRep_CurrentHealth)
+	float CurrentHealth = 100.f;
 	UFUNCTION()
-	void OnRep_bIsDead();
+	void OnRep_CurrentHealth();
 
-	float CurrentHealth;
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentArmor)
+	float CurrentArmor = 100.f;
+	UFUNCTION()
+	void OnRep_CurrentArmor();
 };

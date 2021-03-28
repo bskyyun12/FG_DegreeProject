@@ -16,15 +16,6 @@ bool UFPSWidgetBase::Initialize()
 
 void UFPSWidgetBase::Setup(EInputMode InputMode/* = EInputMode::UIOnly*/, bool bShowCursor/* = true*/)
 {
-	if (OwningPlayer == nullptr)
-	{
-		OwningPlayer = GetOwningPlayer();
-		if (!ensure(OwningPlayer != nullptr))
-		{
-			return;
-		}
-	}
-
 	this->AddToViewport();
 	this->bIsFocusable = true;
 
@@ -33,40 +24,31 @@ void UFPSWidgetBase::Setup(EInputMode InputMode/* = EInputMode::UIOnly*/, bool b
 		FInputModeUIOnly InputModeData;
 		InputModeData.SetWidgetToFocus(this->TakeWidget());
 		InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		OwningPlayer->SetInputMode(InputModeData);
+		GetOwningPlayer()->SetInputMode(InputModeData);
 	}
 	else if (InputMode == EInputMode::GameOnly)
 	{
 		FInputModeGameOnly InputModeData;
-		OwningPlayer->SetInputMode(InputModeData);
+		GetOwningPlayer()->SetInputMode(InputModeData);
 	}
 	else if (InputMode == EInputMode::GameAndUI)
 	{
 		FInputModeGameAndUI InputModeData;
 		InputModeData.SetWidgetToFocus(this->TakeWidget());
 		InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
-		OwningPlayer->SetInputMode(InputModeData);
+		GetOwningPlayer()->SetInputMode(InputModeData);
 	}
 
-	OwningPlayer->bShowMouseCursor = bShowCursor;
+	GetOwningPlayer()->bShowMouseCursor = bShowCursor;
 }
 
 void UFPSWidgetBase::Teardown()
 {
-	if (OwningPlayer == nullptr)
-	{
-		OwningPlayer = GetOwningPlayer();
-		if (!ensure(OwningPlayer != nullptr))
-		{
-			return;
-		}
-	}
-
 	this->RemoveFromViewport();
 	this->bIsFocusable = false;
 
 	FInputModeGameOnly InputModeData;
-	OwningPlayer->SetInputMode(InputModeData);
+	GetOwningPlayer()->SetInputMode(InputModeData);
 
-	OwningPlayer->bShowMouseCursor = false;
+	GetOwningPlayer()->bShowMouseCursor = false;
 }

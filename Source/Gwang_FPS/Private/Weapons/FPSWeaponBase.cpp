@@ -46,11 +46,6 @@ void AFPSWeaponBase::BeginPlay()
 	Super::BeginPlay();
 }
 
-//EWeaponType AFPSWeaponBase::GetWeaponType()
-//{
-//	return WeaponType;
-//}
-
 //void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 //{
 //	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

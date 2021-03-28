@@ -28,6 +28,4 @@ public:
 
 	virtual void Teardown();
 
-protected:
-	APlayerController* OwningPlayer;
 };

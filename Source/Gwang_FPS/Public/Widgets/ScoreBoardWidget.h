@@ -4,14 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/FPSWidgetBase.h"
-#include "GameStatusWidget.generated.h"
+#include "ScoreBoardWidget.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class GWANG_FPS_API UGameStatusWidget : public UFPSWidgetBase
+class GWANG_FPS_API UScoreBoardWidget : public UFPSWidgetBase
 {
 	GENERATED_BODY()
 	
+public:
 };

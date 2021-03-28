@@ -29,10 +29,13 @@ public:
 	void RespawnPlayer();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnPlayerDeath();
+	void OnApplyDamage();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	ETeam GetTeam();
+	void OnTakeDamage();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void OnPlayerDeath();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void ShakeCamera(TSubclassOf<UCameraShakeBase> CameraShake);
@@ -41,8 +44,11 @@ public:
 	void AddControlRotation(const FRotator& RotationToAdd);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void HandleGameStatusWidget(bool bDisplay);
+	void ToggleScoreBoardWidget(bool bDisplay);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void LoadGameOverWidget(ETeam WinnerTeam);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void OnUpdateHealthArmorUI(bool bIsDead);
 };
