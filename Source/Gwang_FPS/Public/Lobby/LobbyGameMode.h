@@ -24,6 +24,7 @@ public:
 	void UpdateLobbyUI();
 	void UpdateReadyStatus(int ID, bool bIsReady);
 	void UpdateTeamStatus(int ID, ETeam Team);
+	void RemoveUserData(int ID);
 
 private:
 	TArray<FUserRowData> UserData;

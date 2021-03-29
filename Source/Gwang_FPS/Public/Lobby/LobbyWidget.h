@@ -41,4 +41,9 @@ private:
 	UButton* Button_DCTeam;
 	UFUNCTION()
 	void OnClicked_Button_DCTeam();
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Button_BackToMainMenu;
+	UFUNCTION()
+	void OnClicked_Button_BackToMainMenu();
 };

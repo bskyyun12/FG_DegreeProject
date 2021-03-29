@@ -11,6 +11,7 @@
 #include "FPSGameInstance.h"
 #include "MainMenu/MenuWidgets/SessionInfoRow.h"
 #include "MainMenu/MenuWidgets/MainMenuInterface.h"
+#include "MainMenu/MenuWidgets/MenuError.h"
 
 void UMainMenuWidget::Setup(EInputMode InputMode /*= EInputMode::UIOnly*/, bool bShowCursor /*= true*/)
 {
@@ -65,6 +66,11 @@ void UMainMenuWidget::SetSelectIndex(int Index)
 {
 	SelectedIndex = Index;
 	OnUpdateUI.Broadcast(SelectedIndex);
+}
+
+void UMainMenuWidget::ShowErrorWidget(const FString& Title, const FString& ErrorMsg, bool bEnableCloseButton)
+{
+	ErrorWidget->UpdateUI(Title, ErrorMsg, bEnableCloseButton);
 }
 
 void UMainMenuWidget::OnClicked_Button_Create()

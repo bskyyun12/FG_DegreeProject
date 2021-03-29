@@ -51,8 +51,7 @@ void ALobbyGameMode::StartGame()
 		return;
 	}
 
-	//bUseSeamlessTravel = true;
-	World->ServerTravel("/Game/Maps/Gwang_FPS?listen", true);
+	World->ServerTravel("/Game/Maps/Gwang_FPS?listen");
 }
 
 void ALobbyGameMode::UpdateLobbyUI()
@@ -96,6 +95,20 @@ void ALobbyGameMode::UpdateTeamStatus(int ID, ETeam Team)
 			break;
 		}
 	}
+}
+
+void ALobbyGameMode::RemoveUserData(int ID)
+{
+	int Index = 0;
+	for (FUserRowData& Data : UserData)
+	{
+		if (Data.ControllerID == ID)
+		{
+			break;
+		}
+		Index++;
+	}
+	UserData.RemoveAt(Index);
 }
 
 int ALobbyGameMode::GetPlayerID(APlayerController* NewPlayer)

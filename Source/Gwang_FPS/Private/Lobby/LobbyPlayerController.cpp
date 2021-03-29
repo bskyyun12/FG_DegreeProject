@@ -52,6 +52,7 @@ void ALobbyPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
 	RequestLobbyUIUpdate_Implementation();
 }
 
@@ -97,7 +98,6 @@ void ALobbyPlayerController::Server_UpdateTeamStatus_Implementation(ETeam Team)
 
 void ALobbyPlayerController::Client_UpdateTeamStatus_Implementation(ETeam Team)
 {
-	UFPSGameInstance* GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
 	if (GameInstance != nullptr)
 	{
 		GameInstance->SetTeam(Team);
@@ -128,6 +128,19 @@ void ALobbyPlayerController::Client_UpdateLobbyUI_Implementation(const TArray<FU
 {
 	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::Client_UpdateLobbyUI_Implementation"));
 	LobbyWidget->UpdateUserRowData(UserData);
+}
+
+void ALobbyPlayerController::LobbyToMainMenu_Implementation()
+{
+	GameInstance->DestroySession();
+	UGameplayStatics::OpenLevel(GetWorld(), TEXT("Menu"));
+	Server_LobbyToMainMenu();
+}
+
+void ALobbyPlayerController::Server_LobbyToMainMenu_Implementation()
+{
+	LobbyGameMode->RemoveUserData(ControllerID);
+	Server_UpdateLobbyUI();
 }
 
 void ALobbyPlayerController::SetLobbyGameMode_Implementation(ALobbyGameMode* LobbyGM)

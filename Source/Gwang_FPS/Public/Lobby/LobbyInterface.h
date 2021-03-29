@@ -38,7 +38,6 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void LoadLobbyWidget();
 
-
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void RequestLobbyUIUpdate();
 
@@ -50,4 +49,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void SetTeam(ETeam Team);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void LobbyToMainMenu();
 };

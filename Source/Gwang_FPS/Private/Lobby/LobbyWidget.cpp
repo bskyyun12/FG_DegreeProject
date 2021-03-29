@@ -24,6 +24,7 @@ bool ULobbyWidget::Initialize()
 
 	Button_MarvelTeam->OnClicked.AddDynamic(this, &ULobbyWidget::OnClicked_Button_MarvelTeam);
 	Button_DCTeam->OnClicked.AddDynamic(this, &ULobbyWidget::OnClicked_Button_DCTeam);
+	Button_BackToMainMenu->OnClicked.AddDynamic(this, &ULobbyWidget::OnClicked_Button_BackToMainMenu);
 
 	return true;
 }
@@ -91,5 +92,14 @@ void ULobbyWidget::OnClicked_Button_DCTeam()
 	{
 		ILobbyInterface::Execute_SetTeam(GetOwningPlayer(), ETeam::DC);
 		ILobbyInterface::Execute_RequestLobbyUIUpdate(GetOwningPlayer());
+	}
+}
+
+void ULobbyWidget::OnClicked_Button_BackToMainMenu()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ULobbyWidget::OnClicked_Button_BackToMainMenu"));
+	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
+	{
+		ILobbyInterface::Execute_LobbyToMainMenu(GetOwningPlayer());
 	}
 }

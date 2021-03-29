@@ -38,6 +38,8 @@ public:
 
 	void StartSession();
 
+	void DestroySession();
+
 	void SetTeam(ETeam InTeam);
 	ETeam GetTeam();
 
@@ -68,5 +70,8 @@ private:
 	void OnDestroySessionComplete(FName Name, bool bSuccess);
 	void OnFindSessionComplete(bool bSuccess);
 	void OnJoinSessionComplete(FName Name, EOnJoinSessionCompleteResult::Type Type);
+
+	// Called on NetworkFailure
+	void OnNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type Type, const FString& ErrorMsg);
 public:
 };

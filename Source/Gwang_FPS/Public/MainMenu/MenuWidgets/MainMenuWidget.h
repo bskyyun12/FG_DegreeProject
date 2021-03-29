@@ -8,6 +8,7 @@
 
 class UFPSGameInstance;
 class UWidgetSwitcher;
+class UMenuError;
 class UButton;
 class UUserWidget;
 class UScrollBox;
@@ -59,6 +60,8 @@ public:
 
 	void SetSelectIndex(int Index);
 
+	void ShowErrorWidget(const FString& Title, const FString& ErrorMsg, bool bEnableCloseButton = true);
+
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSessionListDelegate, int, SelectedIndex);
 	FSessionListDelegate OnUpdateUI;
 
@@ -76,6 +79,9 @@ private:
 
 	UPROPERTY(meta = (BindWidget))
 	UEditableTextBox* EditableText_ServerName;
+
+	UPROPERTY(meta = (BindWidget))
+	UMenuError* ErrorWidget;
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* Button_Create;

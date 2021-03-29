@@ -52,7 +52,6 @@ void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(AFPSWeaponBase, bIsReloading);
 }
 
-
 void AFPSWeaponBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
 {
 	UE_LOG(LogTemp, Warning, TEXT("(Server)AFPSWeaponBase::OnWeaponEquipped"));

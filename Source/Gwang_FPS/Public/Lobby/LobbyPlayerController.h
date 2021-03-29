@@ -11,6 +11,7 @@
 
 class ALobbyGameMode;
 class ULobbyWidget;
+class UFPSGameInstance;
 
 UCLASS()
 class GWANG_FPS_API ALobbyPlayerController : public APlayerController, public ILobbyInterface
@@ -44,6 +45,10 @@ public:
 
 	void RequestLobbyUIUpdate_Implementation() override;
 
+	void LobbyToMainMenu_Implementation() override;
+	UFUNCTION(Server, Reliable)
+	void Server_LobbyToMainMenu();
+
 protected:
 	void BeginPlay() override;
 
@@ -63,6 +68,8 @@ private:
 	ULobbyWidget* LobbyWidget;
 
 	ALobbyGameMode* LobbyGameMode;
+
+	UFPSGameInstance* GameInstance;
 
 	UPROPERTY(Replicated)
 	int ControllerID = 0;

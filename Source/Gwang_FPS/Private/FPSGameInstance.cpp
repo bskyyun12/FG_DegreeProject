@@ -29,16 +29,38 @@ void UFPSGameInstance::Init()
 			SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UFPSGameInstance::OnJoinSessionComplete);
 		}
 	}
+
+	UEngine* Engine = GetEngine();
+	if (Engine != nullptr)
+	{
+		Engine->NetworkFailureEvent.AddUObject(this, &UFPSGameInstance::OnNetworkFailure);
+	}
+}
+
+void UFPSGameInstance::OnNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type Type, const FString& ErrorMsg)
+{
+	UEngine* Engine = GetEngine();
+	if (Engine != nullptr)
+	{
+		Engine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, ErrorMsg);
+	}
+	DestroySession();
 }
 
 void UFPSGameInstance::Host_Implementation(const FString& InServerName)
 {
+	UE_LOG(LogTemp, Warning, TEXT("UFPSGameInstance::Host_Implementation"));
 	ServerName = InServerName;
 	if (SessionInterface != nullptr)
 	{
 		if (SessionInterface->GetNamedSession(SessionName) != nullptr)
 		{
-			SessionInterface->DestroySession(SessionName);
+			DestroySession();
+			if (MainMenu != nullptr)
+			{
+				MainMenu->ShowErrorWidget("Host Session", "Session name is already in use. Trying to destroy the session...");
+			}
+			// TODO: Create Session on complete destroy session?
 		}
 		else
 		{
@@ -54,23 +76,14 @@ void UFPSGameInstance::CreateSession()
 	{
 		FOnlineSessionSettings SessionSettings;
 
-		if (IOnlineSubsystem::Get()->GetSubsystemName() != "NULL")
-		{
-			SessionSettings.bIsLANMatch = false;
-			UE_LOG(LogTemp, Warning, TEXT("SessionSettings.bIsLANMatch = false"));
-		}
-		else
-		{
-			SessionSettings.bIsLANMatch = true;
-			UE_LOG(LogTemp, Warning, TEXT("SessionSettings.bIsLANMatch = true"));
-		}
+		SessionSettings.bIsLANMatch = IOnlineSubsystem::Get()->GetSubsystemName() == "NULL";
 		SessionSettings.bShouldAdvertise = true;
 		SessionSettings.NumPublicConnections = 6;
 		SessionSettings.bIsDedicated = false;
 		SessionSettings.bUsesPresence = true;
 
 		// One of the two booleans below allows the third steam person to join in the lobby!
-		SessionSettings.bAllowJoinInProgress = true;
+		SessionSettings.bAllowJoinInProgress = true;	// TODO: Try bAllowJoinInProgress = false; and see if the third steam user can join the session
 		SessionSettings.bAllowJoinViaPresence = true;	// Probably this one is in charge of allowing the third person to join!
 
 		SessionSettings.Set(ServerNameSettingsKey, ServerName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
@@ -101,10 +114,8 @@ void UFPSGameInstance::OnDestroySessionComplete(FName Name, bool bSuccess)
 	UE_LOG(LogTemp, Warning, TEXT("UFPSGameInstance::OnDestroySessionComplete"));
 	if (!bSuccess)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Could not destroy session!"));
 		return;
-	}
-	CreateSession();
+	}	
 }
 
 void UFPSGameInstance::Find_Implementation()
@@ -113,16 +124,8 @@ void UFPSGameInstance::Find_Implementation()
 	if (SessionInterface != nullptr)
 	{
 		SessionSearch = MakeShareable(new FOnlineSessionSearch());
-		if (IOnlineSubsystem::Get()->GetSubsystemName() != "NULL")
-		{
-			SessionSearch->bIsLanQuery = false;
-			UE_LOG(LogTemp, Warning, TEXT("SessionSearch->bIsLanQuery = false"));
-		}
-		else
-		{
-			SessionSearch->bIsLanQuery = true;
-			UE_LOG(LogTemp, Warning, TEXT("SessionSearch->bIsLanQuery = true"));
-		}
+
+		SessionSearch->bIsLanQuery = IOnlineSubsystem::Get()->GetSubsystemName() == "NULL";
 		SessionSearch->MaxSearchResults = 100;
 		SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
 
@@ -130,6 +133,11 @@ void UFPSGameInstance::Find_Implementation()
 		{
 			SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
 		}
+	}	
+	
+	if (MainMenu != nullptr)
+	{
+		MainMenu->ShowErrorWidget("", "Trying to find sessions...", false);
 	}
 }
 
@@ -160,13 +168,17 @@ void UFPSGameInstance::OnFindSessionComplete(bool bSuccess)
 			{
 				Data.ServerName = *Name;
 			}
-			
+
 			ServerData.Add(Data);
 
 			UE_LOG(LogTemp, Warning, TEXT("    > %s"), *SessionSearch->SearchResults[i].GetSessionIdStr());
 		}
 
-		MainMenu->UpdateSessionList(ServerData);
+		if (MainMenu != nullptr)
+		{
+			MainMenu->UpdateSessionList(ServerData);
+			MainMenu->ShowErrorWidget("", "Finished Finding sessions");
+		}
 	}
 }
 
@@ -178,6 +190,11 @@ void UFPSGameInstance::Join_Implementation(int SessionindexToJoin)
 		{
 			SessionInterface->JoinSession(0, SessionName, SessionSearch->SearchResults[SessionindexToJoin]);
 		}
+	}	
+	
+	if (MainMenu != nullptr)
+	{
+		MainMenu->ShowErrorWidget("", "Joining the session...", false);
 	}
 }
 
@@ -247,10 +264,24 @@ void UFPSGameInstance::LoadMainMenu(TSubclassOf<UUserWidget> MainMenuWidgetClass
 
 void UFPSGameInstance::StartSession()
 {
-	//if (SessionInterface != nullptr)
-	//{
-	//	SessionInterface->StartSession(SessionName);
-	//}
+	if (SessionInterface != nullptr)
+	{
+		SessionInterface->StartSession(SessionName);
+	}
+
+	UEngine* Engine = GetEngine();
+	if (Engine != nullptr)
+	{
+		Engine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, "Game Start!");
+	}
+}
+
+void UFPSGameInstance::DestroySession()
+{
+	if (SessionInterface != nullptr)
+	{
+		SessionInterface->DestroySession(SessionName);
+	}
 }
 
 void UFPSGameInstance::SetTeam(ETeam InTeam)
