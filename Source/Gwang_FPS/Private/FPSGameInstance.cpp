@@ -69,6 +69,10 @@ void UFPSGameInstance::CreateSession()
 		SessionSettings.bIsDedicated = false;
 		SessionSettings.bUsesPresence = true;
 
+		// One of the two booleans below allows the third steam person to join in the lobby!
+		SessionSettings.bAllowJoinInProgress = true;
+		SessionSettings.bAllowJoinViaPresence = true;	// Probably this one is in charge of allowing the third person to join!
+
 		SessionSettings.Set(ServerNameSettingsKey, ServerName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 		SessionInterface->CreateSession(0, SessionName, SessionSettings);
