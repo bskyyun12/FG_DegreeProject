@@ -53,5 +53,5 @@ public:
 	void OnUpdateHealthArmorUI(bool bIsDead);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnUpdateAmmoUI(int Ammo);
+	void OnUpdateAmmoUI(int CurrentAmmo, int RemainingAmmo);
 };

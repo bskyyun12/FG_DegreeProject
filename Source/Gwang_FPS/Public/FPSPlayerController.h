@@ -57,9 +57,9 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_OnUpdateHealthArmorUI(bool bIsDead);
 
-	void OnUpdateAmmoUI_Implementation(int Ammo) override;
+	void OnUpdateAmmoUI_Implementation(int CurrentAmmo, int RemainingAmmo) override;
 	UFUNCTION(Client, Reliable)
-	void Client_OnUpdateAmmoUI(int Ammo);
+	void Client_OnUpdateAmmoUI(int CurrentAmmo, int RemainingAmmo);
 
 	// IFPSPlayerControllerInterface
 	////////////////////////////////

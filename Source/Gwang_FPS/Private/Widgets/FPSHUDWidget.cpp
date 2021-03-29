@@ -27,7 +27,7 @@ void UFPSHUDWidget::OnTakeDamage(bool bIsDead)
 	HealthArmorWidget->UpdateUI(bIsDead);
 }
 
-void UFPSHUDWidget::UpdateAmmoUI(int Ammo)
+void UFPSHUDWidget::UpdateAmmoUI(int CurrentAmmo, int RemainingAmmo)
 {
-	AmmoWidget->UpdateUI(Ammo);
+	AmmoWidget->UpdateUI(CurrentAmmo, RemainingAmmo);
 }

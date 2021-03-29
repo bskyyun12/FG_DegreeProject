@@ -20,7 +20,7 @@ public:
 
 	void OnTakeDamage(bool bIsDead);
 
-	void UpdateAmmoUI(int Ammo);
+	void UpdateAmmoUI(int CurrentAmmo, int RemainingAmmo);
 
 private:
 	UPROPERTY(meta=(BindWidget))

@@ -193,16 +193,16 @@ void AFPSPlayerController::Client_OnUpdateHealthArmorUI_Implementation(bool bIsD
 	}
 }
 
-void AFPSPlayerController::OnUpdateAmmoUI_Implementation(int Ammo)
+void AFPSPlayerController::OnUpdateAmmoUI_Implementation(int CurrentAmmo, int RemainingAmmo)
 {
-	Client_OnUpdateAmmoUI(Ammo);
+	Client_OnUpdateAmmoUI(CurrentAmmo, RemainingAmmo);
 }
 
-void AFPSPlayerController::Client_OnUpdateAmmoUI_Implementation(int Ammo)
+void AFPSPlayerController::Client_OnUpdateAmmoUI_Implementation(int CurrentAmmo, int RemainingAmmo)
 {
 	if (FPSHUDWidget != nullptr)
 	{
-		FPSHUDWidget->UpdateAmmoUI(Ammo);
+		FPSHUDWidget->UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
 	}
 }
 
