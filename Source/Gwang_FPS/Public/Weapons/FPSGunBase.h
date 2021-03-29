@@ -16,52 +16,62 @@ class GWANG_FPS_API AFPSGunBase : public AFPSWeaponBase
 public:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	bool CanFire() override;
+	// Equip & Drop
+	void Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter) override;
 
+	// Weapon Fire
+	bool CanFire() override;
+	void CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor);
 	void Server_OnBeginFireWeapon_Implementation() override;
 	void Server_Fire_Implementation() override;
 	void Server_OnEndFireWeapon_Implementation() override;
-		
 	void Client_OnBeginFireWeapon_Implementation() override;
-	void Client_Fire_Implementation() override;
-	void Client_FireEffects_Implementation() override;
 	void Client_OnEndFireWeapon_Implementation() override;
 
-	void Client_Reload_Implementation() override;
-	void Server_Reload_Implementation() override;
+	// Reload
+	void Client_OnReload_Implementation() override;
+	void Server_OnReload_Implementation() override;
+
 
 protected:
+	void BeginPlay() override;
+
+	// Called when Owner changed
 	void OnRep_Owner() override;
 
-	void CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor);
-	
+	// Widget Update
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateAmmoUI(int Ammo);
+
+	// Fire Effects
+	void Client_FireEffects_Implementation() override;
 	void ShakeCamera();
-	
 	void Recoil();
 
 protected:
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UCameraShakeBase> CameraShakeOnFire;
-
-	UPROPERTY(EditDefaultsOnly)
-	UCurveFloat* RecoilCurve_Vertical;
-
-	UPROPERTY(EditDefaultsOnly)
-	UCurveFloat* RecoilCurve_Horizontal;
-
-	FTransform OwnerCameraTransform;
-	float RecoilTimer = 0.f;
-
-	FTimerHandle FireCooldownTimer;
-
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(ReplicatedUsing=OnRep_CurrentAmmo, EditAnywhere, BlueprintReadWrite)
 	int CurrentAmmo = 0;
+	UFUNCTION()
+	void OnRep_CurrentAmmo();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)	
-	int MaxAmmo = 20;
+	int MagazineCapacity = 20;
 
-	FTimerHandle ServerAutomaticFireTimer;
-	FTimerHandle ClientAutomaticFireTimer;
+	// Fire Effects
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UCameraShakeBase> CameraShakeOnFire;
+	UPROPERTY(EditDefaultsOnly)
+	UCurveFloat* RecoilCurve_Vertical;
+	UPROPERTY(EditDefaultsOnly)
+	UCurveFloat* RecoilCurve_Horizontal;
+	float RecoilTimer = 0.f;
 
-	FTimerHandle ServerFireCoolDownTimer;
+	FTimerHandle FireTimer_Server;
+	FTimerHandle CooldownTimer_Server;
+
+	FTimerHandle FireTimer_Client;
+	FTimerHandle CooldownTimer_Client;
+
+	bool bCooldown_Server = false;
+	bool bCooldown_Client = false;
 };

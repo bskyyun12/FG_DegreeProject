@@ -20,6 +20,8 @@ public:
 
 	void OnTakeDamage(bool bIsDead);
 
+	void UpdateAmmoUI(int Ammo);
+
 private:
 	UPROPERTY(meta=(BindWidget))
 	UTextBlock* Text_Crosshair;

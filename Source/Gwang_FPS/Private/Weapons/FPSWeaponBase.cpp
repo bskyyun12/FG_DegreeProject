@@ -7,7 +7,6 @@
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
-//#include "Net/UnrealNetwork.h" // GetLifetimeReplicatedProps
 
 #include "FPSCharacter.h"
 #include "FPSCharacterInterface.h"
@@ -46,64 +45,35 @@ void AFPSWeaponBase::BeginPlay()
 	Super::BeginPlay();
 }
 
-//void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-//{
-//	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-//	DOREPLIFETIME(AFPSWeaponBase, TPWeaponMesh);
-//}
-
-void AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
+void AFPSWeaponBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnFPWeaponEquipped_Implementation()"));
-
-	if (OwnerCharacter != nullptr && UKismetSystemLibrary::DoesImplementInterface(OwnerCharacter, UFPSCharacterInterface::StaticClass()))
-	{
-		USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(OwnerCharacter);
-		if (ArmMesh != nullptr)
-		{
-			FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.FP_ArmsSocketName);
-
-			UAnimInstance* AnimInstance = ArmMesh->GetAnimInstance();
-			if (AnimInstance != nullptr)
-			{
-				if (WeaponInfo.FP_EquipAnim != nullptr)
-				{ 
-					AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
-				}
-			}
-		}
-	}
-}
-
-void AFPSWeaponBase::Client_OnFPWeaponDroped_Implementation()
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnFPWeaponDroped_Implementation()"));
-
-	FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-}
-
-void AFPSWeaponBase::Server_OnTPWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnTPWeaponEquipped_Implementation()"));
-
-	SetOwner(OwnerCharacter);
+	UE_LOG(LogTemp, Warning, TEXT("(Server)AFPSWeaponBase::OnWeaponEquipped"));
+	SetOwner(OwnerCharacter);	// OnRep_Owner()
 	SetInstigator(OwnerCharacter);
 
 	TPWeaponMesh->SetSimulatePhysics(false);
 	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	if (OwnerCharacter != nullptr && UKismetSystemLibrary::DoesImplementInterface(OwnerCharacter, UFPSCharacterInterface::StaticClass()))
+	if (UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
 	{
-		USkeletalMeshComponent* CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(OwnerCharacter);
+		USkeletalMeshComponent* CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(GetOwner());
+		if (CharacterMesh != nullptr)
+		{
+			TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
+		}
 
-		TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
+		USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(GetOwner());
+		if (ArmMesh != nullptr)
+		{
+			FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.FP_ArmsSocketName);
+		}
 	}
 }
 
-void AFPSWeaponBase::Server_OnTPWeaponDroped_Implementation()
+void AFPSWeaponBase::Server_OnWeaponDroped_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnTPWeaponDroped_Implementation()"));
+	UE_LOG(LogTemp, Warning, TEXT("(Server)AFPSWeaponBase::OnWeaponDroped"));
 
 	TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 
@@ -112,7 +82,7 @@ void AFPSWeaponBase::Server_OnTPWeaponDroped_Implementation()
 	TPWeaponMesh->SetSimulatePhysics(true);
 
 	SetInstigator(nullptr);
-	SetOwner(nullptr);
+	SetOwner(nullptr);	// OnRep_Owner()
 }
 
 void AFPSWeaponBase::OnRep_Owner()
@@ -124,9 +94,28 @@ void AFPSWeaponBase::OnRep_Owner()
 		TPWeaponMesh->SetSimulatePhysics(false);
 		TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		if (UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
+		{
+			USkeletalMeshComponent* CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(GetOwner());
+			if (CharacterMesh != nullptr)
+			{
+				TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
+			}
+
+			USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(GetOwner());
+			if (ArmMesh != nullptr)
+			{
+				FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.FP_ArmsSocketName);
+			}
+		}
 	}
 	else // OnDrop
 	{
+		FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
+		TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
 		InteractCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		TPWeaponMesh->SetSimulatePhysics(true);
@@ -139,9 +128,14 @@ AFPSWeaponBase* AFPSWeaponBase::GetWeapon_Implementation()
 }
 
 #pragma region Server Fire
+
+FWeaponInfo AFPSWeaponBase::GetWeaponInfo()
+{
+	return WeaponInfo;
+}
+
 void AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation"));
 	Server_Fire();
 }
 
@@ -160,31 +154,33 @@ void AFPSWeaponBase::Server_Fire_Implementation()
 
 void AFPSWeaponBase::Multicast_FireEffects_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Multicast_FireEffects_Implementation"));
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
 	{
 		return;
 	}
 
-	bool bIsLocalPlayer = UGameplayStatics::GetPlayerPawn(World, 0) == GetOwner();
-	if (bIsLocalPlayer == false)
+	bool bLocalControl = UGameplayStatics::GetPlayerPawn(World, 0) == GetOwner();
+	if (bLocalControl == false)
 	{
 		PlayFireEmitter(false);
 		PlayFireSound(false);
+	}
+	else if (bLocalControl && HasAuthority())
+	{
+		PlayFireEmitter(true);
+		PlayFireSound(true);
 	}
 }
 
 void AFPSWeaponBase::Server_OnEndFireWeapon_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnEndFireWeapon_Implementation"));
 }
 #pragma endregion
 
 #pragma region Client Fire
 void AFPSWeaponBase::Client_OnBeginFireWeapon_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnBeginFireWeapon_Implementation"));
 	Client_Fire();
 }
 
@@ -203,52 +199,40 @@ void AFPSWeaponBase::Client_Fire_Implementation()
 
 void AFPSWeaponBase::Client_FireEffects_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_FireEffects_Implementation"));
-	PlayFireEmitter(true);
-	PlayFireSound(true);
+	if (!HasAuthority())	// Server's local fire effect is handled in Multicast_FireEffects_Implementation()
+	{
+		PlayFireEmitter(true);
+		PlayFireSound(true);
+	}
 }
 
 void AFPSWeaponBase::Client_OnEndFireWeapon_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_OnEndFireWeapon_Implementation"));
 }
+
 #pragma endregion
 
 bool AFPSWeaponBase::CanFire()
-{	
-	return GetOwner() != nullptr && WeaponInfo.bCanFire;
+{
+	return GetOwner() != nullptr;
 }
 
-void AFPSWeaponBase::Client_Reload_Implementation()
+void AFPSWeaponBase::Client_OnReload_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_Reload_Implementation()"));
 
-	AActor* OwnerCharacter = GetOwner();
-	if (OwnerCharacter != nullptr && UKismetSystemLibrary::DoesImplementInterface(OwnerCharacter, UFPSCharacterInterface::StaticClass()))
+	// Play FP_WeaponReloadAnim
+	if (WeaponInfo.FP_WeaponReloadAnim != nullptr)
 	{
-		USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(OwnerCharacter);
-		if (ArmMesh != nullptr)
-		{
-			UAnimInstance* AnimInstance = ArmMesh->GetAnimInstance();
-			if (AnimInstance != nullptr)
-			{
-				if (WeaponInfo.FP_ArmsReloadAnim != nullptr)
-				{
-					AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
-				}
-
-				if (WeaponInfo.FP_WeaponReloadAnim != nullptr)
-				{
-					FPWeaponMesh->PlayAnimation(WeaponInfo.FP_WeaponReloadAnim, false);
-				}
-			}
-		}
+		FPWeaponMesh->PlayAnimation(WeaponInfo.FP_WeaponReloadAnim, false);
 	}
 }
 
-void AFPSWeaponBase::Server_Reload_Implementation()
+void AFPSWeaponBase::Server_OnReload_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_Reload_Implementation"));
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_Reload_Implementation()"));
+
+	// TODO: (Very low priority) Play TP_WeaponReloadAnim?
 }
 
 void AFPSWeaponBase::PlayFireEmitter(bool FPWeapon)
@@ -260,10 +244,12 @@ void AFPSWeaponBase::PlayFireEmitter(bool FPWeapon)
 		{
 			if (FPWeapon)
 			{
+				UE_LOG(LogTemp, Warning, TEXT("(FP Weapon) BANG!!"));
 				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, FPWeaponMesh, WeaponInfo.FP_FireEmitterSocketName);
 			}
 			else
 			{
+				UE_LOG(LogTemp, Warning, TEXT("(TP Weapon) BANG!!"));
 				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, TPWeaponMesh, WeaponInfo.TP_FireEmitterSocketName);
 			}
 		}
@@ -272,7 +258,6 @@ void AFPSWeaponBase::PlayFireEmitter(bool FPWeapon)
 
 void AFPSWeaponBase::PlayFireSound(bool FPWeapon)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::PlayFireSound"));
 	if (FPWeaponMesh != nullptr)
 	{
 		if (WeaponInfo.FireSound != nullptr)

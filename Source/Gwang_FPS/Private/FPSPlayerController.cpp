@@ -193,6 +193,19 @@ void AFPSPlayerController::Client_OnUpdateHealthArmorUI_Implementation(bool bIsD
 	}
 }
 
+void AFPSPlayerController::OnUpdateAmmoUI_Implementation(int Ammo)
+{
+	Client_OnUpdateAmmoUI(Ammo);
+}
+
+void AFPSPlayerController::Client_OnUpdateAmmoUI_Implementation(int Ammo)
+{
+	if (FPSHUDWidget != nullptr)
+	{
+		FPSHUDWidget->UpdateAmmoUI(Ammo);
+	}
+}
+
 void AFPSPlayerController::ToggleScoreBoardWidget_Implementation(bool bVisible)
 {
 	if (ScoreBoardWidget != nullptr)
@@ -219,15 +232,14 @@ void AFPSPlayerController::Client_LoadGameOver_Implementation(ETeam WinnerTeam)
 #pragma region Death and Respawn
 void AFPSPlayerController::OnPlayerDeath_Implementation()
 {
-	Server_OnPlayerDeath();
-}
-
-void AFPSPlayerController::Server_OnPlayerDeath_Implementation()
-{
-	if (!ensure(GameMode != nullptr))
+	if (!ensure(HasAuthority()))
 	{
 		return;
 	}
+
+	FInputModeUIOnly InputModeData;
+	InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+	SetInputMode(InputModeData);
 
 	GameMode->OnPlayerDeath(this, Team);
 }

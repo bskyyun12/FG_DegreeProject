@@ -10,37 +10,63 @@
 #include "FPSCharacterInterface.h"
 #include "FPSPlayerControllerInterface.h"
 
+void AFPSGunBase::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
 void AFPSGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AFPSGunBase, CurrentAmmo);
 }
 
+void AFPSGunBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
+{
+	Super::Server_OnWeaponEquipped_Implementation(OwnerCharacter);
+
+	Client_UpdateAmmoUI(CurrentAmmo);
+}
+
+void AFPSGunBase::OnRep_Owner()
+{
+	Super::OnRep_Owner();
+
+	Client_UpdateAmmoUI(CurrentAmmo);
+}
+
 void AFPSGunBase::Server_OnBeginFireWeapon_Implementation()
 {
-	//Super::Server_OnBeginFireWeapon_Implementation();
-
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
 	{
+		return;
+	}	
+	
+	if (CanFire() == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("(ServerBeginFire) CanFire() == false"));
 		return;
 	}
 
 	if (WeaponInfo.bIsAutomatic)
 	{
-		World->GetTimerManager().SetTimer(ServerAutomaticFireTimer, this, &AFPSGunBase::Server_Fire, WeaponInfo.FireRate, true, 0.f);
+		World->GetTimerManager().SetTimer(FireTimer_Server, this, &AFPSGunBase::Server_Fire, WeaponInfo.FireRate, true, 0.f);
 	}
 	else
 	{
-		Server_Fire();
-		WeaponInfo.bCanFire = false;
-		if (World->GetTimerManager().IsTimerActive(ServerFireCoolDownTimer) == false)
+		if (bCooldown_Server == false)
 		{
-			World->GetTimerManager().SetTimer(ServerFireCoolDownTimer, [&]()
-				{
-					WeaponInfo.bCanFire = true;
+			Server_Fire();
+			bCooldown_Server = true;
+			if (World->GetTimerManager().IsTimerActive(CooldownTimer_Server) == false)
+			{
+				World->GetTimerManager().SetTimer(CooldownTimer_Server, [&]()
+					{
+						bCooldown_Server = false;
 
-				}, WeaponInfo.FireRate, false);
+					}, WeaponInfo.FireRate, false);
+			}
 		}
 	}
 }
@@ -52,9 +78,12 @@ void AFPSGunBase::Server_Fire_Implementation()
 
 	if (CanFire() == false)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("CanFire() == false"));
 		return;
 	}
-	--CurrentAmmo;	// TODO: Doing this before Super::Server_Fire_Implementation() because the ammo kept going -1 on automatic fire
+
+	CurrentAmmo--;	// OnRep_CurrentAmmo()
+	Client_UpdateAmmoUI(CurrentAmmo);
 
 	if (GetOwner() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
 	{
@@ -92,6 +121,14 @@ void AFPSGunBase::Server_Fire_Implementation()
 	}
 }
 
+void AFPSGunBase::Client_UpdateAmmoUI_Implementation(int Ammo)
+{
+	if (GetInstigatorController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetInstigatorController(), UFPSPlayerControllerInterface::StaticClass()))
+	{
+		IFPSPlayerControllerInterface::Execute_OnUpdateAmmoUI(GetInstigatorController(), Ammo);
+	}
+}
+
 void AFPSGunBase::Server_OnEndFireWeapon_Implementation()
 {
 	Super::Server_OnEndFireWeapon_Implementation();
@@ -103,8 +140,35 @@ void AFPSGunBase::Server_OnEndFireWeapon_Implementation()
 		{
 			return;
 		}
-		World->GetTimerManager().ClearTimer(ServerAutomaticFireTimer);
+		World->GetTimerManager().ClearTimer(FireTimer_Server);
 	}
+}
+
+bool AFPSGunBase::CanFire()
+{
+	if (Super::CanFire() == false)
+	{
+		return false;
+	}
+	return CurrentAmmo > 0;
+}
+
+void AFPSGunBase::Client_OnReload_Implementation()
+{
+	Super::Client_OnReload_Implementation();
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::Client_Reload_Implementation"));
+}
+
+void AFPSGunBase::Server_OnReload_Implementation()
+{
+	Super::Server_OnReload_Implementation();
+	CurrentAmmo = MagazineCapacity;	// OnRep_CurrentAmmo()
+	Client_UpdateAmmoUI(CurrentAmmo);
+}
+
+void AFPSGunBase::OnRep_CurrentAmmo()
+{
+	Client_UpdateAmmoUI(CurrentAmmo);
 }
 
 void AFPSGunBase::Client_OnBeginFireWeapon_Implementation()
@@ -119,32 +183,29 @@ void AFPSGunBase::Client_OnBeginFireWeapon_Implementation()
 
 	if (WeaponInfo.bIsAutomatic)
 	{
-		World->GetTimerManager().SetTimer(ClientAutomaticFireTimer, this, &AFPSGunBase::Client_Fire, WeaponInfo.FireRate, true, 0.f);
+		World->GetTimerManager().SetTimer(FireTimer_Client, this, &AFPSGunBase::Client_Fire, WeaponInfo.FireRate, true, 0.f);
 	}
 	else
 	{
-		Client_Fire();
-		WeaponInfo.bCanFire = false;
-		if (World->GetTimerManager().IsTimerActive(ServerFireCoolDownTimer) == false)
+		if (bCooldown_Client == false)
 		{
-			World->GetTimerManager().SetTimer(ServerFireCoolDownTimer, [&]()
-				{
-					WeaponInfo.bCanFire = true;
+			Client_Fire();
+			bCooldown_Client = true;
+			if (World->GetTimerManager().IsTimerActive(CooldownTimer_Client) == false)
+			{
+				World->GetTimerManager().SetTimer(CooldownTimer_Client, [&]()
+					{
+						bCooldown_Client = false;
 
-				}, WeaponInfo.FireRate, false);
+					}, WeaponInfo.FireRate, false);
+			}
 		}
 	}
-}
-
-void AFPSGunBase::Client_Fire_Implementation()
-{
-	Super::Client_Fire_Implementation();
 }
 
 void AFPSGunBase::Client_FireEffects_Implementation()
 {
 	Super::Client_FireEffects_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::Client_FireEffects_Implementation"));
 
 	ShakeCamera();
 	Recoil();
@@ -153,7 +214,6 @@ void AFPSGunBase::Client_FireEffects_Implementation()
 void AFPSGunBase::Client_OnEndFireWeapon_Implementation()
 {
 	Super::Client_OnEndFireWeapon_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::Client_OnEndFireWeapon_Implementation"));
 
 	if (WeaponInfo.bIsAutomatic)
 	{
@@ -162,7 +222,7 @@ void AFPSGunBase::Client_OnEndFireWeapon_Implementation()
 		{
 			return;
 		}
-		World->GetTimerManager().ClearTimer(ClientAutomaticFireTimer);
+		World->GetTimerManager().ClearTimer(FireTimer_Client);
 	}
 
 	RecoilTimer = 0.f;
@@ -197,46 +257,6 @@ void AFPSGunBase::Recoil()
 			}
 			IFPSPlayerControllerInterface::Execute_AddControlRotation(InstigatorController, FRotator(PitchDelta, YawDelta, 0.f));
 		}
-	}
-}
-
-bool AFPSGunBase::CanFire()
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_Fire_Implementation"));
-	UE_LOG(LogTemp, Warning, TEXT("CurrentAmmo: %i"), CurrentAmmo);
-	if (Super::CanFire() == false)
-	{
-		return false;
-	}
-
-	if (WeaponInfo.bIsAutomatic == false)
-	{
-
-	}
-
-	return CurrentAmmo > 0;
-}
-
-void AFPSGunBase::Client_Reload_Implementation()
-{
-	Super::Client_Reload_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::Client_Reload_Implementation"));
-}
-
-void AFPSGunBase::Server_Reload_Implementation()
-{
-	Super::Server_Reload_Implementation();
-	CurrentAmmo = MaxAmmo;
-}
-
-void AFPSGunBase::OnRep_Owner()
-{
-	Super::OnRep_Owner();
-
-	if (GetOwner() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
-	{
-		USkeletalMeshComponent* CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(GetOwner());
-		TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
 	}
 }
 

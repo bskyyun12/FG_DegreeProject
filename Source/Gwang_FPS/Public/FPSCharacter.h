@@ -70,6 +70,7 @@ public:
 
 	void TakeDamage_Implementation(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor) override;
 
+
 	// IFPSCharacterInterface
 	//////////////////////////
 

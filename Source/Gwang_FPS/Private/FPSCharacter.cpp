@@ -151,15 +151,10 @@ void AFPSCharacter::Multicast_LookUp_Implementation(FRotator CameraRot)
 
 void AFPSCharacter::OnBeginFire()
 {
-	if (HealthComponent != nullptr && HealthComponent->IsDead())
-	{
-		return;
-	}
-
 	if (CurrentWeapon != nullptr)
 	{
-		CurrentWeapon->Client_OnBeginFireWeapon();
 		Server_OnBeginFire(CurrentWeapon);
+		CurrentWeapon->Client_OnBeginFireWeapon();
 	}
 }
 
@@ -174,15 +169,10 @@ void AFPSCharacter::Server_OnBeginFire_Implementation(AFPSWeaponBase* Weapon)
 
 void AFPSCharacter::OnEndFire()
 {
-	if (HealthComponent != nullptr && HealthComponent->IsDead())
-	{
-		return;
-	}
-
 	if (CurrentWeapon != nullptr)
 	{
-		CurrentWeapon->Client_OnEndFireWeapon();
 		Server_OnEndFire(CurrentWeapon);
+		CurrentWeapon->Client_OnEndFireWeapon();
 	}
 }
 
@@ -197,11 +187,6 @@ void AFPSCharacter::Server_OnEndFire_Implementation(AFPSWeaponBase* Weapon)
 
 void AFPSCharacter::Pickup()
 {
-	if (HealthComponent != nullptr && HealthComponent->IsDead())
-	{
-		return;
-	}
-
 	if (CurrentFocus != nullptr && CurrentWeapon == nullptr)
 	{
 		EquipWeapon(CurrentFocus.Get());
@@ -210,17 +195,22 @@ void AFPSCharacter::Pickup()
 
 void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 {
-	if (HealthComponent != nullptr && HealthComponent->IsDead())
-	{
-		return;
-	}
-
 	if (Weapon != nullptr)
 	{
-		Server_EquipWeapon(Weapon);
-		Weapon->Client_OnFPWeaponEquipped(this);
-
 		CurrentWeapon = Weapon;
+
+		Server_EquipWeapon(Weapon);
+
+		// Play Equip animation
+		UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
+		if (AnimInstance != nullptr)
+		{
+			FWeaponInfo WeaponInfo = Weapon->GetWeaponInfo();
+			if (WeaponInfo.FP_EquipAnim != nullptr)
+			{
+				AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
+			}
+		}
 	}
 }
 
@@ -228,21 +218,14 @@ void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
 {
 	if (Weapon != nullptr)
 	{
-		Weapon->Server_OnTPWeaponEquipped(this);
+		Weapon->Server_OnWeaponEquipped(this);
 	}
 }
 
 void AFPSCharacter::Drop()
 {
-	// TODO: Maybe, if I just disable input when player dies, then I don't need to check code below
-	if (HealthComponent != nullptr && HealthComponent->IsDead())
-	{
-		return;
-	}
-
 	if (CurrentWeapon != nullptr)
 	{
-		CurrentWeapon->Client_OnFPWeaponDroped();
 		Server_DropWeapon(CurrentWeapon);
 		CurrentWeapon = nullptr;
 	}
@@ -252,21 +235,27 @@ void AFPSCharacter::Server_DropWeapon_Implementation(AFPSWeaponBase* Weapon)
 {
 	if (Weapon != nullptr)
 	{
-		Weapon->Server_OnTPWeaponDroped();
+		Weapon->Server_OnWeaponDroped();
 	}
 }
 
 void AFPSCharacter::Reload()
 {
-	if (HealthComponent != nullptr && HealthComponent->IsDead())
-	{
-		return;
-	}
-
 	if (CurrentWeapon != nullptr)
 	{
 		Server_Reload(CurrentWeapon);
-		CurrentWeapon->Client_Reload();
+		CurrentWeapon->Client_OnReload();
+
+		// Play ArmsReloadAnim
+		UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
+		if (AnimInstance != nullptr)
+		{
+			FWeaponInfo WeaponInfo = CurrentWeapon->GetWeaponInfo();
+			if (WeaponInfo.FP_ArmsReloadAnim != nullptr)
+			{
+				AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
+			}
+		}
 	}
 }
 
@@ -274,7 +263,9 @@ void AFPSCharacter::Server_Reload_Implementation(AFPSWeaponBase* Weapon)
 {
 	if (Weapon != nullptr)
 	{
-		Weapon->Server_Reload();
+		Weapon->Server_OnReload();
+
+		// TODO: Play TPCharacterReloadAnim (For other clients)
 	}
 }
 
@@ -352,7 +343,7 @@ void AFPSCharacter::OnHealthAcquired(AActor* HealthSource)
 
 // HealthComponent Delegate binding
 void AFPSCharacter::OnDeath(AActor* DeathSource)
-{
+{	
 	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("( %s ) is killed by ( %s )"), *this->GetName(), *DeathSource->GetName());

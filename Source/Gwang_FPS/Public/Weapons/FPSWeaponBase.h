@@ -21,86 +21,45 @@ struct FWeaponInfo
 {
 	GENERATED_BODY()
 
-	/////////
 	// Stats
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bCanFire;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsAutomatic;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Damage;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float ArmorPenetration;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Range;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float FireRate;
-	// Stats
-	/////////
 
-	///////////////
-	// Equip Weapon
+	// SocketNames to Equip Weapon
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName FP_ArmsSocketName;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName TP_CharacterSocketName;
-	// Equip Weapon
-	///////////////
 
-	//////////////
 	// Fire Effects
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UParticleSystem* FireEmitter;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USoundBase* FireSound;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName FP_FireEmitterSocketName;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName TP_FireEmitterSocketName;
-	// Fire Effects
-	//////////////
 
-	///////////////
 	// AnimMontages
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* FP_EquipAnim;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* FP_ArmsReloadAnim;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* FP_WeaponReloadAnim;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* TP_ReloadAnim;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* HideAnim;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* FireAnim;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* IdleAnim;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* WalkAnim;
-	// AnimMontages
-	///////////////
 
 	FWeaponInfo() 
 	{
 		// Stats
-		bCanFire = true;
 		bIsAutomatic = false;
 		Damage = 10.f;
 		ArmorPenetration = 0.5f;
@@ -117,15 +76,10 @@ struct FWeaponInfo
 		FP_FireEmitterSocketName = "MuzzleFlash";
 		TP_FireEmitterSocketName = "MuzzleFlash";
 
-		// Anims
+		// AnimMontages
 		FP_EquipAnim = nullptr;
 		FP_ArmsReloadAnim = nullptr;
 		FP_WeaponReloadAnim = nullptr;
-		TP_ReloadAnim = nullptr;
-		HideAnim = nullptr;
-		FireAnim = nullptr;
-		IdleAnim = nullptr;
-		WalkAnim = nullptr;
 	}
 };
 
@@ -135,75 +89,55 @@ class GWANG_FPS_API AFPSWeaponBase : public AActor, public IFPSWeaponInterface
 	GENERATED_BODY()
 	
 public:	
-	// Sets default values for this actor's properties
 	AFPSWeaponBase();
 
-	AFPSWeaponBase* GetWeapon_Implementation() override;
-
+	// Equip & Drop
 	UFUNCTION(Server, Reliable)
-	virtual void Server_OnBeginFireWeapon();
-
+	void Server_OnWeaponEquipped(AFPSCharacter* OwnerCharacter);
 	UFUNCTION(Server, Reliable)
-	virtual void Server_OnEndFireWeapon();
+	void Server_OnWeaponDroped();
 
-	UFUNCTION(Client, Reliable)
-	virtual void Client_OnBeginFireWeapon();
-
-	UFUNCTION(Client, Reliable)
-	virtual void Client_OnEndFireWeapon();
-
-	/////////////////////////
-	// FP Weapon (Local Only)
-	UFUNCTION(Client, Reliable)
-	virtual void Client_OnFPWeaponEquipped(AFPSCharacter* OwnerCharacter);
-
-	UFUNCTION(Client, Reliable)
-	virtual void Client_OnFPWeaponDroped();
-
-	UFUNCTION(Client, Reliable)
-	virtual void Client_Reload();
-		
+	// Weapon Fire
 	UFUNCTION(Server, Reliable)
-	virtual void Server_Reload();
-	// FP Weapon (Local Only)
-	/////////////////////////
-
-	/////////////////////////
-	// TP Weapon (Should be replicated)
+	void Server_OnBeginFireWeapon();
 	UFUNCTION(Server, Reliable)
-	virtual void Server_OnTPWeaponEquipped(AFPSCharacter* OwnerCharacter);
+	void Server_OnEndFireWeapon();
+	UFUNCTION(Client, Reliable)
+	void Client_OnBeginFireWeapon();
+	UFUNCTION(Client, Reliable)
+	void Client_OnEndFireWeapon();
 
+	// Reload
 	UFUNCTION(Server, Reliable)
-	virtual void Server_OnTPWeaponDroped();
-	// TP Weapon (Should be replicated)
-	/////////////////////////
+	void Server_OnReload();
+	UFUNCTION(Client, Reliable)
+	void Client_OnReload();
+
+	// Getters
+	AFPSWeaponBase* GetWeapon_Implementation() override; // IFPSWeaponInterface
+	FWeaponInfo GetWeaponInfo();
 
 protected:
 	virtual void BeginPlay() override;
 
+	// Called when Owner changed
 	void OnRep_Owner() override;
 
-	///////
 	// Fire
 	UFUNCTION()
 	virtual bool CanFire();
-
 	UFUNCTION(Server, Reliable)
-	virtual void Server_Fire();
-
-	UFUNCTION(NetMulticast, Unreliable)
-	virtual void Multicast_FireEffects();
-
+	void Server_Fire();
 	UFUNCTION(Client, Reliable)
-	virtual void Client_Fire();
+	void Client_Fire();
 
+	// Fire Effects
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_FireEffects();
 	UFUNCTION(Client, Unreliable)
-	virtual void Client_FireEffects();
-
+	void Client_FireEffects();
 	void PlayFireEmitter(bool FPWeapon);
 	void PlayFireSound(bool FPWeapon);
-	// Fire
-	///////
 
 protected:
 	UPROPERTY(VisibleAnywhere)

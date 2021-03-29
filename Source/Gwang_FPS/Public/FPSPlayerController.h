@@ -36,8 +36,6 @@ public:
 	void RespawnPlayer_Implementation() override;
 
 	void OnPlayerDeath_Implementation() override;
-	UFUNCTION(Server, Reliable)
-	void Server_OnPlayerDeath();
 
 	void ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake) override;
 
@@ -58,6 +56,10 @@ public:
 	void OnUpdateHealthArmorUI_Implementation(bool bIsDead) override;
 	UFUNCTION(Client, Reliable)
 	void Client_OnUpdateHealthArmorUI(bool bIsDead);
+
+	void OnUpdateAmmoUI_Implementation(int Ammo) override;
+	UFUNCTION(Client, Reliable)
+	void Client_OnUpdateAmmoUI(int Ammo);
 
 	// IFPSPlayerControllerInterface
 	////////////////////////////////

@@ -51,4 +51,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnUpdateHealthArmorUI(bool bIsDead);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void OnUpdateAmmoUI(int Ammo);
 };
