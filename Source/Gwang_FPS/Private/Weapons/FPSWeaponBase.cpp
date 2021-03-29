@@ -7,6 +7,7 @@
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Net/UnrealNetwork.h"
 
 #include "FPSCharacter.h"
 #include "FPSCharacterInterface.h"
@@ -44,6 +45,13 @@ void AFPSWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
 }
+
+void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AFPSWeaponBase, bIsReloading);
+}
+
 
 void AFPSWeaponBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
 {
@@ -175,6 +183,7 @@ void AFPSWeaponBase::Multicast_FireEffects_Implementation()
 
 void AFPSWeaponBase::Server_OnEndFireWeapon_Implementation()
 {
+	
 }
 #pragma endregion
 
@@ -214,12 +223,19 @@ void AFPSWeaponBase::Client_OnEndFireWeapon_Implementation()
 
 bool AFPSWeaponBase::CanFire()
 {
-	return GetOwner() != nullptr;
+	return GetOwner() != nullptr && !bIsReloading;
+}
+
+bool AFPSWeaponBase::CanReload()
+{
+	return !bIsReloading;
 }
 
 void AFPSWeaponBase::Client_OnReload_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_Reload_Implementation()"));
+
+	bIsReloading = true;
 
 	// Play FP_WeaponReloadAnim
 	if (WeaponInfo.FP_WeaponReloadAnim != nullptr)
@@ -232,7 +248,25 @@ void AFPSWeaponBase::Server_OnReload_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_Reload_Implementation()"));
 
+	bIsReloading = true;	// OnRep_bIsReloading()
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	if (World->GetTimerManager().IsTimerActive(ReloadTimer) == false)
+	{
+		World->GetTimerManager().SetTimer(ReloadTimer, this, &AFPSWeaponBase::Server_OnEndReload, WeaponInfo.ReloadTime, false);
+	}
+
 	// TODO: (Very low priority) Play TP_WeaponReloadAnim?
+}
+
+void AFPSWeaponBase::Server_OnEndReload_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnEndReload_Implementation"));
+	bIsReloading = false;	// OnRep_bIsReloading()
 }
 
 void AFPSWeaponBase::PlayFireEmitter(bool FPWeapon)

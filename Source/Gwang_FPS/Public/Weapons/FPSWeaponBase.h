@@ -32,6 +32,8 @@ struct FWeaponInfo
 	float Range;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float FireRate;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ReloadTime;
 
 	// SocketNames to Equip Weapon
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -65,6 +67,7 @@ struct FWeaponInfo
 		ArmorPenetration = 0.5f;
 		Range = 10000.f;
 		FireRate = 0.2f;
+		ReloadTime = 3.f;
 
 		// Equip Weapon
 		FP_ArmsSocketName = "Weapon_Rifle";
@@ -108,10 +111,13 @@ public:
 	void Client_OnEndFireWeapon();
 
 	// Reload
+	virtual bool CanReload();
 	UFUNCTION(Server, Reliable)
 	void Server_OnReload();
 	UFUNCTION(Client, Reliable)
 	void Client_OnReload();
+	UFUNCTION(Server, Reliable)
+	void Server_OnEndReload();
 
 	// Getters
 	AFPSWeaponBase* GetWeapon_Implementation() override; // IFPSWeaponInterface
@@ -119,6 +125,8 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// Called when Owner changed
 	void OnRep_Owner() override;
@@ -154,4 +162,10 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FWeaponInfo WeaponInfo;
+
+	// Reload
+	UPROPERTY(Replicated)
+	bool bIsReloading = false;
+
+	FTimerHandle ReloadTimer;
 };

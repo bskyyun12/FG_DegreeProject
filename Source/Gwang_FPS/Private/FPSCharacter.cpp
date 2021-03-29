@@ -241,7 +241,7 @@ void AFPSCharacter::Server_DropWeapon_Implementation(AFPSWeaponBase* Weapon)
 
 void AFPSCharacter::Reload()
 {
-	if (CurrentWeapon != nullptr)
+	if (CurrentWeapon != nullptr && CurrentWeapon->CanReload())
 	{
 		Server_Reload(CurrentWeapon);
 		CurrentWeapon->Client_OnReload();

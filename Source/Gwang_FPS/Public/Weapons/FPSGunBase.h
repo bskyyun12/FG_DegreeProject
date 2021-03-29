@@ -30,8 +30,10 @@ public:
 
 	// Reload
 	void Client_OnReload_Implementation() override;
-	void Server_OnReload_Implementation() override;
+	void Server_OnEndReload_Implementation() override;
 
+
+	bool CanReload() override;
 
 protected:
 	void BeginPlay() override;
@@ -41,7 +43,7 @@ protected:
 
 	// Widget Update
 	UFUNCTION(Client, Reliable)
-	void Client_UpdateAmmoUI(int Ammo);
+	void Client_UpdateAmmoUI(int _CurrentAmmo, int _RemainingAmmo);
 
 	// Fire Effects
 	void Client_FireEffects_Implementation() override;
@@ -56,6 +58,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)	
 	int MagazineCapacity = 20;
+
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite)
+	int RemainingAmmo = 100;
 
 	// Fire Effects
 	UPROPERTY(EditDefaultsOnly)
