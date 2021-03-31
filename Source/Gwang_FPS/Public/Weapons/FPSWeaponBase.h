@@ -16,12 +16,22 @@ class USphereComponent;
 class UParticleSystem;
 class USoundBase;
 
+UENUM(BlueprintType)
+enum class EWeaponType : uint8
+{
+	None,
+	MainWeapon,
+	SubWeapon,
+};
+
 USTRUCT(BlueprintType)
 struct FWeaponInfo
 {
 	GENERATED_BODY()
 
 	// Stats
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EWeaponType WeaponType;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsAutomatic;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -64,6 +74,7 @@ struct FWeaponInfo
 	FWeaponInfo() 
 	{
 		// Stats
+		WeaponType = EWeaponType::None;
 		bIsAutomatic = false;
 		Damage = 10.f;
 		ArmorPenetration = 0.5f;
@@ -97,8 +108,8 @@ class GWANG_FPS_API AFPSWeaponBase : public AActor, public IFPSWeaponInterface
 public:	
 	AFPSWeaponBase();
 
-	// Equip & Drop
-	UFUNCTION(Server, Reliable)
+	// Equip & Hide & Drop
+	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void Server_OnWeaponEquipped(AFPSCharacter* OwnerCharacter);
 	UFUNCTION(Server, Reliable)
 	void Server_OnWeaponDroped();

@@ -20,6 +20,8 @@ class GWANG_FPS_API AFPSCharacter : public ACharacter, public IFPSCharacterInter
 {
 	GENERATED_BODY()
 
+	DECLARE_DELEGATE_OneParam(FOneBooleanDelegate, bool)
+
 public:
 	AFPSCharacter();
 
@@ -44,7 +46,15 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_OnEndFire(AFPSWeaponBase* Weapon);
 
-	void Pickup();
+	// Weapon Equip & Swap
+	void EquipMainWeapon();
+	UFUNCTION(Server, Reliable)
+	void Server_EquipMainWeapon();
+	void EquipSubWeapon();
+	UFUNCTION(Server, Reliable)
+	void Server_EquipSubWeapon();
+	UFUNCTION(Server, Reliable)
+	void Server_EquipWeapon(AFPSWeaponBase* Weapon);
 
 	void Drop();
 	UFUNCTION(Server, Reliable)
@@ -56,7 +66,6 @@ public:
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_PlayReloadAnim(AFPSWeaponBase* Weapon);
 
-	DECLARE_DELEGATE_OneParam(FOneBooleanDelegate, bool)
 	void ToggleScoreBoardWidget(bool bDisplay);
 
 	void HandleCrouch(bool bCrouchButtonDown);
@@ -89,13 +98,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UHealthComponent* HealthComponent;
 
-	UPROPERTY(Replicated)
-	AFPSWeaponBase* CurrentMainWeapon;
+	UPROPERTY(Replicated=OnRep_CurrentWeapon, VisibleAnywhere, BlueprintReadOnly)
+	AFPSWeaponBase* CurrentWeapon;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	AFPSWeaponBase* MainWeapon;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	AFPSWeaponBase* SubWeapon;
 
 	UPROPERTY(EditDefaultsOnly)
@@ -114,9 +123,6 @@ protected:
 	UFUNCTION()
 	void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
-	void EquipWeapon(AFPSWeaponBase* Weapon);
-	UFUNCTION(Server, Reliable)
-	void Server_EquipWeapon(AFPSWeaponBase* Weapon);
 
 	// Crouch
 	FTimerHandle CrouchTimerHandle;
@@ -126,7 +132,6 @@ protected:
 	FVector DesiredCameraRelativeLocation;
 	UFUNCTION()
 	void CrouchTimer();
-
 
 #pragma region Health & Spawn & Death
 	UFUNCTION(BlueprintPure)
@@ -144,6 +149,8 @@ protected:
 	UFUNCTION()
 	void OnDeath(AActor* DeathSource);
 	void HandleCollisionOnDeath();
+	UFUNCTION(Server, Reliable)
+	void Server_WeaponSetupOnSpawn();
 	
 	UFUNCTION()
 	void OnSpawn();

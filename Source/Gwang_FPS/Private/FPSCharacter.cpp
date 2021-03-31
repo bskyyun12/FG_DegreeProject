@@ -16,11 +16,14 @@
 #include "FPSPlayerControllerInterface.h"
 #include "FPSPlayerController.h"
 #include "Weapons/FPSWeaponInterface.h"
+#include "Weapons/FPSWeaponBase.h"
 
 void AFPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AFPSCharacter, CurrentMainWeapon);
+	DOREPLIFETIME(AFPSCharacter, CurrentWeapon);
+	DOREPLIFETIME(AFPSCharacter, MainWeapon);
+	DOREPLIFETIME(AFPSCharacter, SubWeapon);
 }
 
 AFPSCharacter::AFPSCharacter()
@@ -63,6 +66,9 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AFPSCharacter::OnBeginFire);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &AFPSCharacter::OnEndFire);
+
+	PlayerInputComponent->BindAction("MainWeapon", IE_Pressed, this, &AFPSCharacter::EquipMainWeapon);
+	PlayerInputComponent->BindAction("SubWeapon", IE_Pressed, this, &AFPSCharacter::EquipSubWeapon);
 
 	PlayerInputComponent->BindAction("Drop", IE_Pressed, this, &AFPSCharacter::Drop);
 
@@ -146,10 +152,10 @@ void AFPSCharacter::Multicast_LookUp_Implementation(FRotator CameraRot)
 
 void AFPSCharacter::OnBeginFire()
 {
-	if (CurrentMainWeapon != nullptr)
+	if (CurrentWeapon != nullptr)
 	{
-		Server_OnBeginFire(CurrentMainWeapon);
-		CurrentMainWeapon->Client_OnBeginFireWeapon();
+		Server_OnBeginFire(CurrentWeapon);
+		CurrentWeapon->Client_OnBeginFireWeapon();
 	}
 }
 
@@ -164,10 +170,10 @@ void AFPSCharacter::Server_OnBeginFire_Implementation(AFPSWeaponBase* Weapon)
 
 void AFPSCharacter::OnEndFire()
 {
-	if (CurrentMainWeapon != nullptr)
+	if (CurrentWeapon != nullptr)
 	{
-		Server_OnEndFire(CurrentMainWeapon);
-		CurrentMainWeapon->Client_OnEndFireWeapon();
+		Server_OnEndFire(CurrentWeapon);
+		CurrentWeapon->Client_OnEndFireWeapon();
 	}
 }
 
@@ -180,55 +186,108 @@ void AFPSCharacter::Server_OnEndFire_Implementation(AFPSWeaponBase* Weapon)
 	}
 }
 
-void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
+void AFPSCharacter::EquipMainWeapon()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::EquipWeapon"));
-	if (Weapon != nullptr)
+	UE_LOG(LogTemp, Warning, TEXT("EquipMainWeapon"));
+
+	if (HasAuthority())
 	{
-		CurrentMainWeapon = Weapon;
-
-		Server_EquipWeapon(Weapon);
-
-		// Play Equip animation
-		UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
-		if (AnimInstance != nullptr)
+		if (MainWeapon != nullptr)
 		{
-			FWeaponInfo WeaponInfo = Weapon->GetWeaponInfo();
-			if (WeaponInfo.FP_EquipAnim != nullptr)
-			{
-				AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
-			}
+			MainWeapon->GetRootComponent()->SetVisibility(true, true);
 		}
 	}
-	else
+
+	// Play Equip animation
+	UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
+	if (AnimInstance != nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("(EquipWeapon) Weapon == nulllptr"));
+		FWeaponInfo WeaponInfo = MainWeapon->GetWeaponInfo();
+		if (WeaponInfo.FP_EquipAnim != nullptr)
+		{
+			AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
+		}
 	}
+
+	Server_EquipMainWeapon();
+}
+
+void AFPSCharacter::Server_EquipMainWeapon_Implementation()
+{
+	if (MainWeapon != nullptr)
+	{
+		MainWeapon->SetActorHiddenInGame(false);
+	}
+
+	if (SubWeapon != nullptr)
+	{
+		SubWeapon->SetActorHiddenInGame(true);
+	}
+
+	Server_EquipWeapon(MainWeapon);
+}
+
+void AFPSCharacter::EquipSubWeapon()
+{
+	UE_LOG(LogTemp, Warning, TEXT("EquipSubWeapon"));
+
+	if (HasAuthority())
+	{
+		if (SubWeapon != nullptr)
+		{
+			SubWeapon->GetRootComponent()->SetVisibility(true, true);
+		}
+	}
+
+	// Play Equip animation
+	UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
+	if (AnimInstance != nullptr)
+	{
+		FWeaponInfo WeaponInfo = SubWeapon->GetWeaponInfo();
+		if (WeaponInfo.FP_EquipAnim != nullptr)
+		{
+			AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
+		}
+	}
+
+	Server_EquipSubWeapon();
+}
+
+void AFPSCharacter::Server_EquipSubWeapon_Implementation()
+{
+	if (MainWeapon != nullptr)
+	{
+		MainWeapon->SetActorHiddenInGame(true);
+	}
+
+	if (SubWeapon != nullptr)
+	{
+		SubWeapon->SetActorHiddenInGame(false);
+	}
+
+	Server_EquipWeapon(SubWeapon);
 }
 
 void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
 {
 	if (Weapon != nullptr)
 	{
-		Weapon->Server_OnWeaponEquipped(this);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("(Server_EquipWeapon) Weapon == nulllptr"));
+		CurrentWeapon = Weapon;
+		CurrentWeapon->Server_OnWeaponEquipped(this);
 	}
 }
 
 void AFPSCharacter::Drop()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Drop"));
-	if (CurrentMainWeapon != nullptr)
+	if (CurrentWeapon != nullptr)
 	{
-		Server_DropWeapon(CurrentMainWeapon);
-		CurrentMainWeapon = nullptr;
+		Server_DropWeapon(CurrentWeapon);
+		CurrentWeapon = nullptr;
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("(Drop) CurrentMainWeapon == nulllptr"))
+		UE_LOG(LogTemp, Warning, TEXT("(Drop) CurrentWeapon == nulllptr"))
 	}
 }
 
@@ -241,22 +300,22 @@ void AFPSCharacter::Server_DropWeapon_Implementation(AFPSWeaponBase* Weapon)
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("(Server_DropWeapon) Weapon == nulllptr"));
+		UE_LOG(LogTemp, Warning, TEXT("(Server_DropWeapon) MainWeapon == nulllptr"));
 	}
 }
 
 void AFPSCharacter::Reload()
 {
-	if (CurrentMainWeapon != nullptr && CurrentMainWeapon->CanReload())
+	if (CurrentWeapon != nullptr && CurrentWeapon->CanReload())
 	{
-		Server_Reload(CurrentMainWeapon);
-		CurrentMainWeapon->Client_OnReload();
+		Server_Reload(CurrentWeapon);
+		CurrentWeapon->Client_OnReload();
 
 		// Play ArmsReloadAnim
 		UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
 		if (AnimInstance != nullptr)
 		{
-			FWeaponInfo WeaponInfo = CurrentMainWeapon->GetWeaponInfo();
+			FWeaponInfo WeaponInfo = CurrentWeapon->GetWeaponInfo();
 			if (WeaponInfo.FP_ArmsReloadAnim != nullptr)
 			{
 				AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
@@ -411,6 +470,8 @@ void AFPSCharacter::OnSpawnPlayer_Implementation()
 	{
 		HealthComponent->Server_OnSpawn();
 	}
+
+	Server_WeaponSetupOnSpawn();
 }
 
 // Bound to HealthComponent->OnSpawn, This gets called both server and clients
@@ -418,7 +479,10 @@ void AFPSCharacter::OnSpawn()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnSpawn"));
 	HandleCollisionOnSpawn();
+}
 
+void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation()
+{
 	if (FPSGameInstance == nullptr)
 	{
 		FPSGameInstance = GetGameInstance<UFPSGameInstance>();
@@ -428,6 +492,7 @@ void AFPSCharacter::OnSpawn()
 		}
 	}
 
+	// MainWeapon Setup
 	if (MainWeapon == nullptr)
 	{
 		if (FPSGameInstance->UserData.MainWeapon == EMainWeapon::Rifle || FPSGameInstance->UserData.MainWeapon == EMainWeapon::None)
@@ -437,19 +502,43 @@ void AFPSCharacter::OnSpawn()
 				return;
 			}
 			AFPSWeaponBase* SpawnedWeapon = GetWorld()->SpawnActor<AFPSWeaponBase>(RifleClass);
-			EquipWeapon(SpawnedWeapon);
 			MainWeapon = SpawnedWeapon;
+			MainWeapon->GetRootComponent()->SetVisibility(false, true);
 		}
 	}
-	else if (MainWeapon != nullptr && CurrentMainWeapon == nullptr)
+	else if (MainWeapon != nullptr && CurrentWeapon == nullptr)
 	{
 		// TODO: Reset ammo of the MainWeapon
-		EquipWeapon(MainWeapon);
 	}
-	else if (MainWeapon != CurrentMainWeapon)
+	else if (MainWeapon != CurrentWeapon)
 	{
 		// TODO: Drop current and equip main? or maybe it will be taken by it's original owner?
 	}
+
+	// SubWeapon Setup
+	if (SubWeapon == nullptr)
+	{
+		if (FPSGameInstance->UserData.SubWeapon == ESubWeapon::Pistol || FPSGameInstance->UserData.SubWeapon == ESubWeapon::None)
+		{
+			if (!ensure(PistolClass != nullptr))
+			{
+				return;
+			}
+			AFPSWeaponBase* SpawnedWeapon = GetWorld()->SpawnActor<AFPSWeaponBase>(PistolClass);
+			SubWeapon = SpawnedWeapon;
+			SubWeapon->GetRootComponent()->SetVisibility(false, true);
+		}
+	}
+	else if (SubWeapon != nullptr && CurrentWeapon == nullptr)
+	{
+		// TODO: Reset ammo of the MainWeapon
+	}
+	else if (SubWeapon != CurrentWeapon)
+	{
+		// TODO: Drop current and equip main? or maybe it will be taken by it's original owner?
+	}
+
+	//EquipMainWeapon();
 }
 
 // Called by DamageCauser ex) AFPSGunBase::Server_Fire
