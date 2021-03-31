@@ -6,7 +6,7 @@
 #include "Kismet/KismetSystemLibrary.h" // DoesImplementInterface
 
 #include "FPSCharacter.h"
-#include "FPSGameStateBase.h"
+#include "FPSGameState.h"
 #include "FPSPlayerController.h"
 #include "FPSPlayerControllerInterface.h"
 #include "FPSPlayerStart.h"
@@ -27,7 +27,7 @@ void AFPSGameMode::PostLogin(APlayerController* NewPlayer)
 
 	if (NewPlayer != nullptr && UKismetSystemLibrary::DoesImplementInterface(NewPlayer, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_StartNewGame(NewPlayer);
+		IFPSPlayerControllerInterface::Execute_OnPostLogin(NewPlayer, this);
 	}
 }
 
@@ -35,6 +35,28 @@ void AFPSGameMode::BeginPlay()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::BeginPlay()"));
 	Super::BeginPlay();
+	FPSGameState = GetGameState<AFPSGameState>();
+	if (!ensure(GameState != nullptr))
+	{
+		return;
+	}
+	FPSGameState->Init(this);
+
+	StartGame();
+}
+
+void AFPSGameMode::StartGame()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::StartGame()"));
+
+	OnStartGame.Broadcast();
+}
+
+void AFPSGameMode::StartMatch()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGameMode::StartMatch()"));
+
+	OnStartMatch.Broadcast();
 }
 
 void AFPSGameMode::SpawnPlayer(APlayerController* PlayerController, ETeam Team)
@@ -45,8 +67,8 @@ void AFPSGameMode::SpawnPlayer(APlayerController* PlayerController, ETeam Team)
 	FreePlayer(PlayerController->GetPawn());
 
 	// 2. Try to pool a player in given team
-	AFPSCharacter* PooledPlayer = PoolPlayer(Team);
-	if (!ensure(PooledPlayer != nullptr))
+	AFPSCharacter* SpawnedPlayer = PoolPlayer(Team);
+	if (!ensure(SpawnedPlayer != nullptr))
 	{
 		return;
 	}
@@ -54,14 +76,7 @@ void AFPSGameMode::SpawnPlayer(APlayerController* PlayerController, ETeam Team)
 	// 3. Spawn the pooled player
 	if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
 	{
-		if (Team == ETeam::Marvel)
-		{
-			IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, PooledPlayer);
-		}
-		else if (Team == ETeam::DC)
-		{
-			IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, PooledPlayer);
-		}
+		IFPSPlayerControllerInterface::Execute_OnSpawnPlayer(PlayerController, SpawnedPlayer);
 	}
 }
 
@@ -141,12 +156,40 @@ void AFPSGameMode::OnPlayerDeath(APlayerController* PlayerController, ETeam Team
 	ETeam WinnerTeam = GetWinnerTeam();
 	if (WinnerTeam != ETeam::None)
 	{
-		EndGame(WinnerTeam);
+		EndMatch(WinnerTeam);
 	}
+}
+
+void AFPSGameMode::EndMatch(ETeam WinnerTeam)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGameState::EndMatch()"));
+	
+	OnEndMatch.Broadcast();
+
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+	//for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	//{
+	//	APlayerController* PlayerController = Iterator->Get();
+	//	if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
+	//	{
+	//		IFPSPlayerControllerInterface::Execute_OnEndMatch(PlayerController, WinnerTeam);
+	//	}
+	//}
+
+	FTimerHandle MatchStartTimer;
+	World->GetTimerManager().SetTimer(MatchStartTimer, [&]()
+	{
+		StartMatch();
+	}, 5.f, false);
 }
 
 ETeam AFPSGameMode::GetWinnerTeam()
 {
+	// TODO: implement this again without using loops?
 	int MarvelSurvivors = 0;
 	int DCSurvivors = 0;
 
@@ -178,25 +221,6 @@ ETeam AFPSGameMode::GetWinnerTeam()
 	{
 		return ETeam::None;
 	}
-}
-
-void AFPSGameMode::EndGame(ETeam Winner)
-{
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-	for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
-	{
-		APlayerController* PlayerController = Iterator->Get();
-		if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
-		{
-			IFPSPlayerControllerInterface::Execute_LoadGameOverWidget(PlayerController, Winner);
-		}
-	}
-
-	World->ServerTravel("/Game/Maps/Gwang_FPS?listen", true);
 }
 
 void AFPSGameMode::SetupPlayerPool()
@@ -255,7 +279,7 @@ void AFPSGameMode::SetupPlayerStarts()
 
 /////////////////
 // Doing this because I want to be able to play from FPS_Gwang map through engine!
-ETeam AFPSGameMode::GetStartingTeam()
+ETeam AFPSGameMode::GetTeamWithLessPeople()
 {
 	int MarvelTeamCounter = 0;
 	int DCTeamCounter = 0;

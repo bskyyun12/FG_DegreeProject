@@ -9,6 +9,7 @@
 class UTextBlock;
 class UAmmoWidget;
 class UHealthArmorWidget;
+class UWidgetSwitcher;
 
 UCLASS()
 class GWANG_FPS_API UFPSHUDWidget : public UFPSWidgetBase
@@ -22,21 +23,24 @@ public:
 
 	void UpdateAmmoUI(int CurrentAmmo, int RemainingAmmo);
 
+	void UpdateScoreUI(int MarvelScore, int DCScore);
+
 private:
-	UPROPERTY(meta=(BindWidget))
-	UTextBlock* Text_Crosshair;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Text_MarvelScore;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Text_DCScore;
 
 	UPROPERTY(meta = (BindWidget))
 	UAmmoWidget* AmmoWidget;
 
 	UPROPERTY(meta = (BindWidget))
 	UHealthArmorWidget* HealthArmorWidget;
-	
-	UPROPERTY(EditDefaultsOnly)
-	FSlateColor Crosshair_Default;
 
-	UPROPERTY(EditDefaultsOnly)
-	FSlateColor Crosshair_OnHit;
+	UPROPERTY(meta = (BindWidget))
+	UWidgetSwitcher* WidgetSwitcher_Crosshair;
 
 	FTimerHandle CrosshairTimer;
 };

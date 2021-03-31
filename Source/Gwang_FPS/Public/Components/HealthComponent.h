@@ -20,7 +20,8 @@ public:
 
 	float GetArmor();
 
-	void Reset();
+	UFUNCTION(Server, Reliable)
+	void Server_OnSpawn();
 
 	UFUNCTION(Server, Reliable)
 	void Server_TakeDamage(AActor* DamageSource, float DamageOnHealth, float DamageOnArmor);
@@ -29,6 +30,9 @@ public:
 	void Server_AcquireHealth(AActor* HealthSource, float Value);
 
 	bool IsDead();
+
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FResetDelegate);
+	FResetDelegate OnSpawn;
 
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHealthDelegate, AActor*, Source);
 	FHealthDelegate OnTakeDamage;
@@ -61,4 +65,9 @@ private:
 	float CurrentArmor = 100.f;
 	UFUNCTION()
 	void OnRep_CurrentArmor();
+
+	UPROPERTY(ReplicatedUsing = OnRep_bIsDead)
+	bool bIsDead = false;
+	UFUNCTION()
+	void OnRep_bIsDead();
 };

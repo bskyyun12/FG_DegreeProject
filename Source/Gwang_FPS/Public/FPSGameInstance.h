@@ -62,7 +62,7 @@ private:
 
 	UMainMenuWidget* MainMenu;
 
-	ETeam Team;
+	ETeam Team = ETeam::None;
 
 private:
 	void CreateSession();

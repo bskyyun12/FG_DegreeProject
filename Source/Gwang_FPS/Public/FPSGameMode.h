@@ -8,7 +8,7 @@
 #include "FPSGameMode.generated.h"
 
 class AFPSCharacter;
-class AFPSGameStateBase;
+class AFPSGameState;
 
 UCLASS()
 class GWANG_FPS_API AFPSGameMode : public AGameModeBase
@@ -16,7 +16,16 @@ class GWANG_FPS_API AFPSGameMode : public AGameModeBase
 	GENERATED_BODY()
 
 public:
-	virtual void PostLogin(APlayerController* NewPlayer) override;
+
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGameModeDelegate);
+	FGameModeDelegate OnStartGame;
+	FGameModeDelegate OnStartMatch;
+	FGameModeDelegate OnEndMatch;
+	FGameModeDelegate OnEndGame;
+
+	void StartGame();
+
+	void StartMatch();
 
 	FTransform GetRandomPlayerStarts(ETeam Team);
 
@@ -28,16 +37,18 @@ public:
 
 	ETeam GetWinnerTeam();
 
-	void EndGame(ETeam Winner);
+	void EndMatch(ETeam WinnerTeam);
 
 	/////////////////
 	// Doing this because I want to be able to play from FPS_Gwang map through engine!
-	ETeam GetStartingTeam();
+	ETeam GetTeamWithLessPeople();
 	/////////////////
 	// Doing this because I want to be able to play from FPS_Gwang map through engine!
 
 protected:
 	void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
+
+	void PostLogin(APlayerController* NewPlayer) override;
 
 	void BeginPlay() override;
 
@@ -62,7 +73,7 @@ private:
 
 private:
 	UPROPERTY()
-	AFPSGameStateBase* FPSGameState;
+	AFPSGameState* FPSGameState;
 
 private:
 	void SetupPlayerStarts();

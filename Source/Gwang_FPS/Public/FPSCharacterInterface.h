@@ -22,21 +22,23 @@ class GWANG_FPS_API IFPSCharacterInterface
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
+
+	// Getters
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	FTransform GetCameraTransform();
-
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	USkeletalMeshComponent* GetCharacterMesh();
-
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	USkeletalMeshComponent* GetArmMesh();
-
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	float GetHealth();
-
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	float GetArmor();
 
+
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void TakeDamage(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void OnSpawnPlayer();
 };

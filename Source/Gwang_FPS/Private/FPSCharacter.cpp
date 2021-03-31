@@ -22,24 +22,26 @@ AFPSCharacter::AFPSCharacter()
 	PrimaryActorTick.bCanEverTick = false;
 
 	CameraContainer = CreateDefaultSubobject<UBoxComponent>(TEXT("CameraContainer"));
+	CameraContainer->SetCollisionProfileName("NoCollision");
 	CameraContainer->SetupAttachment(RootComponent);
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	FollowCamera->SetupAttachment(CameraContainer);
-
-	FPSArmMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPS_Arms"));
-	FPSArmMesh->SetupAttachment(FollowCamera);
 
 	HandCollider = CreateDefaultSubobject<UBoxComponent>(TEXT("HandCollider"));
 	HandCollider->SetupAttachment(FollowCamera);
 	HandCollider->OnComponentBeginOverlap.AddDynamic(this, &AFPSCharacter::OnBeginOverlapHandCollider);
 	HandCollider->OnComponentEndOverlap.AddDynamic(this, &AFPSCharacter::OnEndOverlapHandCollider);
 
+	FPSArmMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPS_Arms"));
+	FPSArmMesh->SetupAttachment(FollowCamera);
+
 	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
 	HealthComponent->OnTakeDamage.AddDynamic(this, &AFPSCharacter::OnTakeDamage);
 	HealthComponent->OnHealthAcquired.AddDynamic(this, &AFPSCharacter::OnHealthAcquired);
 	HealthComponent->OnDeath.AddDynamic(this, &AFPSCharacter::OnDeath);
 	HealthComponent->OnUpdateHealthArmorUI.AddDynamic(this, &AFPSCharacter::OnUpdateHealthArmorUI);
+	HealthComponent->OnSpawn.AddDynamic(this, &AFPSCharacter::OnSpawn);
 }
 
 void AFPSCharacter::BeginPlay()
@@ -61,6 +63,7 @@ void AFPSCharacter::BeginPlay()
 	DefaultCharacterMeshRelativeTransform = FPSCharacterMesh->GetRelativeTransform();
 }
 
+#pragma region Input bindings
 void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -276,7 +279,9 @@ void AFPSCharacter::ToggleScoreBoardWidget(bool bDisplay)
 		IFPSPlayerControllerInterface::Execute_ToggleScoreBoardWidget(GetController(), bDisplay);
 	}
 }
+#pragma endregion Input bindings
 
+#pragma region Getters
 float AFPSCharacter::GetHealth_Implementation()
 {
 	if (HealthComponent != nullptr)
@@ -297,123 +302,6 @@ float AFPSCharacter::GetArmor_Implementation()
 	return -1.f;
 }
 
-void AFPSCharacter::OnBeginOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSWeaponInterface::StaticClass()))
-	{
-		CurrentFocus = IFPSWeaponInterface::Execute_GetWeapon(OtherActor);
-	}
-	// TODO: What if OtherActor is not a weapon? It could be a wall to climb.
-}
-
-void AFPSCharacter::OnEndOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSWeaponInterface::StaticClass()))
-	{
-		if (CurrentFocus == IFPSWeaponInterface::Execute_GetWeapon(OtherActor))
-		{
-			CurrentFocus = nullptr;
-		}
-	}
-}
-
-void AFPSCharacter::TakeDamage_Implementation(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor)
-{
-	if (HealthComponent != nullptr)
-	{
-		HealthComponent->Server_TakeDamage(DamageCauser, DamageOnHealth, DamageOnArmor);
-	}
-}
-
-// HealthComponent Delegate binding
-void AFPSCharacter::OnTakeDamage(AActor* DamageSource)
-{
-	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("( %s ) is attacked by ( %s )"), *this->GetName(), *DamageSource->GetName());
-		IFPSPlayerControllerInterface::Execute_OnTakeDamage(GetController());
-	}
-}
-
-// HealthComponent Delegate binding
-void AFPSCharacter::OnHealthAcquired(AActor* HealthSource)
-{
-	UE_LOG(LogTemp, Warning, TEXT("( %s ) acquired health from ( %s )"), *this->GetName(), *HealthSource->GetName());
-}
-
-// HealthComponent Delegate binding
-void AFPSCharacter::OnDeath(AActor* DeathSource)
-{	
-	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("( %s ) is killed by ( %s )"), *this->GetName(), *DeathSource->GetName());
-		CollisionHandleOnDeath();
-		IFPSPlayerControllerInterface::Execute_OnUpdateHealthArmorUI(GetController(), IsDead());
-		IFPSPlayerControllerInterface::Execute_OnPlayerDeath(GetController());
-	}
-}
-
-// HealthComponent Delegate binding
-void AFPSCharacter::OnUpdateHealthArmorUI()
-{
-	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
-	{
-		IFPSPlayerControllerInterface::Execute_OnUpdateHealthArmorUI(GetController(), IsDead());
-	}
-}
-
-bool AFPSCharacter::IsDead()
-{
-	if (HealthComponent != nullptr)
-	{
-		return HealthComponent->IsDead();
-	}
-	return false;
-}
-
-void AFPSCharacter::RespawnPlayer()
-{
-	CollisionHandleOnRespawn();
-
-	if (HasAuthority())
-	{
-		if (HealthComponent != nullptr)
-		{
-			HealthComponent->Reset();
-		}
-
-		if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
-		{
-			IFPSPlayerControllerInterface::Execute_RespawnPlayer(GetController());
-		}
-	}
-}
-
-void AFPSCharacter::CollisionHandleOnDeath()
-{
-	CharacterCapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	FPSCharacterMesh->SetCollisionProfileName(TEXT("Ragdoll"));
-	FPSCharacterMesh->SetSimulatePhysics(true);
-
-	CameraContainer->SetCollisionProfileName(TEXT("IgnoreCharacter"));
-	CameraContainer->SetSimulatePhysics(true);
-}
-
-void AFPSCharacter::CollisionHandleOnRespawn()
-{
-	CharacterCapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	FPSCharacterMesh->SetSimulatePhysics(false);
-	FPSCharacterMesh->SetCollisionProfileName(TEXT("CharacterMesh"));
-	FPSCharacterMesh->AttachToComponent(CharacterCapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
-	FPSCharacterMesh->SetRelativeTransform(DefaultCharacterMeshRelativeTransform);
-
-	CameraContainer->SetSimulatePhysics(false);
-	CameraContainer->SetCollisionProfileName(TEXT("NoCollision"));
-	CameraContainer->AttachToComponent(CharacterCapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
-	CameraContainer->SetRelativeLocation(DefaultCameraRelativeLocation);
-}
-
-// IFPSCharacterInterface
 FTransform AFPSCharacter::GetCameraTransform_Implementation()
 {
 	return FollowCamera->GetComponentTransform();
@@ -427,4 +315,147 @@ USkeletalMeshComponent* AFPSCharacter::GetCharacterMesh_Implementation()
 USkeletalMeshComponent* AFPSCharacter::GetArmMesh_Implementation()
 {
 	return FPSArmMesh;
+}
+#pragma endregion Getters
+
+#pragma region Spawn & Death
+// Called by AFPSPlayerController::OnSpawnPlayer
+void AFPSCharacter::OnSpawnPlayer_Implementation()
+{
+	if (HealthComponent != nullptr)
+	{
+		HealthComponent->Server_OnSpawn();
+	}
+}
+
+// Bound to HealthComponent->OnSpawn
+void AFPSCharacter::OnSpawn()
+{
+	HandleCollision();
+}
+
+// Called by DamageCauser ex) AFPSGunBase::Server_Fire
+void AFPSCharacter::TakeDamage_Implementation(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor)
+{
+	if (HealthComponent != nullptr)
+	{
+		HealthComponent->Server_TakeDamage(DamageCauser, DamageOnHealth, DamageOnArmor);
+	}
+}
+
+// Bound to HealthComponent->OnTakeDamage
+void AFPSCharacter::OnTakeDamage(AActor* DamageSource)
+{
+	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("( %s ) is attacked by ( %s )"), *this->GetName(), *DamageSource->GetName());
+		IFPSPlayerControllerInterface::Execute_OnTakeDamage(GetController());
+	}
+}
+
+// Bound to HealthComponent->OnHealthAcquired
+void AFPSCharacter::OnHealthAcquired(AActor* HealthSource)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnHealthAcquired"));
+	UE_LOG(LogTemp, Warning, TEXT("( %s ) acquired health from ( %s )"), *this->GetName(), *HealthSource->GetName());
+}
+
+// Bound to HealthComponent->OnUpdateHealthArmorUI
+void AFPSCharacter::OnUpdateHealthArmorUI()
+{
+	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
+	{
+		IFPSPlayerControllerInterface::Execute_OnUpdateHealthArmorUI(GetController(), IsDead());
+	}
+}
+
+// Bound to HealthComponent->OnDeath
+void AFPSCharacter::OnDeath(AActor* DeathSource)
+{
+	HandleCollision();
+
+	if (HasAuthority())
+	{
+		if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnDeath"));
+			UE_LOG(LogTemp, Warning, TEXT("( %s ) is killed by ( %s )"), *this->GetName(), *DeathSource->GetName());
+
+			UWorld* World = GetWorld();
+			if (!ensure(World != nullptr))
+			{
+				return;
+			}
+			FTimerHandle DeathTimer;
+			World->GetTimerManager().SetTimer(DeathTimer, [&]()
+				{
+					IFPSPlayerControllerInterface::Execute_OnUpdateHealthArmorUI(GetController(), IsDead());
+					IFPSPlayerControllerInterface::Execute_OnPlayerDeath(GetController());
+				}, 2.f, false);
+		}
+	}
+}
+#pragma endregion Spawn & Death
+
+// TODO: Pick up weapon by overlapping instead of "E" button
+void AFPSCharacter::OnBeginOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSWeaponInterface::StaticClass()))
+	{
+		CurrentFocus = IFPSWeaponInterface::Execute_GetWeapon(OtherActor);
+	}
+}
+
+void AFPSCharacter::OnEndOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSWeaponInterface::StaticClass()))
+	{
+		if (CurrentFocus == IFPSWeaponInterface::Execute_GetWeapon(OtherActor))
+		{
+			CurrentFocus = nullptr;
+		}
+	}
+}
+
+void AFPSCharacter::HandleCollision()
+{
+	if (CharacterCapsuleComponent == nullptr || FPSCharacterMesh == nullptr || CameraContainer == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Client_HandleCollision_Implementation ( %s ) CharacterCapsuleComponent == nullptr || FPSCharacterMesh == nullptr || CameraContainer == nullptr"), *this->GetName());
+		return;
+	}
+
+	if (IsDead())
+	{
+		CharacterCapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		FPSCharacterMesh->SetCollisionProfileName(TEXT("Ragdoll"));
+		FPSCharacterMesh->SetSimulatePhysics(true);
+
+		CameraContainer->SetCollisionProfileName(TEXT("IgnoreCharacter"));
+		CameraContainer->SetSimulatePhysics(true);
+	}
+	else
+	{
+		CharacterCapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+		FPSCharacterMesh->SetSimulatePhysics(false);
+		FPSCharacterMesh->SetCollisionProfileName(TEXT("CharacterMesh"));
+		FPSCharacterMesh->AttachToComponent(CharacterCapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
+		FPSCharacterMesh->SetRelativeTransform(DefaultCharacterMeshRelativeTransform);
+
+		CameraContainer->SetSimulatePhysics(false);
+		CameraContainer->SetCollisionProfileName(TEXT("NoCollision"));
+		CameraContainer->AttachToComponent(CharacterCapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
+		CameraContainer->SetRelativeLocation(DefaultCameraRelativeLocation);
+	}
+}
+
+bool AFPSCharacter::IsDead()
+{
+	if (HealthComponent != nullptr)
+	{
+		return HealthComponent->IsDead();
+	}
+	return false;
 }

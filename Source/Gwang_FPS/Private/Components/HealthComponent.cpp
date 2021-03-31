@@ -11,7 +11,7 @@ UHealthComponent::UHealthComponent()
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = false;
 
-	Reset();
+	Server_OnSpawn();
 }
 
 float UHealthComponent::GetHealth()
@@ -37,12 +37,15 @@ void UHealthComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(UHealthComponent, CurrentHealth);
 	DOREPLIFETIME(UHealthComponent, CurrentArmor);
+	DOREPLIFETIME(UHealthComponent, bIsDead);
 }
 
-void UHealthComponent::Reset()
+void UHealthComponent::Server_OnSpawn_Implementation()
 {
 	CurrentHealth = MaxHealth;	// OnRep_CurrentHealth
 	CurrentArmor = MaxArmor;	// OnRep_CurrentArmor
+	bIsDead = false;	// OnRep_bIsDead
+	OnSpawn.Broadcast();
 }
 
 void UHealthComponent::Server_TakeDamage_Implementation(AActor* DamageSource, float DamageOnHealth, float DamageOnArmor)
@@ -69,6 +72,7 @@ void UHealthComponent::Server_TakeDamage_Implementation(AActor* DamageSource, fl
 
 	if (CurrentHealth <= 0.f)
 	{
+		bIsDead = true;	// OnRep_bIsDead
 		OnDeath.Broadcast(DamageSource);
 	}
 }
@@ -82,7 +86,7 @@ void UHealthComponent::Server_AcquireHealth_Implementation(AActor* HealthSource,
 
 bool UHealthComponent::IsDead()
 {
-	return CurrentHealth <= 0.f;
+	return bIsDead;
 }
 
 void UHealthComponent::OnRep_CurrentHealth()
@@ -93,4 +97,16 @@ void UHealthComponent::OnRep_CurrentHealth()
 void UHealthComponent::OnRep_CurrentArmor()
 {
 	OnUpdateHealthArmorUI.Broadcast();
+}
+
+void UHealthComponent::OnRep_bIsDead()
+{
+	if (bIsDead)
+	{
+		OnDeath.Broadcast(nullptr);
+	}
+	else
+	{
+		OnSpawn.Broadcast();
+	}
 }

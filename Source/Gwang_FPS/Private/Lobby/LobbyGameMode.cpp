@@ -50,7 +50,7 @@ void ALobbyGameMode::StartGame()
 	{
 		return;
 	}
-
+	//bUseSeamlessTravel = true;
 	World->ServerTravel("/Game/Maps/Gwang_FPS?listen");
 }
 

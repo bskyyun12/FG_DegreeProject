@@ -20,19 +20,19 @@ class GWANG_FPS_API IFPSPlayerControllerInterface
 
 public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void StartNewGame();
+	void OnPostLogin(AFPSGameMode* FPSGameMode);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnSpawnPlayer(AFPSCharacter* Player);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void RespawnPlayer();
+	ETeam GetTeam();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnApplyDamage();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnTakeDamage();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void OnSpawnPlayer(AFPSCharacter* SpawnedPlayer);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnPlayerDeath();
@@ -43,15 +43,17 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void AddControlRotation(const FRotator& RotationToAdd);
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void ToggleScoreBoardWidget(bool bDisplay);
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void LoadGameOverWidget(ETeam WinnerTeam);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnUpdateHealthArmorUI(bool bIsDead);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnUpdateAmmoUI(int CurrentAmmo, int RemainingAmmo);
-};
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void ToggleScoreBoardWidget(bool bDisplay);
+
+	//UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	//void OnEndMatch(ETeam WinnerTeam);
+};	

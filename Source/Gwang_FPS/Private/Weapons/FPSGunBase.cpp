@@ -13,6 +13,7 @@
 void AFPSGunBase::BeginPlay()
 {
 	Super::BeginPlay();
+	CurrentAmmo = MagazineCapacity;	// OnRep_CurrentAmmo()
 }
 
 void AFPSGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -160,7 +161,7 @@ bool AFPSGunBase::CanReload()
 	{
 		return false;
 	}
-	return RemainingAmmo > 0;
+	return RemainingAmmo > 0 && CurrentAmmo != MagazineCapacity;
 }
 
 void AFPSGunBase::Client_OnReload_Implementation()

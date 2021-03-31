@@ -3,12 +3,15 @@
 
 #include "Widgets/FPSHUDWidget.h"
 #include "Components/TextBlock.h"
+#include "Components/WidgetSwitcher.h"
+#include "Kismet/KismetTextLibrary.h"
 
 #include "Widgets/HealthArmorWidget.h"
 
 void UFPSHUDWidget::OnApplyDamage()
 {
-	Text_Crosshair->SetColorAndOpacity(Crosshair_OnHit);
+	// Crosshair UI
+	WidgetSwitcher_Crosshair->SetActiveWidgetIndex(1);
 
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
@@ -18,8 +21,8 @@ void UFPSHUDWidget::OnApplyDamage()
 	World->GetTimerManager().ClearTimer(CrosshairTimer);
 	World->GetTimerManager().SetTimer(CrosshairTimer, [&]()
 		{
-			Text_Crosshair->SetColorAndOpacity(Crosshair_Default);
-		}, 0.15f, false);
+			WidgetSwitcher_Crosshair->SetActiveWidgetIndex(0);
+		}, 0.2f, false);
 }
 
 void UFPSHUDWidget::OnTakeDamage(bool bIsDead)
@@ -30,4 +33,10 @@ void UFPSHUDWidget::OnTakeDamage(bool bIsDead)
 void UFPSHUDWidget::UpdateAmmoUI(int CurrentAmmo, int RemainingAmmo)
 {
 	AmmoWidget->UpdateUI(CurrentAmmo, RemainingAmmo);
+}
+
+void UFPSHUDWidget::UpdateScoreUI(int MarvelScore, int DCScore)
+{
+	Text_MarvelScore->SetText(UKismetTextLibrary::Conv_IntToText(MarvelScore));
+	Text_DCScore->SetText(UKismetTextLibrary::Conv_IntToText(DCScore));
 }

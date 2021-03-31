@@ -286,6 +286,7 @@ void UFPSGameInstance::DestroySession()
 
 void UFPSGameInstance::SetTeam(ETeam InTeam)
 {
+	UE_LOG(LogTemp, Warning, TEXT("UFPSGameInstance::SetTeam >> NewTeam: %i"), InTeam);
 	Team = InTeam;
 }
 

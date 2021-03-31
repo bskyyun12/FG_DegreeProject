@@ -26,11 +26,8 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	void MoveForward(float Value);
-
 	void MoveRight(float Value);
-
 	void Turn(float Value);
-
 	void LookUp(float Value);
 	UFUNCTION(Server, Unreliable)
 	void Server_LookUp(FRotator CameraRot);
@@ -40,7 +37,6 @@ public:
 	void OnBeginFire();
 	UFUNCTION(Server, Reliable)
 	void Server_OnBeginFire(AFPSWeaponBase* Weapon);
-
 	void OnEndFire();
 	UFUNCTION(Server, Reliable)
 	void Server_OnEndFire(AFPSWeaponBase* Weapon);
@@ -59,20 +55,17 @@ public:
 	void ToggleScoreBoardWidget(bool bDisplay);
 #pragma endregion Input bindings
 
-	//////////////////////////
-	// IFPSCharacterInterface
+#pragma region IFPSCharacterInterface
+	// Getters
 	FTransform GetCameraTransform_Implementation() override;
 	USkeletalMeshComponent* GetCharacterMesh_Implementation() override;
 	USkeletalMeshComponent* GetArmMesh_Implementation() override;
-
 	float GetHealth_Implementation() override;
 	float GetArmor_Implementation() override;
 
+	void OnSpawnPlayer_Implementation() override;
 	void TakeDamage_Implementation(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor) override;
-
-
-	// IFPSCharacterInterface
-	//////////////////////////
+#pragma endregion IFPSCharacterInterface
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -116,8 +109,7 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_EquipWeapon(AFPSWeaponBase* Weapon);
 
-	/////////////////
-	// Health & Death
+#pragma region Health & Spawn & Death
 	bool IsDead();
 
 	UFUNCTION()
@@ -131,11 +123,10 @@ protected:
 
 	UFUNCTION()
 	void OnUpdateHealthArmorUI();
+	
+	UFUNCTION()
+	void OnSpawn();
 
-	void RespawnPlayer();
-
-	void CollisionHandleOnDeath();
-	void CollisionHandleOnRespawn();
-	// Health & Death
-	/////////////////
+	void HandleCollision();
+#pragma endregion Spawn & Death
 };
