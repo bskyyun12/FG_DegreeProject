@@ -171,15 +171,6 @@ void AFPSGameMode::EndMatch(ETeam WinnerTeam)
 	{
 		return;
 	}
-	//for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
-	//{
-	//	APlayerController* PlayerController = Iterator->Get();
-	//	if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, UFPSPlayerControllerInterface::StaticClass()))
-	//	{
-	//		IFPSPlayerControllerInterface::Execute_OnEndMatch(PlayerController, WinnerTeam);
-	//	}
-	//}
-
 	FTimerHandle MatchStartTimer;
 	World->GetTimerManager().SetTimer(MatchStartTimer, [&]()
 	{

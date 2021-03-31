@@ -10,21 +10,23 @@
 #include "Kismet/GameplayStatics.h"
 #include "FPSGameInstance.h"
 
+ALobbyPlayerController::ALobbyPlayerController(const FObjectInitializer& ObjectInitializer /*= FObjectInitializer::Get()*/)
+{
+	bReplicates = true;
+}
+
 void ALobbyPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ALobbyPlayerController, ControllerID);
 }
 
-ALobbyPlayerController::ALobbyPlayerController(const FObjectInitializer& ObjectInitializer /*= FObjectInitializer::Get()*/)
+void ALobbyPlayerController::OnPostLogin_Implementation(ALobbyGameMode* LobbyGM, const FUserData& NewUserData)
 {
-	bReplicates = true;
-}
-
-void ALobbyPlayerController::LoadLobbyWidget_Implementation()
-{
-	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::LoadLobbyWidget_Implementation"));
+	LobbyGameMode = LobbyGM;
+	ControllerID = NewUserData.ControllerID; 
 	Client_LoadLobbyWidget();
+	Execute_UpdateUserData(this, NewUserData);
 }
 
 void ALobbyPlayerController::Client_LoadLobbyWidget_Implementation()
@@ -48,72 +50,57 @@ void ALobbyPlayerController::Client_LoadLobbyWidget_Implementation()
 	LobbyWidget->Setup();
 }
 
-void ALobbyPlayerController::BeginPlay()
+#pragma region UserData Handle
+FUserData ALobbyPlayerController::GetUserData_Implementation()
 {
-	Super::BeginPlay();
-
-	GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
-	RequestLobbyUIUpdate_Implementation();
+	if (GameInstance == nullptr)
+	{
+		GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
+		if (!ensure(GameInstance != nullptr))
+		{
+			return FUserData();
+		}
+	}
+	return GameInstance->UserData;
 }
 
-void ALobbyPlayerController::RequestLobbyUIUpdate_Implementation()
+void ALobbyPlayerController::UpdateUserData_Implementation(const FUserData& NewData)
 {
-	Server_UpdateLobbyUI();
+	Server_UpdateUserdata(NewData);
+	Client_UpdateUserdata(NewData);
 }
 
-void ALobbyPlayerController::Server_UpdateLobbyUI_Implementation()
+void ALobbyPlayerController::Server_UpdateUserdata_Implementation(const FUserData& UpdatedData)
 {
 	if (LobbyGameMode != nullptr)
 	{
-		LobbyGameMode->UpdateLobbyUI();
+		LobbyGameMode->GwangUpdateLobbyData(UpdatedData);
 	}
 }
 
-void ALobbyPlayerController::SetIsReady_Implementation(bool bIsReady)
+void ALobbyPlayerController::Client_UpdateUserdata_Implementation(const FUserData& UpdatedData)
 {
-	Server_UpdateReadyStatus(bIsReady);
-}
-
-void ALobbyPlayerController::Server_UpdateReadyStatus_Implementation(bool bIsReady)
-{
-	if (LobbyGameMode != nullptr)
+	if (GameInstance == nullptr)
 	{
-		LobbyGameMode->UpdateReadyStatus(ControllerID, bIsReady);
+		GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
+		if (!ensure(GameInstance != nullptr))
+		{
+			return;
+		}
 	}
+	GameInstance->UserData = UpdatedData;
+}
+#pragma endregion UserData Handle
+
+// Called by ALobbyGameMode::UpdateLobbyUI
+void ALobbyPlayerController::UpdateLobbyUI_Implementation(const TArray<FUserData>& UserDataList)
+{
+	Client_UpdateLobbyUI(UserDataList);
 }
 
-void ALobbyPlayerController::UpdateLobbyData_Implementation(ETeam LobbyTeam)
+void ALobbyPlayerController::Client_UpdateLobbyUI_Implementation(const TArray<FUserData>& UserDataList)
 {
-	Server_UpdateLobbyData(LobbyTeam);
-	Client_UpdateLobbyData(LobbyTeam);
-}
-
-void ALobbyPlayerController::Server_UpdateLobbyData_Implementation(ETeam LobbyTeam)
-{
-	if (LobbyGameMode != nullptr)
-	{
-		LobbyGameMode->UpdateTeamStatus(ControllerID, LobbyTeam);
-	}
-}
-
-void ALobbyPlayerController::Client_UpdateLobbyData_Implementation(ETeam LobbyTeam)
-{
-	if (GameInstance != nullptr)
-	{
-		GameInstance->LobbyData.Team = LobbyTeam;
-	}
-}
-
-void ALobbyPlayerController::UpdateLobbyUI_Implementation(const TArray<FUserData>& UserData)
-{
-	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::UpdateLobbyUI_Implementation"));
-	Client_UpdateLobbyUI(UserData);
-}
-
-void ALobbyPlayerController::Client_UpdateLobbyUI_Implementation(const TArray<FUserData>& UserData)
-{
-	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::Client_UpdateLobbyUI_Implementation"));
-	LobbyWidget->UpdateUserRowData(UserData);
+	LobbyWidget->UpdateUserRowData(UserDataList);
 }
 
 void ALobbyPlayerController::LobbyToMainMenu_Implementation()
@@ -126,25 +113,6 @@ void ALobbyPlayerController::LobbyToMainMenu_Implementation()
 void ALobbyPlayerController::Server_LobbyToMainMenu_Implementation()
 {
 	LobbyGameMode->RemoveUserData(ControllerID);
-	Server_UpdateLobbyUI();
-}
-
-void ALobbyPlayerController::SetLobbyGameMode_Implementation(ALobbyGameMode* LobbyGM)
-{
-	if (HasAuthority())
-	{
-		LobbyGameMode = LobbyGM;
-	}
-}
-
-int ALobbyPlayerController::GetControllerID_Implementation()
-{
-	return ControllerID;
-}
-
-void ALobbyPlayerController::SetControllerID_Implementation(int ID)
-{
-	ControllerID = ID;
 }
 
 void ALobbyPlayerController::StartGame_Implementation()

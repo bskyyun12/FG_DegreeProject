@@ -13,6 +13,7 @@ class UBoxComponent;
 class UCameraComponent;
 class USkeletalMeshComponent;
 class UHealthComponent;
+class UFPSGameInstance;
 
 UCLASS()
 class GWANG_FPS_API AFPSCharacter : public ACharacter, public IFPSCharacterInterface
@@ -21,6 +22,8 @@ class GWANG_FPS_API AFPSCharacter : public ACharacter, public IFPSCharacterInter
 
 public:
 	AFPSCharacter();
+
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma region Input bindings
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -50,9 +53,17 @@ public:
 	void Reload();
 	UFUNCTION(Server, Reliable)
 	void Server_Reload(AFPSWeaponBase* Weapon);
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_PlayReloadAnim(AFPSWeaponBase* Weapon);
 
 	DECLARE_DELEGATE_OneParam(FOneBooleanDelegate, bool)
 	void ToggleScoreBoardWidget(bool bDisplay);
+
+	void HandleCrouch(bool bCrouchButtonDown);
+	UFUNCTION(Server, Unreliable)
+	void Server_HandleCrouch(bool bCrouchButtonDown);
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_HandleCrouch(bool bCrouchButtonDown);
 #pragma endregion Input bindings
 
 #pragma region IFPSCharacterInterface
@@ -67,10 +78,8 @@ public:
 	void TakeDamage_Implementation(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor) override;
 #pragma endregion IFPSCharacterInterface
 
-protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	UBoxComponent* CameraContainer;
 
+protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
 
@@ -80,36 +89,47 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UHealthComponent* HealthComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	UBoxComponent* HandCollider;
-
-	TWeakObjectPtr<AFPSWeaponBase> CurrentFocus;
+	UPROPERTY(Replicated)
+	AFPSWeaponBase* CurrentMainWeapon;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	AFPSWeaponBase* CurrentWeapon;
+	AFPSWeaponBase* MainWeapon;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	AFPSWeaponBase* SubWeapon;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AFPSWeaponBase> RifleClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AFPSWeaponBase> PistolClass;
 
 	// Cache
 	UPROPERTY()
-	USkeletalMeshComponent* FPSCharacterMesh;
-	UPROPERTY()
-	UCapsuleComponent* CharacterCapsuleComponent;
-	FVector DefaultCameraRelativeLocation;
-	FTransform DefaultCharacterMeshRelativeTransform;
+	UFPSGameInstance* FPSGameInstance;
 
 protected:
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
-	void OnBeginOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
-	UFUNCTION()
-	void OnEndOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+	void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	void EquipWeapon(AFPSWeaponBase* Weapon);
 	UFUNCTION(Server, Reliable)
 	void Server_EquipWeapon(AFPSWeaponBase* Weapon);
 
+	// Crouch
+	FTimerHandle CrouchTimerHandle;
+	FVector CameraRelativeLocation_Default;
+	UPROPERTY(EditDefaultsOnly)
+	FVector CameraRelativeLocationOnCrouch = FVector::ZeroVector;
+	FVector DesiredCameraRelativeLocation;
+	UFUNCTION()
+	void CrouchTimer();
+
+
 #pragma region Health & Spawn & Death
+	UFUNCTION(BlueprintPure)
 	bool IsDead();
 
 	UFUNCTION()
@@ -119,14 +139,14 @@ protected:
 	void OnHealthAcquired(AActor* HealthSource);
 
 	UFUNCTION()
-	void OnDeath(AActor* DeathSource);
+	void OnUpdateHealthArmorUI();
 
 	UFUNCTION()
-	void OnUpdateHealthArmorUI();
+	void OnDeath(AActor* DeathSource);
+	void HandleCollisionOnDeath();
 	
 	UFUNCTION()
 	void OnSpawn();
-
-	void HandleCollision();
+	void HandleCollisionOnSpawn();
 #pragma endregion Spawn & Death
 };

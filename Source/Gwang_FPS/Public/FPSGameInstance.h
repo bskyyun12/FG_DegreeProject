@@ -69,6 +69,11 @@ struct FUserData
 		MainWeapon = EMainWeapon::None;
 		SubWeapon = ESubWeapon::None;
 	}
+
+	bool operator == (FUserData const& UserData)
+	{
+		return ControllerID == UserData.ControllerID;
+	}
 };
 
 UCLASS()
@@ -89,7 +94,7 @@ public:
 
 	void DestroySession();
 
-	FUserData LobbyData;
+	FUserData UserData;
 
 	//////////////////////
 	// IMainMenuInterface

@@ -17,7 +17,8 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float CameraPitch;
 
-public:
 	void UpdateSpineAngle_Implementation(float NewPitch) override;
+
+	void HandleCrouch_Implementation(bool bCrouchButtonDown) override;
 
 };

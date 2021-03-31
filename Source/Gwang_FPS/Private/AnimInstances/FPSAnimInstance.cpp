@@ -7,3 +7,8 @@ void UFPSAnimInstance::UpdateSpineAngle_Implementation(float NewPitch)
 {
 	CameraPitch = NewPitch;
 }
+
+void UFPSAnimInstance::HandleCrouch_Implementation(bool bCrouchButtonDown)
+{
+	
+}

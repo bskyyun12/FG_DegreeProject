@@ -18,56 +18,71 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 	if (NewPlayer == nullptr)
 	{
 		return;
-	}
+	}		
 
-	FUserData NewUser;
-	//NewUser.UserName = *NewPlayer->GetName();
-	NewUser.UserName = GetUserName(NewPlayer);
-	NewUser.ControllerID = GetPlayerID(NewPlayer);
-	NewUser.Team = GetTeamToJoin();
-	UserData.Add(NewUser);
+	FUserData NewUserData;
+	NewUserData.UserName = GetUserName(NewPlayer);
+	NewUserData.ControllerID = GetPlayerID(NewPlayer);
+	NewUserData.bIsReady = false;
+	NewUserData.Team = GetTeamToJoin();
+	NewUserData.MainWeapon = EMainWeapon::Rifle;
+	NewUserData.SubWeapon = ESubWeapon::Pistol;
+	UserData.Add(NewUserData);
 
 	if (UKismetSystemLibrary::DoesImplementInterface(NewPlayer, ULobbyInterface::StaticClass()))
 	{
-		ILobbyInterface::Execute_SetLobbyGameMode(NewPlayer, this);
-		ILobbyInterface::Execute_SetControllerID(NewPlayer, NewUser.ControllerID);
-		ILobbyInterface::Execute_UpdateLobbyData(NewPlayer, NewUser.Team);
-		ILobbyInterface::Execute_LoadLobbyWidget(NewPlayer);
+		ILobbyInterface::Execute_OnPostLogin(NewPlayer, this, NewUserData);
 	}
 }
 
-void ALobbyGameMode::StartGame()
+void ALobbyGameMode::BeginPlay()
 {
-	UFPSGameInstance* GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
-
-	if (GameInstance != nullptr)
-	{
-		GameInstance->StartSession();
-	}
+	Super::BeginPlay();
 
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
 	{
 		return;
 	}
+	World->GetTimerManager().SetTimer(LobbyTimer, [&](){ UpdateLobbyUI(); }, .5f, true);
+}
+
+void ALobbyGameMode::StartGame()
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+	World->GetTimerManager().ClearTimer(LobbyTimer);
+
+	UFPSGameInstance* GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
+	if (GameInstance != nullptr)
+	{
+		GameInstance->StartSession();
+	}
+
 	//bUseSeamlessTravel = true;
 	World->ServerTravel("/Game/Maps/Gwang_FPS?listen");
 }
 
-void ALobbyGameMode::GwangUpdateLobbyData()
+void ALobbyGameMode::GwangUpdateLobbyData(const FUserData& UpdatedData)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::UpdateLobbyUI"));
+	UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::GwangUpdateLobbyData"));
 
-
-
-
-	UpdateLobbyUI();
+	for (FUserData& Data : UserData)
+	{
+		if (Data == UpdatedData)
+		{
+			Data = UpdatedData;
+			UE_LOG(LogTemp, Warning, TEXT("Data Updated!"));
+			break;
+		}
+	}
 }
 
 void ALobbyGameMode::UpdateLobbyUI()
 {
-	UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::UpdateLobbyUI"));
-
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
 	{
@@ -79,30 +94,6 @@ void ALobbyGameMode::UpdateLobbyUI()
 		if (PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(PlayerController, ULobbyInterface::StaticClass()))
 		{
 			ILobbyInterface::Execute_UpdateLobbyUI(PlayerController, UserData);
-		}
-	}
-}
-
-void ALobbyGameMode::UpdateReadyStatus(int ID, bool bIsReady)
-{
-	for (FUserData& Data : UserData)
-	{
-		if (Data.ControllerID == ID)
-		{
-			Data.bIsReady = bIsReady;
-			break;
-		}
-	}
-}
-
-void ALobbyGameMode::UpdateTeamStatus(int ID, ETeam Team)
-{
-	for (FUserData& Data : UserData)
-	{
-		if (Data.ControllerID == ID)
-		{
-			Data.Team = Team;
-			break;
 		}
 	}
 }

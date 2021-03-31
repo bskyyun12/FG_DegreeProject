@@ -24,34 +24,20 @@ class GWANG_FPS_API ILobbyInterface
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:	
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void SetLobbyGameMode(ALobbyGameMode* LobbyGM);
+	void OnPostLogin(ALobbyGameMode* LobbyGM, const FUserData& NewUserData);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void SetControllerID(int ID);
+	FUserData GetUserData();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	int GetControllerID();
+	void UpdateUserData(const FUserData& NewData);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void LobbyToMainMenu();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void StartGame();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void LoadLobbyWidget();
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void RequestLobbyUIUpdate();
-
-	//UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	//void UpdateLobbyUI(const TArray<FUserRowData>& UserRowData);
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void UpdateLobbyUI(const TArray<FUserData>& UserData);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void UpdateLobbyData(ETeam LobbyTeam);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void SetIsReady(bool bIsReady);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void LobbyToMainMenu();
 };

@@ -36,8 +36,8 @@ AFPSWeaponBase::AFPSWeaponBase()
 	InteractCollider->SetSphereRadius(80.f);
 	InteractCollider->SetupAttachment(TPWeaponMesh);
 
-	SetReplicates(true);
-	SetReplicateMovement(true);
+	bReplicates = true;
+	//SetReplicateMovement(true);
 }
 
 // Called when the game starts or when spawned
@@ -55,6 +55,8 @@ void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 void AFPSWeaponBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
 {
 	UE_LOG(LogTemp, Warning, TEXT("(Server)AFPSWeaponBase::OnWeaponEquipped"));
+	UE_LOG(LogTemp, Warning, TEXT("(Server) Equip Weapon"));
+
 	SetOwner(OwnerCharacter);	// OnRep_Owner()
 	SetInstigator(OwnerCharacter);
 
@@ -69,11 +71,19 @@ void AFPSWeaponBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* Owner
 		{
 			TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
 		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("(Server_OnWeaponEquipped) CharacterMesh == nulllptr"));
+		}
 
 		USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(GetOwner());
 		if (ArmMesh != nullptr)
 		{
 			FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.FP_ArmsSocketName);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("(Server_OnWeaponEquipped) ArmMesh == nulllptr"));
 		}
 	}
 }
@@ -81,9 +91,10 @@ void AFPSWeaponBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* Owner
 void AFPSWeaponBase::Server_OnWeaponDroped_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("(Server)AFPSWeaponBase::OnWeaponDroped"));
+	UE_LOG(LogTemp, Warning, TEXT("(Server) Drop Weapon"));
 
+	FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 	TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	TPWeaponMesh->SetSimulatePhysics(true);
@@ -98,6 +109,7 @@ void AFPSWeaponBase::OnRep_Owner()
 
 	if (GetOwner() != nullptr)	// OnEquip
 	{
+		UE_LOG(LogTemp, Warning, TEXT("(Client) Equip Weapon"));
 		TPWeaponMesh->SetSimulatePhysics(false);
 		TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -119,10 +131,9 @@ void AFPSWeaponBase::OnRep_Owner()
 	}
 	else // OnDrop
 	{
+		UE_LOG(LogTemp, Warning, TEXT("(Client) Drop Weapon"));
 		FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-
 		TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-
 		InteractCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		TPWeaponMesh->SetSimulatePhysics(true);
@@ -230,6 +241,23 @@ bool AFPSWeaponBase::CanReload()
 	return !bIsReloading;
 }
 
+void AFPSWeaponBase::Server_OnReload_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_Reload_Implementation()"));
+
+	bIsReloading = true;
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	if (World->GetTimerManager().IsTimerActive(ReloadTimer) == false)
+	{
+		World->GetTimerManager().SetTimer(ReloadTimer, this, &AFPSWeaponBase::Server_OnEndReload, WeaponInfo.ReloadTime, false);
+	}
+}
+
 void AFPSWeaponBase::Client_OnReload_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_Reload_Implementation()"));
@@ -243,29 +271,10 @@ void AFPSWeaponBase::Client_OnReload_Implementation()
 	}
 }
 
-void AFPSWeaponBase::Server_OnReload_Implementation()
-{
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_Reload_Implementation()"));
-
-	bIsReloading = true;	// OnRep_bIsReloading()
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-
-	if (World->GetTimerManager().IsTimerActive(ReloadTimer) == false)
-	{
-		World->GetTimerManager().SetTimer(ReloadTimer, this, &AFPSWeaponBase::Server_OnEndReload, WeaponInfo.ReloadTime, false);
-	}
-
-	// TODO: (Very low priority) Play TP_WeaponReloadAnim?
-}
-
 void AFPSWeaponBase::Server_OnEndReload_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnEndReload_Implementation"));
-	bIsReloading = false;	// OnRep_bIsReloading()
+	bIsReloading = false;
 }
 
 void AFPSWeaponBase::PlayFireEmitter(bool FPWeapon)

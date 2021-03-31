@@ -24,4 +24,8 @@ class GWANG_FPS_API IFPSAnimInterface
 public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void UpdateSpineAngle(float Pitch);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void HandleCrouch(bool bCrouchButtonDown);
+
 };

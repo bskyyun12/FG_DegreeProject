@@ -19,15 +19,18 @@ bool UUserRow::Initialize()
 	return true;
 }
 
+// Called by ULobbyWidget::UpdateUserRowData
 void UUserRow::UpdateRow(const FUserData& Data)
 {
-	UE_LOG(LogTemp, Warning, TEXT("UUserRow::UpdateRow"));
 	Text_UserName->SetText(FText::FromName(Data.UserName));
 	Text_ID->SetText(FText::FromString(FString::FromInt(Data.ControllerID)));
 
 	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
 	{
-		if (Data.ControllerID == ILobbyInterface::Execute_GetControllerID(GetOwningPlayer()))
+		UE_LOG(LogTemp, Warning, TEXT("ILobbyInterface::Execute_GetUserData(GetOwningPlayer()).ControllerID: %i"), ILobbyInterface::Execute_GetUserData(GetOwningPlayer()).ControllerID);
+		UE_LOG(LogTemp, Warning, TEXT("Data.ControllerID: %i"), Data.ControllerID);
+
+		if (Data.ControllerID == ILobbyInterface::Execute_GetUserData(GetOwningPlayer()).ControllerID)
 		{
 			Button_Ready->SetVisibility(ESlateVisibility::Visible);
 		}
@@ -54,7 +57,9 @@ void UUserRow::OnClicked_Button_Ready()
 	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
 	{
 		bIsReady = !bIsReady;
-		ILobbyInterface::Execute_SetIsReady(GetOwningPlayer(), bIsReady);
-		ILobbyInterface::Execute_RequestLobbyUIUpdate(GetOwningPlayer());
+
+		FUserData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
+		UserData.bIsReady = bIsReady;
+		ILobbyInterface::Execute_UpdateUserData(GetOwningPlayer(), UserData);
 	}
 }

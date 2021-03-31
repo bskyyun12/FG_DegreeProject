@@ -8,6 +8,7 @@
 #include "Components/CapsuleComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Net/UnrealNetwork.h"
 
 #include "Animation/AnimInstance.h"
 #include "AnimInstances/FPSAnimInterface.h"
@@ -16,22 +17,19 @@
 #include "FPSPlayerController.h"
 #include "Weapons/FPSWeaponInterface.h"
 
+void AFPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AFPSCharacter, CurrentMainWeapon);
+}
+
 AFPSCharacter::AFPSCharacter()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
-	CameraContainer = CreateDefaultSubobject<UBoxComponent>(TEXT("CameraContainer"));
-	CameraContainer->SetCollisionProfileName("NoCollision");
-	CameraContainer->SetupAttachment(RootComponent);
-
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	FollowCamera->SetupAttachment(CameraContainer);
-
-	HandCollider = CreateDefaultSubobject<UBoxComponent>(TEXT("HandCollider"));
-	HandCollider->SetupAttachment(FollowCamera);
-	HandCollider->OnComponentBeginOverlap.AddDynamic(this, &AFPSCharacter::OnBeginOverlapHandCollider);
-	HandCollider->OnComponentEndOverlap.AddDynamic(this, &AFPSCharacter::OnEndOverlapHandCollider);
+	FollowCamera->SetupAttachment(RootComponent);
 
 	FPSArmMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPS_Arms"));
 	FPSArmMesh->SetupAttachment(FollowCamera);
@@ -42,25 +40,18 @@ AFPSCharacter::AFPSCharacter()
 	HealthComponent->OnDeath.AddDynamic(this, &AFPSCharacter::OnDeath);
 	HealthComponent->OnUpdateHealthArmorUI.AddDynamic(this, &AFPSCharacter::OnUpdateHealthArmorUI);
 	HealthComponent->OnSpawn.AddDynamic(this, &AFPSCharacter::OnSpawn);
+
+	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &AFPSCharacter::OnBeginOverlap);
 }
 
 void AFPSCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	FPSCharacterMesh = GetMesh();
-	if (!ensure(FPSCharacterMesh != nullptr))
+	if (FollowCamera != nullptr)
 	{
-		return;
+		CameraRelativeLocation_Default = FollowCamera->GetRelativeLocation();
 	}
-	CharacterCapsuleComponent = GetCapsuleComponent();
-	if (!ensure(CharacterCapsuleComponent != nullptr))
-	{
-		return;
-	}
-
-	DefaultCameraRelativeLocation = CameraContainer->GetRelativeLocation();
-	DefaultCharacterMeshRelativeTransform = FPSCharacterMesh->GetRelativeTransform();
 }
 
 #pragma region Input bindings
@@ -73,14 +64,15 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AFPSCharacter::OnBeginFire);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &AFPSCharacter::OnEndFire);
 
-	PlayerInputComponent->BindAction("Pickup", IE_Pressed, this, &AFPSCharacter::Pickup);
-
 	PlayerInputComponent->BindAction("Drop", IE_Pressed, this, &AFPSCharacter::Drop);
 
 	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &AFPSCharacter::Reload);
 
 	PlayerInputComponent->BindAction<FOneBooleanDelegate>("ScoreBoard", IE_Pressed, this, &AFPSCharacter::ToggleScoreBoardWidget, true);
 	PlayerInputComponent->BindAction<FOneBooleanDelegate>("ScoreBoard", IE_Released, this, &AFPSCharacter::ToggleScoreBoardWidget, false);
+
+	PlayerInputComponent->BindAction<FOneBooleanDelegate>("Crouch", IE_Pressed, this, &AFPSCharacter::HandleCrouch, true);
+	PlayerInputComponent->BindAction<FOneBooleanDelegate>("Crouch", IE_Released, this, &AFPSCharacter::HandleCrouch, false);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AFPSCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AFPSCharacter::MoveRight);
@@ -141,9 +133,9 @@ void AFPSCharacter::Multicast_LookUp_Implementation(FRotator CameraRot)
 	{
 		FollowCamera->SetWorldRotation(CameraRot);
 
-		if (FPSCharacterMesh != nullptr)
+		if (GetMesh() != nullptr)
 		{
-			UAnimInstance* FPSAnimInstance = FPSCharacterMesh->GetAnimInstance();
+			UAnimInstance* FPSAnimInstance = GetMesh()->GetAnimInstance();
 			if (FPSAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(FPSAnimInstance, UFPSAnimInterface::StaticClass()))
 			{
 				IFPSAnimInterface::Execute_UpdateSpineAngle(FPSAnimInstance, CameraRot.Pitch);
@@ -154,10 +146,10 @@ void AFPSCharacter::Multicast_LookUp_Implementation(FRotator CameraRot)
 
 void AFPSCharacter::OnBeginFire()
 {
-	if (CurrentWeapon != nullptr)
+	if (CurrentMainWeapon != nullptr)
 	{
-		Server_OnBeginFire(CurrentWeapon);
-		CurrentWeapon->Client_OnBeginFireWeapon();
+		Server_OnBeginFire(CurrentMainWeapon);
+		CurrentMainWeapon->Client_OnBeginFireWeapon();
 	}
 }
 
@@ -172,10 +164,10 @@ void AFPSCharacter::Server_OnBeginFire_Implementation(AFPSWeaponBase* Weapon)
 
 void AFPSCharacter::OnEndFire()
 {
-	if (CurrentWeapon != nullptr)
+	if (CurrentMainWeapon != nullptr)
 	{
-		Server_OnEndFire(CurrentWeapon);
-		CurrentWeapon->Client_OnEndFireWeapon();
+		Server_OnEndFire(CurrentMainWeapon);
+		CurrentMainWeapon->Client_OnEndFireWeapon();
 	}
 }
 
@@ -188,19 +180,12 @@ void AFPSCharacter::Server_OnEndFire_Implementation(AFPSWeaponBase* Weapon)
 	}
 }
 
-void AFPSCharacter::Pickup()
-{
-	if (CurrentFocus != nullptr && CurrentWeapon == nullptr)
-	{
-		EquipWeapon(CurrentFocus.Get());
-	}
-}
-
 void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 {
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::EquipWeapon"));
 	if (Weapon != nullptr)
 	{
-		CurrentWeapon = Weapon;
+		CurrentMainWeapon = Weapon;
 
 		Server_EquipWeapon(Weapon);
 
@@ -215,6 +200,10 @@ void AFPSCharacter::EquipWeapon(AFPSWeaponBase* Weapon)
 			}
 		}
 	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("(EquipWeapon) Weapon == nulllptr"));
+	}
 }
 
 void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
@@ -223,37 +212,51 @@ void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
 	{
 		Weapon->Server_OnWeaponEquipped(this);
 	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("(Server_EquipWeapon) Weapon == nulllptr"));
+	}
 }
 
 void AFPSCharacter::Drop()
 {
-	if (CurrentWeapon != nullptr)
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Drop"));
+	if (CurrentMainWeapon != nullptr)
 	{
-		Server_DropWeapon(CurrentWeapon);
-		CurrentWeapon = nullptr;
+		Server_DropWeapon(CurrentMainWeapon);
+		CurrentMainWeapon = nullptr;
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("(Drop) CurrentMainWeapon == nulllptr"))
 	}
 }
 
 void AFPSCharacter::Server_DropWeapon_Implementation(AFPSWeaponBase* Weapon)
 {
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Server_DropWeapon_Implementation"));
 	if (Weapon != nullptr)
 	{
 		Weapon->Server_OnWeaponDroped();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("(Server_DropWeapon) Weapon == nulllptr"));
 	}
 }
 
 void AFPSCharacter::Reload()
 {
-	if (CurrentWeapon != nullptr && CurrentWeapon->CanReload())
+	if (CurrentMainWeapon != nullptr && CurrentMainWeapon->CanReload())
 	{
-		Server_Reload(CurrentWeapon);
-		CurrentWeapon->Client_OnReload();
+		Server_Reload(CurrentMainWeapon);
+		CurrentMainWeapon->Client_OnReload();
 
 		// Play ArmsReloadAnim
 		UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
 		if (AnimInstance != nullptr)
 		{
-			FWeaponInfo WeaponInfo = CurrentWeapon->GetWeaponInfo();
+			FWeaponInfo WeaponInfo = CurrentMainWeapon->GetWeaponInfo();
 			if (WeaponInfo.FP_ArmsReloadAnim != nullptr)
 			{
 				AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
@@ -268,7 +271,31 @@ void AFPSCharacter::Server_Reload_Implementation(AFPSWeaponBase* Weapon)
 	{
 		Weapon->Server_OnReload();
 
-		// TODO: Play TPCharacterReloadAnim (For other clients)
+		Multicast_PlayReloadAnim(Weapon);
+	}
+}
+
+void AFPSCharacter::Multicast_PlayReloadAnim_Implementation(AFPSWeaponBase* Weapon)
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+	if (!IsLocallyControlled())
+	{
+		if (GetMesh() != nullptr)
+		{
+			UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+			if (AnimInstance != nullptr)
+			{
+				FWeaponInfo WeaponInfo = Weapon->GetWeaponInfo();
+				if (WeaponInfo.TP_ReloadAnim != nullptr)
+				{
+					AnimInstance->Montage_Play(WeaponInfo.TP_ReloadAnim);
+				}
+			}
+		}
 	}
 }
 
@@ -279,6 +306,64 @@ void AFPSCharacter::ToggleScoreBoardWidget(bool bDisplay)
 		IFPSPlayerControllerInterface::Execute_ToggleScoreBoardWidget(GetController(), bDisplay);
 	}
 }
+
+void AFPSCharacter::HandleCrouch(bool bCrouchButtonDown)
+{
+	Server_HandleCrouch(bCrouchButtonDown);
+}
+
+void AFPSCharacter::Server_HandleCrouch_Implementation(bool bCrouchButtonDown)
+{
+	Multicast_HandleCrouch(bCrouchButtonDown);
+}
+
+void AFPSCharacter::Multicast_HandleCrouch_Implementation(bool bCrouchButtonDown)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Multicast_HandleCrouch_Implementation"));
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	if (!IsLocallyControlled())
+	{
+		if (GetMesh() != nullptr)
+		{
+			if (GetMesh()->GetAnimInstance() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetMesh()->GetAnimInstance(), UFPSAnimInterface::StaticClass()))
+			{
+				IFPSAnimInterface::Execute_HandleCrouch(GetMesh()->GetAnimInstance(), bCrouchButtonDown);
+			}
+		}
+	}
+	else
+	{
+		DesiredCameraRelativeLocation = bCrouchButtonDown ? CameraRelativeLocationOnCrouch : CameraRelativeLocation_Default;
+		World->GetTimerManager().ClearTimer(CrouchTimerHandle);
+		World->GetTimerManager().SetTimer(CrouchTimerHandle, this, &AFPSCharacter::CrouchTimer, World->GetDeltaSeconds(), true);
+	}
+}
+
+void AFPSCharacter::CrouchTimer()
+{
+	if (FollowCamera != nullptr)
+	{
+		FVector NewCameraRelativeLocation = FMath::LerpStable(FollowCamera->GetRelativeLocation(), DesiredCameraRelativeLocation, 0.05f);
+		FollowCamera->SetRelativeLocation(NewCameraRelativeLocation);
+
+		if (NewCameraRelativeLocation.Equals(DesiredCameraRelativeLocation, 2.f))
+		{
+			FollowCamera->SetRelativeLocation(DesiredCameraRelativeLocation);
+			UWorld* World = GetWorld();
+			if (!ensure(World != nullptr))
+			{
+				return;
+			}
+			World->GetTimerManager().ClearTimer(CrouchTimerHandle);
+		}
+	}
+}
+
 #pragma endregion Input bindings
 
 #pragma region Getters
@@ -309,7 +394,7 @@ FTransform AFPSCharacter::GetCameraTransform_Implementation()
 
 USkeletalMeshComponent* AFPSCharacter::GetCharacterMesh_Implementation()
 {
-	return FPSCharacterMesh;
+	return GetMesh();
 }
 
 USkeletalMeshComponent* AFPSCharacter::GetArmMesh_Implementation()
@@ -328,10 +413,43 @@ void AFPSCharacter::OnSpawnPlayer_Implementation()
 	}
 }
 
-// Bound to HealthComponent->OnSpawn
+// Bound to HealthComponent->OnSpawn, This gets called both server and clients
 void AFPSCharacter::OnSpawn()
 {
-	HandleCollision();
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnSpawn"));
+	HandleCollisionOnSpawn();
+
+	if (FPSGameInstance == nullptr)
+	{
+		FPSGameInstance = GetGameInstance<UFPSGameInstance>();
+		if (!ensure(FPSGameInstance != nullptr))
+		{
+			return;
+		}
+	}
+
+	if (MainWeapon == nullptr)
+	{
+		if (FPSGameInstance->UserData.MainWeapon == EMainWeapon::Rifle || FPSGameInstance->UserData.MainWeapon == EMainWeapon::None)
+		{
+			if (!ensure(RifleClass != nullptr))
+			{
+				return;
+			}
+			AFPSWeaponBase* SpawnedWeapon = GetWorld()->SpawnActor<AFPSWeaponBase>(RifleClass);
+			EquipWeapon(SpawnedWeapon);
+			MainWeapon = SpawnedWeapon;
+		}
+	}
+	else if (MainWeapon != nullptr && CurrentMainWeapon == nullptr)
+	{
+		// TODO: Reset ammo of the MainWeapon
+		EquipWeapon(MainWeapon);
+	}
+	else if (MainWeapon != CurrentMainWeapon)
+	{
+		// TODO: Drop current and equip main? or maybe it will be taken by it's original owner?
+	}
 }
 
 // Called by DamageCauser ex) AFPSGunBase::Server_Fire
@@ -372,7 +490,7 @@ void AFPSCharacter::OnUpdateHealthArmorUI()
 // Bound to HealthComponent->OnDeath
 void AFPSCharacter::OnDeath(AActor* DeathSource)
 {
-	HandleCollision();
+	HandleCollisionOnDeath();
 
 	if (HasAuthority())
 	{
@@ -398,56 +516,28 @@ void AFPSCharacter::OnDeath(AActor* DeathSource)
 #pragma endregion Spawn & Death
 
 // TODO: Pick up weapon by overlapping instead of "E" button
-void AFPSCharacter::OnBeginOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void AFPSCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSWeaponInterface::StaticClass()))
 	{
-		CurrentFocus = IFPSWeaponInterface::Execute_GetWeapon(OtherActor);
+		AFPSWeaponBase* Weapon = IFPSWeaponInterface::Execute_GetWeapon(OtherActor);
+		UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnBeginOverlap: Overlapped ( %s )"), *Weapon->GetName());
 	}
 }
 
-void AFPSCharacter::OnEndOverlapHandCollider(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+void AFPSCharacter::HandleCollisionOnSpawn()
 {
-	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSWeaponInterface::StaticClass()))
+	if (GetCapsuleComponent() != nullptr)
 	{
-		if (CurrentFocus == IFPSWeaponInterface::Execute_GetWeapon(OtherActor))
-		{
-			CurrentFocus = nullptr;
-		}
+		GetCapsuleComponent()->SetCollisionProfileName("Pawn");
 	}
 }
 
-void AFPSCharacter::HandleCollision()
+void AFPSCharacter::HandleCollisionOnDeath()
 {
-	if (CharacterCapsuleComponent == nullptr || FPSCharacterMesh == nullptr || CameraContainer == nullptr)
+	if (GetCapsuleComponent() != nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Client_HandleCollision_Implementation ( %s ) CharacterCapsuleComponent == nullptr || FPSCharacterMesh == nullptr || CameraContainer == nullptr"), *this->GetName());
-		return;
-	}
-
-	if (IsDead())
-	{
-		CharacterCapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-		FPSCharacterMesh->SetCollisionProfileName(TEXT("Ragdoll"));
-		FPSCharacterMesh->SetSimulatePhysics(true);
-
-		CameraContainer->SetCollisionProfileName(TEXT("IgnoreCharacter"));
-		CameraContainer->SetSimulatePhysics(true);
-	}
-	else
-	{
-		CharacterCapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-
-		FPSCharacterMesh->SetSimulatePhysics(false);
-		FPSCharacterMesh->SetCollisionProfileName(TEXT("CharacterMesh"));
-		FPSCharacterMesh->AttachToComponent(CharacterCapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
-		FPSCharacterMesh->SetRelativeTransform(DefaultCharacterMeshRelativeTransform);
-
-		CameraContainer->SetSimulatePhysics(false);
-		CameraContainer->SetCollisionProfileName(TEXT("NoCollision"));
-		CameraContainer->AttachToComponent(CharacterCapsuleComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
-		CameraContainer->SetRelativeLocation(DefaultCameraRelativeLocation);
+		GetCapsuleComponent()->SetCollisionProfileName("IgnoreCharacter");
 	}
 }
 

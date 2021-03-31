@@ -52,6 +52,11 @@ void UHealthComponent::Server_TakeDamage_Implementation(AActor* DamageSource, fl
 {
 	UE_LOG(LogTemp, Warning, TEXT("UHealthComponent::Server_TakeDamage_Implementation"));
 
+	if (bIsDead)
+	{
+		return;
+	}
+
 	float TotalDamageOnHealth = DamageOnHealth;
 	float TotalDamageOnArmor = DamageOnArmor;
 
@@ -61,7 +66,6 @@ void UHealthComponent::Server_TakeDamage_Implementation(AActor* DamageSource, fl
 		TotalDamageOnHealth += DamageOnArmor - CurrentArmor;
 		TotalDamageOnArmor = CurrentArmor;
 	}
-
 	CurrentHealth -= TotalDamageOnHealth;	// OnRep_CurrentHealth	
 	CurrentArmor -= TotalDamageOnArmor;	// OnRep_CurrentArmor	
 

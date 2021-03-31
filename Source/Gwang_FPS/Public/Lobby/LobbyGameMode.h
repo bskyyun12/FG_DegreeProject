@@ -21,18 +21,20 @@ public:
 
 	void StartGame();
 
-	void GwangUpdateLobbyData();
+	void GwangUpdateLobbyData(const FUserData& UpdatedData);
 	void UpdateLobbyUI();
 
-	void UpdateReadyStatus(int ID, bool bIsReady);
-	void UpdateTeamStatus(int ID, ETeam Team);
 	void RemoveUserData(int ID);
 
-private:
+protected:
 	TArray<FUserData> UserData;
 
-private:
+protected:
+	void BeginPlay() override;
+
 	int GetPlayerID(APlayerController* NewPlayer);
 	ETeam GetTeamToJoin();
 	FName GetUserName(APlayerController* NewPlayer);
+
+	FTimerHandle LobbyTimer;
 };

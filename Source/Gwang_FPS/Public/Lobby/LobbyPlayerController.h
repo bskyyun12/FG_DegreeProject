@@ -23,43 +23,32 @@ public:
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	void StartGame_Implementation() override;
-
-	void LoadLobbyWidget_Implementation() override;
+	// GameMode & UserData Setup
+	void OnPostLogin_Implementation(ALobbyGameMode* LobbyGM, const FUserData& NewUserData) override;
 	UFUNCTION(Client, Reliable)
 	void Client_LoadLobbyWidget();
 
-	void SetControllerID_Implementation(int ID) override;
+	// UserData Handle
+	FUserData GetUserData_Implementation() override;
+	void UpdateUserData_Implementation(const FUserData& NewData) override;
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateUserdata(const FUserData& UpdatedData);
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateUserdata(const FUserData& UpdatedData);
 
-	int GetControllerID_Implementation() override;
+	// Lobby UI Updating
+	void UpdateLobbyUI_Implementation(const TArray<FUserData>& UserDataList) override;
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateLobbyUI(const TArray<FUserData>& UserDataList);
 
-	void SetIsReady_Implementation(bool bIsReady) override;
-
-	void SetLobbyGameMode_Implementation(ALobbyGameMode* LobbyGM) override;
-
-	void RequestLobbyUIUpdate_Implementation() override;
-
+	// Lobby to MainMenu
 	void LobbyToMainMenu_Implementation() override;
 	UFUNCTION(Server, Reliable)
 	void Server_LobbyToMainMenu();
 
-	void UpdateLobbyUI_Implementation(const TArray<FUserData>& UserData) override;
-	UFUNCTION(Client, Reliable)
-	void Client_UpdateLobbyUI(const TArray<FUserData>& UserData);
+	// Start Game
+	void StartGame_Implementation() override;
 
-	void UpdateLobbyData_Implementation(ETeam LobbyTeam) override;
-	UFUNCTION(Server, Reliable)
-	void Server_UpdateLobbyData(ETeam LobbyTeam);
-	UFUNCTION(Client, Reliable)
-	void Client_UpdateLobbyData(ETeam LobbyTeam);
-
-protected:
-	void BeginPlay() override;
-
-	UFUNCTION(Server, Reliable)
-	void Server_UpdateLobbyUI();
-	UFUNCTION(Server, Reliable)
-	void Server_UpdateReadyStatus(bool bIsReady);
 
 private:
 	UPROPERTY(EditDefaultsOnly)
