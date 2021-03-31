@@ -10,32 +10,6 @@
 class UTextBlock;
 class UButton;
 
-USTRUCT(BlueprintType)
-struct FUserRowData
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	FName UserName;
-
-	UPROPERTY()
-	int ControllerID;
-
-	UPROPERTY()
-	bool bIsReady;
-
-	UPROPERTY()
-	ETeam Team;
-
-	FUserRowData()
-	{
-		UserName = "Gwang";
-		ControllerID = 0;
-		bIsReady = false;
-		Team = ETeam::None;
-	}
-};
-
 UCLASS()
 class GWANG_FPS_API UUserRow : public UFPSWidgetBase
 {
@@ -44,7 +18,7 @@ class GWANG_FPS_API UUserRow : public UFPSWidgetBase
 public:
 	bool Initialize() override;
 
-	void UpdateRow(const FUserRowData& Data);
+	void UpdateRow(const FUserData& Data);
 
 private:
 	UPROPERTY(meta = (BindWidget))

@@ -19,7 +19,7 @@ bool UUserRow::Initialize()
 	return true;
 }
 
-void UUserRow::UpdateRow(const FUserRowData& Data)
+void UUserRow::UpdateRow(const FUserData& Data)
 {
 	UE_LOG(LogTemp, Warning, TEXT("UUserRow::UpdateRow"));
 	Text_UserName->SetText(FText::FromName(Data.UserName));

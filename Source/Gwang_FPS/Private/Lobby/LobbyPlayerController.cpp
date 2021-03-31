@@ -82,49 +82,35 @@ void ALobbyPlayerController::Server_UpdateReadyStatus_Implementation(bool bIsRea
 	}
 }
 
-void ALobbyPlayerController::SetTeam_Implementation(ETeam Team)
+void ALobbyPlayerController::UpdateLobbyData_Implementation(ETeam LobbyTeam)
 {
-	Server_UpdateTeamStatus(Team);
-	Client_UpdateTeamStatus(Team);
+	Server_UpdateLobbyData(LobbyTeam);
+	Client_UpdateLobbyData(LobbyTeam);
 }
 
-void ALobbyPlayerController::Server_UpdateTeamStatus_Implementation(ETeam Team)
+void ALobbyPlayerController::Server_UpdateLobbyData_Implementation(ETeam LobbyTeam)
 {
 	if (LobbyGameMode != nullptr)
 	{
-		LobbyGameMode->UpdateTeamStatus(ControllerID, Team);
+		LobbyGameMode->UpdateTeamStatus(ControllerID, LobbyTeam);
 	}
 }
 
-void ALobbyPlayerController::Client_UpdateTeamStatus_Implementation(ETeam Team)
+void ALobbyPlayerController::Client_UpdateLobbyData_Implementation(ETeam LobbyTeam)
 {
 	if (GameInstance != nullptr)
 	{
-		GameInstance->SetTeam(Team);
-		UE_LOG(LogTemp, Warning, TEXT("----------------------------------------------"));
-		switch (GameInstance->GetTeam())
-		{
-		case ETeam::None:
-			UE_LOG(LogTemp, Warning, TEXT("(Client)ID: %i, Team: ETeam::None"), ControllerID);
-			break;
-		case ETeam::Marvel:
-			UE_LOG(LogTemp, Warning, TEXT("(Client)ID: %i, Team: ETeam::Marvel"), ControllerID);
-			break;
-		case ETeam::DC:
-			UE_LOG(LogTemp, Warning, TEXT("(Client)ID: %i, Team: ETeam::DC"), ControllerID);
-			break;
-		}
-		UE_LOG(LogTemp, Warning, TEXT("----------------------------------------------"));
+		GameInstance->LobbyData.Team = LobbyTeam;
 	}
 }
 
-void ALobbyPlayerController::UpdateLobbyUI_Implementation(const TArray<FUserRowData>& UserRowData)
+void ALobbyPlayerController::UpdateLobbyUI_Implementation(const TArray<FUserData>& UserData)
 {
 	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::UpdateLobbyUI_Implementation"));
-	Client_UpdateLobbyUI(UserRowData);
+	Client_UpdateLobbyUI(UserData);
 }
 
-void ALobbyPlayerController::Client_UpdateLobbyUI_Implementation(const TArray<FUserRowData>& UserData)
+void ALobbyPlayerController::Client_UpdateLobbyUI_Implementation(const TArray<FUserData>& UserData)
 {
 	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::Client_UpdateLobbyUI_Implementation"));
 	LobbyWidget->UpdateUserRowData(UserData);

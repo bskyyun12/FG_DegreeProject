@@ -29,17 +29,11 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_LoadLobbyWidget();
 
-	void UpdateLobbyUI_Implementation(const TArray<FUserRowData>& UserRowData) override;
-	UFUNCTION(Client, Reliable)
-	void Client_UpdateLobbyUI(const TArray<FUserRowData>& UserRowData);
-
 	void SetControllerID_Implementation(int ID) override;
 
 	int GetControllerID_Implementation() override;
 
 	void SetIsReady_Implementation(bool bIsReady) override;
-
-	void SetTeam_Implementation(ETeam Team) override;
 
 	void SetLobbyGameMode_Implementation(ALobbyGameMode* LobbyGM) override;
 
@@ -49,6 +43,16 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_LobbyToMainMenu();
 
+	void UpdateLobbyUI_Implementation(const TArray<FUserData>& UserData) override;
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateLobbyUI(const TArray<FUserData>& UserData);
+
+	void UpdateLobbyData_Implementation(ETeam LobbyTeam) override;
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateLobbyData(ETeam LobbyTeam);
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateLobbyData(ETeam LobbyTeam);
+
 protected:
 	void BeginPlay() override;
 
@@ -56,10 +60,6 @@ protected:
 	void Server_UpdateLobbyUI();
 	UFUNCTION(Server, Reliable)
 	void Server_UpdateReadyStatus(bool bIsReady);
-	UFUNCTION(Server, Reliable)
-	void Server_UpdateTeamStatus(ETeam Team);
-	UFUNCTION(Client, Reliable)
-	void Client_UpdateTeamStatus(ETeam Team);
 
 private:
 	UPROPERTY(EditDefaultsOnly)

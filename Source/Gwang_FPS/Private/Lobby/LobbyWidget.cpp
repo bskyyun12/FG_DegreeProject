@@ -29,7 +29,7 @@ bool ULobbyWidget::Initialize()
 	return true;
 }
 
-void ULobbyWidget::UpdateUserRowData(TArray<FUserRowData> UserRowData)
+void ULobbyWidget::UpdateUserRowData(TArray<FUserData> UserData)
 {
 	UE_LOG(LogTemp, Warning, TEXT("ULobbyWidget::UpdateUI"));
 
@@ -37,7 +37,7 @@ void ULobbyWidget::UpdateUserRowData(TArray<FUserRowData> UserRowData)
 	VerticalBox_TeamDC->ClearChildren();
 
 	bool bIsAllReady = true;
-	for (FUserRowData Data : UserRowData)
+	for (FUserData Data : UserData)
 	{
 		UWorld* World = GetWorld();
 		if (!ensure(World != nullptr))
@@ -80,7 +80,7 @@ void ULobbyWidget::OnClicked_Button_MarvelTeam()
 	UE_LOG(LogTemp, Warning, TEXT("ULobbyWidget::OnClicked_Button_MarvelTeam"));
 	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
 	{
-		ILobbyInterface::Execute_SetTeam(GetOwningPlayer(), ETeam::Marvel);
+		ILobbyInterface::Execute_UpdateLobbyData(GetOwningPlayer(), ETeam::Marvel);
 		ILobbyInterface::Execute_RequestLobbyUIUpdate(GetOwningPlayer());
 	}
 }
@@ -90,7 +90,7 @@ void ULobbyWidget::OnClicked_Button_DCTeam()
 	UE_LOG(LogTemp, Warning, TEXT("ULobbyWidget::OnClicked_Button_DCTeam"));
 	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
 	{
-		ILobbyInterface::Execute_SetTeam(GetOwningPlayer(), ETeam::DC);
+		ILobbyInterface::Execute_UpdateLobbyData(GetOwningPlayer(), ETeam::DC);
 		ILobbyInterface::Execute_RequestLobbyUIUpdate(GetOwningPlayer());
 	}
 }

@@ -21,13 +21,15 @@ public:
 
 	void StartGame();
 
+	void GwangUpdateLobbyData();
 	void UpdateLobbyUI();
+
 	void UpdateReadyStatus(int ID, bool bIsReady);
 	void UpdateTeamStatus(int ID, ETeam Team);
 	void RemoveUserData(int ID);
 
 private:
-	TArray<FUserRowData> UserData;
+	TArray<FUserData> UserData;
 
 private:
 	int GetPlayerID(APlayerController* NewPlayer);

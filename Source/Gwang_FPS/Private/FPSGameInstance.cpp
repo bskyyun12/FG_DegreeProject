@@ -283,14 +283,3 @@ void UFPSGameInstance::DestroySession()
 		SessionInterface->DestroySession(SessionName);
 	}
 }
-
-void UFPSGameInstance::SetTeam(ETeam InTeam)
-{
-	UE_LOG(LogTemp, Warning, TEXT("UFPSGameInstance::SetTeam >> NewTeam: %i"), InTeam);
-	Team = InTeam;
-}
-
-ETeam UFPSGameInstance::GetTeam()
-{
-	return Team;
-}

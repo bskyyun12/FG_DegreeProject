@@ -20,7 +20,7 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 		return;
 	}
 
-	FUserRowData NewUser;
+	FUserData NewUser;
 	//NewUser.UserName = *NewPlayer->GetName();
 	NewUser.UserName = GetUserName(NewPlayer);
 	NewUser.ControllerID = GetPlayerID(NewPlayer);
@@ -31,7 +31,7 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 	{
 		ILobbyInterface::Execute_SetLobbyGameMode(NewPlayer, this);
 		ILobbyInterface::Execute_SetControllerID(NewPlayer, NewUser.ControllerID);
-		ILobbyInterface::Execute_SetTeam(NewPlayer, NewUser.Team);
+		ILobbyInterface::Execute_UpdateLobbyData(NewPlayer, NewUser.Team);
 		ILobbyInterface::Execute_LoadLobbyWidget(NewPlayer);
 	}
 }
@@ -52,6 +52,16 @@ void ALobbyGameMode::StartGame()
 	}
 	//bUseSeamlessTravel = true;
 	World->ServerTravel("/Game/Maps/Gwang_FPS?listen");
+}
+
+void ALobbyGameMode::GwangUpdateLobbyData()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::UpdateLobbyUI"));
+
+
+
+
+	UpdateLobbyUI();
 }
 
 void ALobbyGameMode::UpdateLobbyUI()
@@ -75,7 +85,7 @@ void ALobbyGameMode::UpdateLobbyUI()
 
 void ALobbyGameMode::UpdateReadyStatus(int ID, bool bIsReady)
 {
-	for (FUserRowData& Data : UserData)
+	for (FUserData& Data : UserData)
 	{
 		if (Data.ControllerID == ID)
 		{
@@ -87,7 +97,7 @@ void ALobbyGameMode::UpdateReadyStatus(int ID, bool bIsReady)
 
 void ALobbyGameMode::UpdateTeamStatus(int ID, ETeam Team)
 {
-	for (FUserRowData& Data : UserData)
+	for (FUserData& Data : UserData)
 	{
 		if (Data.ControllerID == ID)
 		{
@@ -100,7 +110,7 @@ void ALobbyGameMode::UpdateTeamStatus(int ID, ETeam Team)
 void ALobbyGameMode::RemoveUserData(int ID)
 {
 	int Index = 0;
-	for (FUserRowData& Data : UserData)
+	for (FUserData& Data : UserData)
 	{
 		if (Data.ControllerID == ID)
 		{
@@ -126,7 +136,7 @@ ETeam ALobbyGameMode::GetTeamToJoin()
 {
 	int MarvelTeamCounter = 0;
 	int DCTeamCounter = 0;
-	for (FUserRowData& Data : UserData)
+	for (FUserData& Data : UserData)
 	{
 		if (Data.Team == ETeam::Marvel)
 		{

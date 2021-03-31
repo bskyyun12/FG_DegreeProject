@@ -22,6 +22,55 @@ enum class ETeam : uint8 {
 	DC,
 };
 
+UENUM(BlueprintType)
+enum class EMainWeapon : uint8
+{
+	None,
+	Rifle,
+	Shotgun
+};
+
+UENUM(BlueprintType)
+enum class ESubWeapon : uint8
+{
+	None,
+	Pistol,
+};
+
+USTRUCT(BlueprintType)
+struct FUserData
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FName UserName;
+
+	UPROPERTY()
+	int ControllerID;
+
+	UPROPERTY()
+	bool bIsReady;
+
+	UPROPERTY()
+	ETeam Team;
+
+	UPROPERTY()
+	EMainWeapon MainWeapon;
+
+	UPROPERTY()
+	ESubWeapon SubWeapon;
+
+	FUserData()
+	{
+		UserName = "Gwang";
+		ControllerID = 0;
+		bIsReady = false;
+		Team = ETeam::None;
+		MainWeapon = EMainWeapon::None;
+		SubWeapon = ESubWeapon::None;
+	}
+};
+
 UCLASS()
 class GWANG_FPS_API UFPSGameInstance : public UGameInstance, public IMainMenuInterface
 {
@@ -40,8 +89,7 @@ public:
 
 	void DestroySession();
 
-	void SetTeam(ETeam InTeam);
-	ETeam GetTeam();
+	FUserData LobbyData;
 
 	//////////////////////
 	// IMainMenuInterface
@@ -61,8 +109,6 @@ private:
 	FString ServerName = "NO_NAME";
 
 	UMainMenuWidget* MainMenu;
-
-	ETeam Team = ETeam::None;
 
 private:
 	void CreateSession();

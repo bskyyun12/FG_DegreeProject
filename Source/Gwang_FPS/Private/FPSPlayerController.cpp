@@ -96,7 +96,7 @@ void AFPSPlayerController::Client_SetupTeam_Implementation()
 	UFPSGameInstance* GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
 	if (GameInstance != nullptr)
 	{
-		Server_SetupTeam(GameInstance->GetTeam());
+		Server_SetupTeam(GameInstance->LobbyData.Team);
 	}
 }
 

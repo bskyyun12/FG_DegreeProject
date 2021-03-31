@@ -41,14 +41,16 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void RequestLobbyUIUpdate();
 
+	//UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	//void UpdateLobbyUI(const TArray<FUserRowData>& UserRowData);
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void UpdateLobbyUI(const TArray<FUserRowData>& UserRowData);
+	void UpdateLobbyUI(const TArray<FUserData>& UserData);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void UpdateLobbyData(ETeam LobbyTeam);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void SetIsReady(bool bIsReady);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void SetTeam(ETeam Team);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void LobbyToMainMenu();
