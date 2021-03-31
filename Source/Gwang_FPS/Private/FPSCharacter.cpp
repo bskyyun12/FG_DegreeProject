@@ -190,14 +190,6 @@ void AFPSCharacter::EquipMainWeapon()
 {
 	UE_LOG(LogTemp, Warning, TEXT("EquipMainWeapon"));
 
-	if (HasAuthority())
-	{
-		if (MainWeapon != nullptr)
-		{
-			MainWeapon->GetRootComponent()->SetVisibility(true, true);
-		}
-	}
-
 	// Play Equip animation
 	UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
 	if (AnimInstance != nullptr)
@@ -209,35 +201,12 @@ void AFPSCharacter::EquipMainWeapon()
 		}
 	}
 
-	Server_EquipMainWeapon();
-}
-
-void AFPSCharacter::Server_EquipMainWeapon_Implementation()
-{
-	if (MainWeapon != nullptr)
-	{
-		MainWeapon->SetActorHiddenInGame(false);
-	}
-
-	if (SubWeapon != nullptr)
-	{
-		SubWeapon->SetActorHiddenInGame(true);
-	}
-
 	Server_EquipWeapon(MainWeapon);
 }
 
 void AFPSCharacter::EquipSubWeapon()
 {
 	UE_LOG(LogTemp, Warning, TEXT("EquipSubWeapon"));
-
-	if (HasAuthority())
-	{
-		if (SubWeapon != nullptr)
-		{
-			SubWeapon->GetRootComponent()->SetVisibility(true, true);
-		}
-	}
 
 	// Play Equip animation
 	UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
@@ -250,21 +219,6 @@ void AFPSCharacter::EquipSubWeapon()
 		}
 	}
 
-	Server_EquipSubWeapon();
-}
-
-void AFPSCharacter::Server_EquipSubWeapon_Implementation()
-{
-	if (MainWeapon != nullptr)
-	{
-		MainWeapon->SetActorHiddenInGame(true);
-	}
-
-	if (SubWeapon != nullptr)
-	{
-		SubWeapon->SetActorHiddenInGame(false);
-	}
-
 	Server_EquipWeapon(SubWeapon);
 }
 
@@ -272,6 +226,19 @@ void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
 {
 	if (Weapon != nullptr)
 	{
+		EWeaponType WeaponType = Weapon->GetWeaponInfo().WeaponType;
+
+		if (MainWeapon != nullptr)
+		{
+			MainWeapon->GetRootComponent()->SetVisibility(WeaponType == EWeaponType::MainWeapon, true);
+			MainWeapon->SetActorHiddenInGame(WeaponType != EWeaponType::MainWeapon);
+		}
+		if (SubWeapon != nullptr)
+		{
+			SubWeapon->GetRootComponent()->SetVisibility(WeaponType == EWeaponType::SubWeapon, true);
+			SubWeapon->SetActorHiddenInGame(WeaponType != EWeaponType::SubWeapon);
+		}
+
 		CurrentWeapon = Weapon;
 		CurrentWeapon->Server_OnWeaponEquipped(this);
 	}

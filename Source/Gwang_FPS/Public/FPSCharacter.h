@@ -48,11 +48,7 @@ public:
 
 	// Weapon Equip & Swap
 	void EquipMainWeapon();
-	UFUNCTION(Server, Reliable)
-	void Server_EquipMainWeapon();
 	void EquipSubWeapon();
-	UFUNCTION(Server, Reliable)
-	void Server_EquipSubWeapon();
 	UFUNCTION(Server, Reliable)
 	void Server_EquipWeapon(AFPSWeaponBase* Weapon);
 
