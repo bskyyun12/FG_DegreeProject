@@ -150,6 +150,10 @@ protected:
 	// Called when Owner changed
 	void OnRep_Owner() override;
 
+	// Weapon Equip & Drop
+	void HandleWeaponEquip();
+	void HandleWeaponDrop();
+
 	// Fire
 	UFUNCTION()
 	virtual bool CanFire();
@@ -176,7 +180,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	USkeletalMeshComponent* TPWeaponMesh;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	USphereComponent* InteractCollider;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

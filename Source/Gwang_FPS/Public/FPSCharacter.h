@@ -103,8 +103,8 @@ protected:
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	TArray<AFPSWeaponBase*> StartWeapons;
-
-	UPROPERTY(Replicated)
+	
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	AFPSWeaponBase* CurrentHoldingWeapon;
 
 	UPROPERTY(EditDefaultsOnly)
@@ -125,8 +125,7 @@ protected:
 
 	// Pickup & Equip Weapon
 	void PickupWeapon(AFPSWeaponBase* const& WeaponToPickup);
-	UFUNCTION(Client, Reliable)
-	void Client_EquipWeapon(AFPSWeaponBase* const& WeaponToEquip);
+	void PlayEquipAnim(AFPSWeaponBase* const& WeaponToEquip);
 	UFUNCTION(Server, Reliable)
 	void Server_EquipWeapon(AFPSWeaponBase* const& WeaponToEquip);
 

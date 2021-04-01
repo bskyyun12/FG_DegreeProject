@@ -197,9 +197,8 @@ void AFPSCharacter::SwitchToMainWeapon()
 	OnEndFire();
 	if (CurrentWeapons[1] != nullptr)
 	{
-		Client_EquipWeapon(CurrentWeapons[1]);
+		PlayEquipAnim(CurrentWeapons[1]);
 		Server_EquipWeapon(CurrentWeapons[1]);
-		CurrentHoldingWeapon = CurrentWeapons[1];
 	}
 }
 
@@ -211,9 +210,8 @@ void AFPSCharacter::SwitchToSubWeapon()
 	OnEndFire();
 	if (CurrentWeapons[2] != nullptr)
 	{
-		Client_EquipWeapon(CurrentWeapons[2]);
+		PlayEquipAnim(CurrentWeapons[2]);
 		Server_EquipWeapon(CurrentWeapons[2]);
-		CurrentHoldingWeapon = CurrentWeapons[2];
 	}
 }
 
@@ -233,19 +231,22 @@ void AFPSCharacter::PickupWeapon(AFPSWeaponBase* const& WeaponToPickup)
 			if (CurrentHoldingWeapon == nullptr)
 			{
 				OnEndFire();
-				Client_EquipWeapon(WeaponToPickup);
+				PlayEquipAnim(WeaponToPickup);
 				Server_EquipWeapon(WeaponToPickup);
-				CurrentHoldingWeapon = WeaponToPickup;
 			}
 			else
 			{
 				CurrentWeapons[(uint8)WeaponToPickup->GetWeaponInfo().WeaponType] = WeaponToPickup;
+				if (UKismetSystemLibrary::DoesImplementInterface(WeaponToPickup, UFPSWeaponInterface::StaticClass()))
+				{
+					IFPSWeaponInterface::Execute_ToggleVisibility(WeaponToPickup, false);
+				}
 			}
 		}
 	}
 }
 
-void AFPSCharacter::Client_EquipWeapon_Implementation(AFPSWeaponBase* const& WeaponToEquip)
+void AFPSCharacter::PlayEquipAnim(AFPSWeaponBase* const& WeaponToEquip)
 {
 	// Play Equip animation
 	if (WeaponToEquip != nullptr)

@@ -53,6 +53,7 @@ void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 void AFPSWeaponBase::ToggleVisibility_Implementation(bool bNewVisibility)
 {
+	// TODO: Run code below in delay? since it's a multicast reliable function
 	Multicast_ToggleVisibility(bNewVisibility);
 }
 
@@ -71,11 +72,40 @@ void AFPSWeaponBase::Multicast_ToggleVisibility_Implementation(bool bNewVisibili
 void AFPSWeaponBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
 {
 	UE_LOG(LogTemp, Warning, TEXT("(Server)AFPSWeaponBase::OnWeaponEquipped"));
-	UE_LOG(LogTemp, Warning, TEXT("(Server) Equip Weapon"));
 
 	SetOwner(OwnerCharacter);	// OnRep_Owner()
 	SetInstigator(OwnerCharacter);
 
+	HandleWeaponEquip();
+}
+
+void AFPSWeaponBase::Server_OnWeaponDroped_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("(Server)AFPSWeaponBase::OnWeaponDroped"));
+
+	SetInstigator(nullptr);
+	SetOwner(nullptr);	// OnRep_Owner()
+
+	HandleWeaponDrop();
+}
+
+void AFPSWeaponBase::OnRep_Owner()
+{
+	Super::OnRep_Owner();
+
+	// OnEquip
+	if (GetOwner() != nullptr)
+	{
+		HandleWeaponEquip();
+	}
+	else // OnDrop
+	{
+		HandleWeaponDrop();
+	}
+}
+
+void AFPSWeaponBase::HandleWeaponEquip()
+{
 	TPWeaponMesh->SetSimulatePhysics(false);
 	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -83,75 +113,32 @@ void AFPSWeaponBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* Owner
 	if (UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
 	{
 		USkeletalMeshComponent* CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(GetOwner());
-		if (CharacterMesh != nullptr)
+		if (CharacterMesh != nullptr && TPWeaponMesh != nullptr)
 		{
-			TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
+			if (TPWeaponMesh->CanAttachAsChild(CharacterMesh, WeaponInfo.TP_CharacterSocketName))
+			{
+				TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
+			}
 		}
 
 		USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(GetOwner());
-		if (ArmMesh != nullptr)
+		if (ArmMesh != nullptr && FPWeaponMesh != nullptr)
 		{
-			FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.FP_ArmsSocketName);
+			if (TPWeaponMesh->CanAttachAsChild(ArmMesh, WeaponInfo.FP_ArmsSocketName))
+			{
+				FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.FP_ArmsSocketName);
+			}
 		}
 	}
 }
 
-void AFPSWeaponBase::Server_OnWeaponDroped_Implementation()
+void AFPSWeaponBase::HandleWeaponDrop()
 {
-	UE_LOG(LogTemp, Warning, TEXT("(Server)AFPSWeaponBase::OnWeaponDroped"));
-	UE_LOG(LogTemp, Warning, TEXT("(Server) Drop Weapon"));
-
 	FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 	TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	TPWeaponMesh->SetSimulatePhysics(true);
-
-	SetInstigator(nullptr);
-	SetOwner(nullptr);	// OnRep_Owner()
-}
-
-void AFPSWeaponBase::OnRep_Owner()
-{
-	Super::OnRep_Owner();
-
-	if (GetOwner() != nullptr)	// OnEquip
-	{
-		UE_LOG(LogTemp, Warning, TEXT("(Client) Equip Weapon"));
-		TPWeaponMesh->SetSimulatePhysics(false);
-		TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-		if (UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
-		{
-			USkeletalMeshComponent* CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(GetOwner());
-			if (CharacterMesh != nullptr && TPWeaponMesh != nullptr)
-			{
-				if (TPWeaponMesh->CanAttachAsChild(CharacterMesh, WeaponInfo.TP_CharacterSocketName))
-				{
-					TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
-				}
-			}
-
-			USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(GetOwner());
-			if (ArmMesh != nullptr && FPWeaponMesh != nullptr)
-			{
-				if (TPWeaponMesh->CanAttachAsChild(ArmMesh, WeaponInfo.FP_ArmsSocketName))
-				{
-					FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.FP_ArmsSocketName);
-				}
-			}
-		}
-	}
-	else // OnDrop
-	{
-		UE_LOG(LogTemp, Warning, TEXT("(Client) Drop Weapon"));
-		FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-		TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-		InteractCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		TPWeaponMesh->SetSimulatePhysics(true);
-	}
 }
 
 AFPSWeaponBase* AFPSWeaponBase::GetWeapon_Implementation()
