@@ -22,6 +22,8 @@ enum class EWeaponType : uint8
 	None,
 	MainWeapon,
 	SubWeapon,
+
+	EnumSize,	// Leave the enum value as default
 };
 
 USTRUCT(BlueprintType)
@@ -109,7 +111,10 @@ public:
 	AFPSWeaponBase();
 
 	// Equip & Hide & Drop
-	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void ToggleVisibility_Implementation(bool bNewVisibility) override;
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_ToggleVisibility(bool bNewVisibility);
+	UFUNCTION(Server, Reliable)
 	void Server_OnWeaponEquipped(AFPSCharacter* OwnerCharacter);
 	UFUNCTION(Server, Reliable)
 	void Server_OnWeaponDroped();
@@ -182,4 +187,8 @@ protected:
 	bool bIsReloading = false;
 
 	FTimerHandle ReloadTimer;
+public:
+
+
+
 };

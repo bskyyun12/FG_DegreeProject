@@ -30,13 +30,6 @@ void AFPSGunBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCha
 	Client_UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
 }
 
-void AFPSGunBase::OnRep_Owner()
-{
-	Super::OnRep_Owner();
-
-	Client_UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
-}
-
 void AFPSGunBase::Server_OnBeginFireWeapon_Implementation()
 {
 	UWorld* World = GetWorld();
@@ -125,8 +118,10 @@ void AFPSGunBase::Server_Fire_Implementation()
 
 void AFPSGunBase::Client_UpdateAmmoUI_Implementation(int _CurrentAmmo, int _RemainingAmmo)
 {
+	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::Client_UpdateAmmoUI_Implementation"));
 	if (GetInstigatorController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetInstigatorController(), UFPSPlayerControllerInterface::StaticClass()))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Execute_OnUpdateAmmoUI"));
 		IFPSPlayerControllerInterface::Execute_OnUpdateAmmoUI(GetInstigatorController(), _CurrentAmmo, _RemainingAmmo);
 	}
 }
@@ -276,6 +271,15 @@ void AFPSGunBase::Recoil()
 		}
 	}
 }
+
+//void AFPSGunBase::OnRep_Owner()
+//{
+//	Super::OnRep_Owner();
+//	if (GetOwner() != nullptr)
+//	{
+//		Client_UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
+//	}
+//}
 
 void AFPSGunBase::CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor)
 {

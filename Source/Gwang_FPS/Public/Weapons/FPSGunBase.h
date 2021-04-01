@@ -38,8 +38,7 @@ public:
 protected:
 	void BeginPlay() override;
 
-	// Called when Owner changed
-	void OnRep_Owner() override;
+	//void OnRep_Owner() override;
 
 	// Widget Update
 	UFUNCTION(Client, Reliable)
@@ -49,6 +48,8 @@ protected:
 	void Client_FireEffects_Implementation() override;
 	void ShakeCamera();
 	void Recoil();
+
+
 
 protected:
 	UPROPERTY(ReplicatedUsing=OnRep_CurrentAmmo, EditAnywhere, BlueprintReadWrite)

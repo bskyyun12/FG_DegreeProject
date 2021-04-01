@@ -14,6 +14,7 @@
 class UUserWidget;
 class UMainMenuWidget;
 class FOnlineSessionSearch;
+class AFPSWeaponBase;
 
 UENUM(BlueprintType)
 enum class ETeam : uint8 {
@@ -55,10 +56,10 @@ struct FUserData
 	ETeam Team;
 
 	UPROPERTY()
-	EMainWeapon MainWeapon;
+	EMainWeapon MainWeaponType;
 
 	UPROPERTY()
-	ESubWeapon SubWeapon;
+	ESubWeapon SubWeaponType;
 
 	FUserData()
 	{
@@ -66,8 +67,9 @@ struct FUserData
 		ControllerID = 0;
 		bIsReady = false;
 		Team = ETeam::None;
-		MainWeapon = EMainWeapon::None;
-		SubWeapon = ESubWeapon::None;
+
+		MainWeaponType = EMainWeapon::None;
+		SubWeaponType = ESubWeapon::None;
 	}
 
 	bool operator == (FUserData const& UserData)
@@ -86,23 +88,19 @@ public:
 
 	void Init() override;
 
-	void SetMainMenu(UMainMenuWidget* InMainMenu);
+	FUserData GetUserData() const;
+	void SetUserData(const FUserData& Data);
 
+	void SetMainMenu(UMainMenuWidget* InMainMenu);
 	void LoadMainMenu(TSubclassOf<UUserWidget> MainMenuWidgetClass, TSubclassOf<UUserWidget> SessionInfoRowClass);
 
 	void StartSession();
-
 	void DestroySession();
 
-	FUserData UserData;
-
-	//////////////////////
 	// IMainMenuInterface
 	void Host_Implementation(const FString& InServerName) override;
 	void Find_Implementation() override;
 	void Join_Implementation(int SessionindexToJoin) override;
-	// IMainMenuInterface
-	//////////////////////
 
 private:
 	IOnlineSessionPtr SessionInterface;
@@ -114,6 +112,7 @@ private:
 	FString ServerName = "NO_NAME";
 
 	UMainMenuWidget* MainMenu;
+	FUserData UserData;
 
 private:
 	void CreateSession();

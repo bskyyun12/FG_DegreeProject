@@ -61,7 +61,7 @@ FUserData ALobbyPlayerController::GetUserData_Implementation()
 			return FUserData();
 		}
 	}
-	return GameInstance->UserData;
+	return GameInstance->GetUserData();
 }
 
 void ALobbyPlayerController::UpdateUserData_Implementation(const FUserData& NewData)
@@ -88,7 +88,7 @@ void ALobbyPlayerController::Client_UpdateUserdata_Implementation(const FUserDat
 			return;
 		}
 	}
-	GameInstance->UserData = UpdatedData;
+	GameInstance->SetUserData(UpdatedData);
 }
 #pragma endregion UserData Handle
 

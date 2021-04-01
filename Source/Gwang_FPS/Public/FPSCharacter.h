@@ -47,14 +47,12 @@ public:
 	void Server_OnEndFire(AFPSWeaponBase* Weapon);
 
 	// Weapon Equip & Swap
-	void EquipMainWeapon();
-	void EquipSubWeapon();
-	UFUNCTION(Server, Reliable)
-	void Server_EquipWeapon(AFPSWeaponBase* Weapon);
+	void SwitchToMainWeapon();
+	void SwitchToSubWeapon();
 
 	void Drop();
 	UFUNCTION(Server, Reliable)
-	void Server_DropWeapon(AFPSWeaponBase* Weapon);
+	void Server_DropWeapon();
 
 	void Reload();
 	UFUNCTION(Server, Reliable)
@@ -94,14 +92,20 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UHealthComponent* HealthComponent;
 
-	UPROPERTY(Replicated=OnRep_CurrentWeapon, VisibleAnywhere, BlueprintReadOnly)
-	AFPSWeaponBase* CurrentWeapon;
+	/// <summary>
+	/// This array is the same size as EWeaponType.
+	/// Index 0 - None
+	/// Index 1 - MainWeapon
+	/// Index 2 - SubWeapon
+	/// </summary>
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+	TArray<AFPSWeaponBase*> CurrentWeapons;
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
-	AFPSWeaponBase* MainWeapon;
+	TArray<AFPSWeaponBase*> StartWeapons;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
-	AFPSWeaponBase* SubWeapon;
+	UPROPERTY(Replicated)
+	AFPSWeaponBase* CurrentHoldingWeapon;
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<AFPSWeaponBase> RifleClass;
@@ -119,6 +123,12 @@ protected:
 	UFUNCTION()
 	void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
+	// Pickup & Equip Weapon
+	void PickupWeapon(AFPSWeaponBase* const& WeaponToPickup);
+	UFUNCTION(Client, Reliable)
+	void Client_EquipWeapon(AFPSWeaponBase* const& WeaponToEquip);
+	UFUNCTION(Server, Reliable)
+	void Server_EquipWeapon(AFPSWeaponBase* const& WeaponToEquip);
 
 	// Crouch
 	FTimerHandle CrouchTimerHandle;

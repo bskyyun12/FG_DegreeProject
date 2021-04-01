@@ -25,8 +25,8 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 	NewUserData.ControllerID = GetPlayerID(NewPlayer);
 	NewUserData.bIsReady = false;
 	NewUserData.Team = GetTeamToJoin();
-	NewUserData.MainWeapon = EMainWeapon::Rifle;
-	NewUserData.SubWeapon = ESubWeapon::Pistol;
+	NewUserData.MainWeaponType = EMainWeapon::Rifle;
+	NewUserData.SubWeaponType = ESubWeapon::Pistol;
 	UserData.Add(NewUserData);
 
 	if (UKismetSystemLibrary::DoesImplementInterface(NewPlayer, ULobbyInterface::StaticClass()))

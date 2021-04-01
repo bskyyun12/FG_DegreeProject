@@ -24,4 +24,7 @@ class GWANG_FPS_API IFPSWeaponInterface
 public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	AFPSWeaponBase* GetWeapon();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void ToggleVisibility(bool bNewVisibility);
 };

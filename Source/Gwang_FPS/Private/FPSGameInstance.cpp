@@ -283,3 +283,13 @@ void UFPSGameInstance::DestroySession()
 		SessionInterface->DestroySession(SessionName);
 	}
 }
+
+FUserData UFPSGameInstance::GetUserData() const
+{
+	return UserData;
+}
+
+void UFPSGameInstance::SetUserData(const FUserData& Data)
+{
+	UserData = Data;
+}

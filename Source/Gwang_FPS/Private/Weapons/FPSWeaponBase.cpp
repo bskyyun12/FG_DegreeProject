@@ -19,6 +19,8 @@ AFPSWeaponBase::AFPSWeaponBase()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
+	bReplicates = true;
+
 	RootComp = CreateDefaultSubobject<USceneComponent>(TEXT("RootComp"));
 	this->SetRootComponent(RootComp);
 
@@ -35,8 +37,6 @@ AFPSWeaponBase::AFPSWeaponBase()
 	InteractCollider = CreateDefaultSubobject<USphereComponent>(TEXT("Sphere"));
 	InteractCollider->SetSphereRadius(80.f);
 	InteractCollider->SetupAttachment(TPWeaponMesh);
-
-	bReplicates = true;
 }
 
 // Called when the game starts or when spawned
@@ -49,6 +49,23 @@ void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AFPSWeaponBase, bIsReloading);
+}
+
+void AFPSWeaponBase::ToggleVisibility_Implementation(bool bNewVisibility)
+{
+	Multicast_ToggleVisibility(bNewVisibility);
+}
+
+void AFPSWeaponBase::Multicast_ToggleVisibility_Implementation(bool bNewVisibility)
+{
+	if (FPWeaponMesh != nullptr)
+	{
+		FPWeaponMesh->SetVisibility(bNewVisibility);
+	}
+	if (TPWeaponMesh != nullptr)
+	{
+		TPWeaponMesh->SetVisibility(bNewVisibility);
+	}
 }
 
 void AFPSWeaponBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
@@ -70,19 +87,11 @@ void AFPSWeaponBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* Owner
 		{
 			TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
 		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("(Server_OnWeaponEquipped) CharacterMesh == nulllptr"));
-		}
 
 		USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(GetOwner());
 		if (ArmMesh != nullptr)
 		{
 			FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.FP_ArmsSocketName);
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("(Server_OnWeaponEquipped) ArmMesh == nulllptr"));
 		}
 	}
 }
@@ -116,15 +125,21 @@ void AFPSWeaponBase::OnRep_Owner()
 		if (UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
 		{
 			USkeletalMeshComponent* CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(GetOwner());
-			if (CharacterMesh != nullptr)
+			if (CharacterMesh != nullptr && TPWeaponMesh != nullptr)
 			{
-				TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
+				if (TPWeaponMesh->CanAttachAsChild(CharacterMesh, WeaponInfo.TP_CharacterSocketName))
+				{
+					TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
+				}
 			}
 
 			USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(GetOwner());
-			if (ArmMesh != nullptr)
+			if (ArmMesh != nullptr && FPWeaponMesh != nullptr)
 			{
-				FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.FP_ArmsSocketName);
+				if (TPWeaponMesh->CanAttachAsChild(ArmMesh, WeaponInfo.FP_ArmsSocketName))
+				{
+					FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.FP_ArmsSocketName);
+				}
 			}
 		}
 	}
@@ -192,7 +207,7 @@ void AFPSWeaponBase::Multicast_FireEffects_Implementation()
 
 void AFPSWeaponBase::Server_OnEndFireWeapon_Implementation()
 {
-	
+
 }
 #pragma endregion
 

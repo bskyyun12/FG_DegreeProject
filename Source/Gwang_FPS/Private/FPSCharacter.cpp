@@ -21,9 +21,9 @@
 void AFPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AFPSCharacter, CurrentWeapon);
-	DOREPLIFETIME(AFPSCharacter, MainWeapon);
-	DOREPLIFETIME(AFPSCharacter, SubWeapon);
+	DOREPLIFETIME(AFPSCharacter, CurrentWeapons);
+	DOREPLIFETIME(AFPSCharacter, StartWeapons);
+	DOREPLIFETIME(AFPSCharacter, CurrentHoldingWeapon);
 }
 
 AFPSCharacter::AFPSCharacter()
@@ -45,6 +45,7 @@ AFPSCharacter::AFPSCharacter()
 	HealthComponent->OnSpawn.AddDynamic(this, &AFPSCharacter::OnSpawn);
 
 	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &AFPSCharacter::OnBeginOverlap);
+
 }
 
 void AFPSCharacter::BeginPlay()
@@ -67,8 +68,8 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AFPSCharacter::OnBeginFire);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &AFPSCharacter::OnEndFire);
 
-	PlayerInputComponent->BindAction("MainWeapon", IE_Pressed, this, &AFPSCharacter::EquipMainWeapon);
-	PlayerInputComponent->BindAction("SubWeapon", IE_Pressed, this, &AFPSCharacter::EquipSubWeapon);
+	PlayerInputComponent->BindAction("MainWeapon", IE_Pressed, this, &AFPSCharacter::SwitchToMainWeapon);
+	PlayerInputComponent->BindAction("SubWeapon", IE_Pressed, this, &AFPSCharacter::SwitchToSubWeapon);
 
 	PlayerInputComponent->BindAction("Drop", IE_Pressed, this, &AFPSCharacter::Drop);
 
@@ -150,12 +151,13 @@ void AFPSCharacter::Multicast_LookUp_Implementation(FRotator CameraRot)
 	}
 }
 
+// Bound to input "Left Mouse Down"
 void AFPSCharacter::OnBeginFire()
 {
-	if (CurrentWeapon != nullptr)
+	if (CurrentHoldingWeapon != nullptr)
 	{
-		Server_OnBeginFire(CurrentWeapon);
-		CurrentWeapon->Client_OnBeginFireWeapon();
+		Server_OnBeginFire(CurrentHoldingWeapon);
+		CurrentHoldingWeapon->Client_OnBeginFireWeapon();
 	}
 }
 
@@ -168,12 +170,13 @@ void AFPSCharacter::Server_OnBeginFire_Implementation(AFPSWeaponBase* Weapon)
 	}
 }
 
+// Bound to input "Left Mouse Up"
 void AFPSCharacter::OnEndFire()
 {
-	if (CurrentWeapon != nullptr)
+	if (CurrentHoldingWeapon != nullptr)
 	{
-		Server_OnEndFire(CurrentWeapon);
-		CurrentWeapon->Client_OnEndFireWeapon();
+		Server_OnEndFire(CurrentHoldingWeapon);
+		CurrentHoldingWeapon->Client_OnEndFireWeapon();
 	}
 }
 
@@ -186,103 +189,148 @@ void AFPSCharacter::Server_OnEndFire_Implementation(AFPSWeaponBase* Weapon)
 	}
 }
 
-void AFPSCharacter::EquipMainWeapon()
+// Bound to input "1"
+void AFPSCharacter::SwitchToMainWeapon()
 {
-	UE_LOG(LogTemp, Warning, TEXT("EquipMainWeapon"));
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::SwitchToMainWeapon"));
 
+	OnEndFire();
+	if (CurrentWeapons[1] != nullptr)
+	{
+		Client_EquipWeapon(CurrentWeapons[1]);
+		Server_EquipWeapon(CurrentWeapons[1]);
+		CurrentHoldingWeapon = CurrentWeapons[1];
+	}
+}
+
+// Bound to input "2"
+void AFPSCharacter::SwitchToSubWeapon()
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::SwitchToSubWeapon"));
+
+	OnEndFire();
+	if (CurrentWeapons[2] != nullptr)
+	{
+		Client_EquipWeapon(CurrentWeapons[2]);
+		Server_EquipWeapon(CurrentWeapons[2]);
+		CurrentHoldingWeapon = CurrentWeapons[2];
+	}
+}
+
+void AFPSCharacter::PickupWeapon(AFPSWeaponBase* const& WeaponToPickup)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::PickupWeapon"));
+
+	if (WeaponToPickup != nullptr)
+	{
+		bool bHasSameTypeWeapon = CurrentWeapons[(uint8)WeaponToPickup->GetWeaponInfo().WeaponType] != nullptr;
+		if (bHasSameTypeWeapon)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Already has the same weapon type"));
+		}
+		else
+		{
+			if (CurrentHoldingWeapon == nullptr)
+			{
+				OnEndFire();
+				Client_EquipWeapon(WeaponToPickup);
+				Server_EquipWeapon(WeaponToPickup);
+				CurrentHoldingWeapon = WeaponToPickup;
+			}
+			else
+			{
+				CurrentWeapons[(uint8)WeaponToPickup->GetWeaponInfo().WeaponType] = WeaponToPickup;
+			}
+		}
+	}
+}
+
+void AFPSCharacter::Client_EquipWeapon_Implementation(AFPSWeaponBase* const& WeaponToEquip)
+{
 	// Play Equip animation
-	UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
-	if (AnimInstance != nullptr)
+	if (WeaponToEquip != nullptr)
 	{
-		FWeaponInfo WeaponInfo = MainWeapon->GetWeaponInfo();
-		if (WeaponInfo.FP_EquipAnim != nullptr)
+		FWeaponInfo WeaponInfo = WeaponToEquip->GetWeaponInfo();
+		UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
+		if (AnimInstance != nullptr)
 		{
-			AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
+			if (WeaponInfo.FP_EquipAnim != nullptr)
+			{
+				AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
+			}
 		}
 	}
-
-	Server_EquipWeapon(MainWeapon);
 }
 
-void AFPSCharacter::EquipSubWeapon()
+void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* const& WeaponToEquip)
 {
-	UE_LOG(LogTemp, Warning, TEXT("EquipSubWeapon"));
-
-	// Play Equip animation
-	UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
-	if (AnimInstance != nullptr)
+	if (WeaponToEquip != nullptr)
 	{
-		FWeaponInfo WeaponInfo = SubWeapon->GetWeaponInfo();
-		if (WeaponInfo.FP_EquipAnim != nullptr)
+		CurrentHoldingWeapon = WeaponToEquip;
+		uint8 CurrentHoldingWeaponIndex = (uint8)CurrentHoldingWeapon->GetWeaponInfo().WeaponType;
+		CurrentWeapons[CurrentHoldingWeaponIndex] = WeaponToEquip;
+
+		WeaponToEquip->Server_OnWeaponEquipped(this);
+
+		for (int i = 0; i < CurrentWeapons.Num(); i++)
 		{
-			AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
+			if (CurrentWeapons[i] != nullptr && UKismetSystemLibrary::DoesImplementInterface(CurrentWeapons[i], UFPSWeaponInterface::StaticClass()))
+			{
+				IFPSWeaponInterface::Execute_ToggleVisibility(CurrentWeapons[i], CurrentWeapons[i] == CurrentHoldingWeapon);
+			}
 		}
-	}
-
-	Server_EquipWeapon(SubWeapon);
-}
-
-void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* Weapon)
-{
-	if (Weapon != nullptr)
-	{
-		EWeaponType WeaponType = Weapon->GetWeaponInfo().WeaponType;
-
-		if (MainWeapon != nullptr)
-		{
-			MainWeapon->GetRootComponent()->SetVisibility(WeaponType == EWeaponType::MainWeapon, true);
-			MainWeapon->SetActorHiddenInGame(WeaponType != EWeaponType::MainWeapon);
-		}
-		if (SubWeapon != nullptr)
-		{
-			SubWeapon->GetRootComponent()->SetVisibility(WeaponType == EWeaponType::SubWeapon, true);
-			SubWeapon->SetActorHiddenInGame(WeaponType != EWeaponType::SubWeapon);
-		}
-
-		CurrentWeapon = Weapon;
-		CurrentWeapon->Server_OnWeaponEquipped(this);
 	}
 }
 
+// Bound to input "F"
 void AFPSCharacter::Drop()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Drop"));
-	if (CurrentWeapon != nullptr)
+
+	if (CurrentHoldingWeapon != nullptr)
 	{
-		Server_DropWeapon(CurrentWeapon);
-		CurrentWeapon = nullptr;
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("(Drop) CurrentWeapon == nulllptr"))
+		GetCapsuleComponent()->SetGenerateOverlapEvents(false);
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		FTimerHandle DropTimer;
+		World->GetTimerManager().SetTimer(DropTimer, [&]()
+			{
+				GetCapsuleComponent()->SetGenerateOverlapEvents(true);
+			}, 2.f, false);
+
+		Server_DropWeapon();
 	}
 }
 
-void AFPSCharacter::Server_DropWeapon_Implementation(AFPSWeaponBase* Weapon)
+void AFPSCharacter::Server_DropWeapon_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Server_DropWeapon_Implementation"));
-	if (Weapon != nullptr)
+	if (CurrentHoldingWeapon != nullptr)
 	{
-		Weapon->Server_OnWeaponDroped();
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("(Server_DropWeapon) MainWeapon == nulllptr"));
+		CurrentHoldingWeapon->Server_OnWeaponDroped();
+
+		uint8 CurrentHoldingWeaponIndex = (uint8)CurrentHoldingWeapon->GetWeaponInfo().WeaponType;
+		CurrentWeapons[CurrentHoldingWeaponIndex] = nullptr;
+		CurrentHoldingWeapon = nullptr;
 	}
 }
 
+// Bound to input "R"
 void AFPSCharacter::Reload()
 {
-	if (CurrentWeapon != nullptr && CurrentWeapon->CanReload())
+	if (CurrentHoldingWeapon != nullptr && CurrentHoldingWeapon->CanReload())
 	{
-		Server_Reload(CurrentWeapon);
-		CurrentWeapon->Client_OnReload();
+		Server_Reload(CurrentHoldingWeapon);
+		CurrentHoldingWeapon->Client_OnReload();
 
 		// Play ArmsReloadAnim
 		UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
 		if (AnimInstance != nullptr)
 		{
-			FWeaponInfo WeaponInfo = CurrentWeapon->GetWeaponInfo();
+			FWeaponInfo WeaponInfo = CurrentHoldingWeapon->GetWeaponInfo();
 			if (WeaponInfo.FP_ArmsReloadAnim != nullptr)
 			{
 				AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
@@ -325,6 +373,7 @@ void AFPSCharacter::Multicast_PlayReloadAnim_Implementation(AFPSWeaponBase* Weap
 	}
 }
 
+// Bound to input "Tab"
 void AFPSCharacter::ToggleScoreBoardWidget(bool bDisplay)
 {
 	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
@@ -333,6 +382,7 @@ void AFPSCharacter::ToggleScoreBoardWidget(bool bDisplay)
 	}
 }
 
+// Bound to input "Left Ctrl"
 void AFPSCharacter::HandleCrouch(bool bCrouchButtonDown)
 {
 	Server_HandleCrouch(bCrouchButtonDown);
@@ -450,6 +500,19 @@ void AFPSCharacter::OnSpawn()
 
 void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation()
 {
+	if (CurrentWeapons.Num() != (uint8)EWeaponType::EnumSize)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CurrentWeapons.Num(): %i"), CurrentWeapons.Num());
+		UE_LOG(LogTemp, Warning, TEXT("(uint8)EWeaponType::EnumSize: %i"), (uint8)EWeaponType::EnumSize);
+
+		for (uint8 i = 0; i < (uint8)EWeaponType::EnumSize; i++)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("i: %i"), i);
+			CurrentWeapons.Add(nullptr);
+			StartWeapons.Add(nullptr);
+		}
+	}
+
 	if (FPSGameInstance == nullptr)
 	{
 		FPSGameInstance = GetGameInstance<UFPSGameInstance>();
@@ -460,52 +523,44 @@ void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation()
 	}
 
 	// MainWeapon Setup
-	if (MainWeapon == nullptr)
+	if (StartWeapons[1] == nullptr)
 	{
-		if (FPSGameInstance->UserData.MainWeapon == EMainWeapon::Rifle || FPSGameInstance->UserData.MainWeapon == EMainWeapon::None)
+		if (FPSGameInstance->GetUserData().MainWeaponType == EMainWeapon::Rifle || FPSGameInstance->GetUserData().MainWeaponType == EMainWeapon::None)
 		{
 			if (!ensure(RifleClass != nullptr))
 			{
 				return;
 			}
-			AFPSWeaponBase* SpawnedWeapon = GetWorld()->SpawnActor<AFPSWeaponBase>(RifleClass);
-			MainWeapon = SpawnedWeapon;
-			MainWeapon->GetRootComponent()->SetVisibility(false, true);
+			UWorld* World = GetWorld();
+			if (!ensure(World != nullptr))
+			{
+				return;
+			}
+			StartWeapons[1] = World->SpawnActor<AFPSWeaponBase>(RifleClass);
 		}
-	}
-	else if (MainWeapon != nullptr && CurrentWeapon == nullptr)
-	{
-		// TODO: Reset ammo of the MainWeapon
-	}
-	else if (MainWeapon != CurrentWeapon)
-	{
-		// TODO: Drop current and equip main? or maybe it will be taken by it's original owner?
 	}
 
 	// SubWeapon Setup
-	if (SubWeapon == nullptr)
+	if (StartWeapons[2] == nullptr)
 	{
-		if (FPSGameInstance->UserData.SubWeapon == ESubWeapon::Pistol || FPSGameInstance->UserData.SubWeapon == ESubWeapon::None)
+		if (FPSGameInstance->GetUserData().SubWeaponType == ESubWeapon::Pistol || FPSGameInstance->GetUserData().SubWeaponType == ESubWeapon::None)
 		{
 			if (!ensure(PistolClass != nullptr))
 			{
 				return;
 			}
-			AFPSWeaponBase* SpawnedWeapon = GetWorld()->SpawnActor<AFPSWeaponBase>(PistolClass);
-			SubWeapon = SpawnedWeapon;
-			SubWeapon->GetRootComponent()->SetVisibility(false, true);
+			UWorld* World = GetWorld();
+			if (!ensure(World != nullptr))
+			{
+				return;
+			}
+			StartWeapons[2] = World->SpawnActor<AFPSWeaponBase>(PistolClass);
 		}
 	}
-	else if (SubWeapon != nullptr && CurrentWeapon == nullptr)
-	{
-		// TODO: Reset ammo of the MainWeapon
-	}
-	else if (SubWeapon != CurrentWeapon)
-	{
-		// TODO: Drop current and equip main? or maybe it will be taken by it's original owner?
-	}
 
-	//EquipMainWeapon();
+	CurrentWeapons = StartWeapons;
+
+	SwitchToMainWeapon();
 }
 
 // Called by DamageCauser ex) AFPSGunBase::Server_Fire
@@ -571,13 +626,13 @@ void AFPSCharacter::OnDeath(AActor* DeathSource)
 }
 #pragma endregion Spawn & Death
 
-// TODO: Pick up weapon by overlapping instead of "E" button
 void AFPSCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSWeaponInterface::StaticClass()))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("OtherActor: %s"), *OtherActor->GetName());
 		AFPSWeaponBase* Weapon = IFPSWeaponInterface::Execute_GetWeapon(OtherActor);
-		UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnBeginOverlap: Overlapped ( %s )"), *Weapon->GetName());
+		this->PickupWeapon(Weapon);
 	}
 }
 
