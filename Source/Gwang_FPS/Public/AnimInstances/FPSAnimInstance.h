@@ -18,7 +18,4 @@ public:
 	float CameraPitch;
 
 	void UpdateSpineAngle_Implementation(float NewPitch) override;
-
-	void HandleCrouch_Implementation(bool bCrouchButtonDown) override;
-
 };

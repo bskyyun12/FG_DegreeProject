@@ -123,35 +123,63 @@ void AFPSPlayerController::Server_RequestPlayerSpawn_Implementation()
 // Called by AFPSGameMode::SpawnPlayer
 void AFPSPlayerController::OnSpawnPlayer_Implementation(AFPSCharacter* SpawnedPlayer)
 {
-	this->Possess(SpawnedPlayer);
-
-	FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
-	SpawnedPlayer->SetActorLocation(SpawnTransform.GetLocation());
-
 	if (HasAuthority())
 	{
-		this->ClientSetRotation(SpawnTransform.GetRotation().Rotator());
-	}
+		this->Possess(SpawnedPlayer); // OnRep_Pawn()
 
-	if (GetPawn() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetPawn(), UFPSCharacterInterface::StaticClass()))
-	{
-		IFPSCharacterInterface::Execute_OnSpawnPlayer(GetPawn());
+		FTransform SpawnTransform = GameMode->GetRandomPlayerStarts(Team);
+		SpawnedPlayer->SetActorLocation(SpawnTransform.GetLocation());
+		this->ClientSetRotation(SpawnTransform.GetRotation().Rotator());
+
+		if (GetPawn() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetPawn(), UFPSCharacterInterface::StaticClass()))
+		{
+			IFPSCharacterInterface::Execute_OnSpawnPlayer(GetPawn());
+		}
+
+		FInputModeGameOnly InputModeData;
+		SetInputMode(InputModeData);
 	}
 }
 
 // Called by FPSCharacter::OnDeath
 void AFPSPlayerController::OnPlayerDeath_Implementation()
 {
-	if (!ensure(HasAuthority()))
+	if (HasAuthority())
 	{
-		return;
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		FTimerHandle DeathTimer;
+		World->GetTimerManager().SetTimer(DeathTimer, [&]()
+			{
+				GameMode->OnPlayerDeath(this, Team);
+			}, 4.f, false);
 	}
 
-	FInputModeUIOnly InputModeData;
-	InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
-	SetInputMode(InputModeData);
+	if (IsLocalPlayerController())
+	{
+		Client_OnUpdateHealthArmorUI(true);
 
-	GameMode->OnPlayerDeath(this, Team);
+		FInputModeUIOnly InputModeData;
+		InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+		SetInputMode(InputModeData);
+	}
+}
+
+void AFPSPlayerController::OnRep_Pawn()
+{
+	Super::OnRep_Pawn();
+	if (GetPawn() != nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnRep_Pawn (Spawn)"));
+		Client_OnUpdateHealthArmorUI(false);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnRep_Pawn (Death)"));
+	}
 }
 #pragma endregion Spawn & Death
 

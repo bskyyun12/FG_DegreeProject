@@ -28,4 +28,6 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void HandleCrouch(bool bCrouchButtonDown);
 
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void OnDeath();
 };

@@ -17,7 +17,7 @@ public:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// Equip & Drop
-	void Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter) override;
+	void HandleWeaponEquip() override;
 
 	// Weapon Fire
 	bool CanFire() override;
@@ -29,38 +29,37 @@ public:
 	void Client_OnEndFireWeapon_Implementation() override;
 
 	// Reload
+	bool CanReload() override;
 	void Client_OnReload_Implementation() override;
 	void Server_OnEndReload_Implementation() override;
-
-
-	bool CanReload() override;
 
 protected:
 	void BeginPlay() override;
 
-	//void OnRep_Owner() override;
+	void OnReset() override;
 
 	// Widget Update
 	UFUNCTION(Client, Reliable)
-	void Client_UpdateAmmoUI(int _CurrentAmmo, int _RemainingAmmo);
+	void Client_UpdateAmmoUI(int _CurrentAmmo, int _CurrentRemainingAmmo);
 
 	// Fire Effects
 	void Client_FireEffects_Implementation() override;
 	void ShakeCamera();
 	void Recoil();
 
-
-
 protected:
-	UPROPERTY(ReplicatedUsing=OnRep_CurrentAmmo, EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(ReplicatedUsing=OnRep_CurrentAmmo)
 	int CurrentAmmo = 0;
 	UFUNCTION()
 	void OnRep_CurrentAmmo();
 
+	UPROPERTY(Replicated)
+	int CurrentRemainingAmmo = 0;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)	
 	int MagazineCapacity = 20;
 
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int RemainingAmmo = 100;
 
 	// Fire Effects

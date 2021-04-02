@@ -112,5 +112,6 @@ void UHealthComponent::OnRep_bIsDead()
 	else
 	{
 		OnSpawn.Broadcast();
+		OnUpdateHealthArmorUI.Broadcast();
 	}
 }

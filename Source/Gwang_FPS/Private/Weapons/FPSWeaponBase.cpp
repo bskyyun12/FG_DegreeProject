@@ -45,6 +45,11 @@ void AFPSWeaponBase::BeginPlay()
 	Super::BeginPlay();
 }
 
+void AFPSWeaponBase::OnReset()
+{
+
+}
+
 void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

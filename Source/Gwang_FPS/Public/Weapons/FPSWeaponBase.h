@@ -110,6 +110,8 @@ class GWANG_FPS_API AFPSWeaponBase : public AActor, public IFPSWeaponInterface
 public:	
 	AFPSWeaponBase();
 
+	virtual void OnReset();
+
 	// Equip & Hide & Drop
 	void ToggleVisibility_Implementation(bool bNewVisibility) override;
 	UFUNCTION(NetMulticast, Reliable)
@@ -151,8 +153,8 @@ protected:
 	void OnRep_Owner() override;
 
 	// Weapon Equip & Drop
-	void HandleWeaponEquip();
-	void HandleWeaponDrop();
+	virtual void HandleWeaponEquip();
+	virtual void HandleWeaponDrop();
 
 	// Fire
 	UFUNCTION()

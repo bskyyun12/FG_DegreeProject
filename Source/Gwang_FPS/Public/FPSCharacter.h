@@ -82,9 +82,14 @@ public:
 #pragma endregion IFPSCharacterInterface
 
 
+
+
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UCameraComponent* FollowCamera;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UCameraComponent* DeathCamera;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	USkeletalMeshComponent* FPSArmMesh;
@@ -136,7 +141,7 @@ protected:
 	FVector CameraRelativeLocationOnCrouch = FVector::ZeroVector;
 	FVector DesiredCameraRelativeLocation;
 	UFUNCTION()
-	void CrouchTimer();
+	void CrouchSimulate();
 
 #pragma region Health & Spawn & Death
 	UFUNCTION(BlueprintPure)
@@ -153,12 +158,14 @@ protected:
 
 	UFUNCTION()
 	void OnDeath(AActor* DeathSource);
-	void HandleCollisionOnDeath();
-	UFUNCTION(Server, Reliable)
-	void Server_WeaponSetupOnSpawn();
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnDeath();
+	void HandleCameraOnDeath();
 	
 	UFUNCTION()
 	void OnSpawn();
-	void HandleCollisionOnSpawn();
+	UFUNCTION(Server, Reliable)
+	void Server_WeaponSetupOnSpawn();
+	void HandleCameraOnSpawn();
 #pragma endregion Spawn & Death
 };

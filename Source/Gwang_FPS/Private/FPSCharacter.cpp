@@ -46,6 +46,10 @@ AFPSCharacter::AFPSCharacter()
 
 	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &AFPSCharacter::OnBeginOverlap);
 
+	DeathCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("DeathCamera"));
+	DeathCamera->SetupAttachment(RootComponent);
+	DeathCamera->SetRelativeRotation(FRotator(-60.f, 0.f, 0.f));
+	DeathCamera->SetActive(false);
 }
 
 void AFPSCharacter::BeginPlay()
@@ -386,7 +390,21 @@ void AFPSCharacter::ToggleScoreBoardWidget(bool bDisplay)
 // Bound to input "Left Ctrl"
 void AFPSCharacter::HandleCrouch(bool bCrouchButtonDown)
 {
-	Server_HandleCrouch(bCrouchButtonDown);
+	if (IsLocallyControlled())
+	{
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		DesiredCameraRelativeLocation = bCrouchButtonDown ? CameraRelativeLocationOnCrouch : CameraRelativeLocation_Default;
+		World->GetTimerManager().ClearTimer(CrouchTimerHandle);
+		World->GetTimerManager().SetTimer(CrouchTimerHandle, this, &AFPSCharacter::CrouchSimulate, World->GetDeltaSeconds(), true);
+	}
+	else
+	{
+		Server_HandleCrouch(bCrouchButtonDown);
+	}
 }
 
 void AFPSCharacter::Server_HandleCrouch_Implementation(bool bCrouchButtonDown)
@@ -407,21 +425,16 @@ void AFPSCharacter::Multicast_HandleCrouch_Implementation(bool bCrouchButtonDown
 	{
 		if (GetMesh() != nullptr)
 		{
-			if (GetMesh()->GetAnimInstance() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetMesh()->GetAnimInstance(), UFPSAnimInterface::StaticClass()))
+			UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+			if (AnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(AnimInstance, UFPSAnimInterface::StaticClass()))
 			{
-				IFPSAnimInterface::Execute_HandleCrouch(GetMesh()->GetAnimInstance(), bCrouchButtonDown);
+				IFPSAnimInterface::Execute_HandleCrouch(AnimInstance, bCrouchButtonDown);
 			}
 		}
 	}
-	else
-	{
-		DesiredCameraRelativeLocation = bCrouchButtonDown ? CameraRelativeLocationOnCrouch : CameraRelativeLocation_Default;
-		World->GetTimerManager().ClearTimer(CrouchTimerHandle);
-		World->GetTimerManager().SetTimer(CrouchTimerHandle, this, &AFPSCharacter::CrouchTimer, World->GetDeltaSeconds(), true);
-	}
 }
 
-void AFPSCharacter::CrouchTimer()
+void AFPSCharacter::CrouchSimulate()
 {
 	if (FollowCamera != nullptr)
 	{
@@ -496,7 +509,17 @@ void AFPSCharacter::OnSpawnPlayer_Implementation()
 void AFPSCharacter::OnSpawn()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnSpawn"));
-	HandleCollisionOnSpawn();
+
+	if (IsLocallyControlled())
+	{
+		HandleCameraOnSpawn();
+	}
+}
+
+void AFPSCharacter::HandleCameraOnSpawn()
+{
+	FollowCamera->SetActive(true);
+	DeathCamera->SetActive(false);
 }
 
 void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation()
@@ -561,6 +584,14 @@ void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation()
 
 	CurrentWeapons = StartWeapons;
 
+	for (AFPSWeaponBase* Weapon : CurrentWeapons)
+	{
+		if (Weapon != nullptr)
+		{
+			Weapon->OnReset();
+		}
+	}
+
 	SwitchToMainWeapon();
 }
 
@@ -602,7 +633,12 @@ void AFPSCharacter::OnUpdateHealthArmorUI()
 // Bound to HealthComponent->OnDeath
 void AFPSCharacter::OnDeath(AActor* DeathSource)
 {
-	HandleCollisionOnDeath();
+	Drop();
+
+	if (IsLocallyControlled())
+	{
+		HandleCameraOnDeath();
+	}
 
 	if (HasAuthority())
 	{
@@ -611,20 +647,50 @@ void AFPSCharacter::OnDeath(AActor* DeathSource)
 			UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnDeath"));
 			UE_LOG(LogTemp, Warning, TEXT("( %s ) is killed by ( %s )"), *this->GetName(), *DeathSource->GetName());
 
-			UWorld* World = GetWorld();
-			if (!ensure(World != nullptr))
-			{
-				return;
-			}
-			FTimerHandle DeathTimer;
-			World->GetTimerManager().SetTimer(DeathTimer, [&]()
-				{
-					IFPSPlayerControllerInterface::Execute_OnUpdateHealthArmorUI(GetController(), IsDead());
-					IFPSPlayerControllerInterface::Execute_OnPlayerDeath(GetController());
-				}, 2.f, false);
+			Multicast_OnDeath();
+			IFPSPlayerControllerInterface::Execute_OnPlayerDeath(GetController());
 		}
 	}
 }
+
+void AFPSCharacter::Multicast_OnDeath_Implementation()
+{
+	if (!IsLocallyControlled())
+	{
+		if (GetMesh() != nullptr)
+		{
+			UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+			if (AnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(AnimInstance, UFPSAnimInterface::StaticClass()))
+			{
+				IFPSAnimInterface::Execute_OnDeath(AnimInstance);
+			}
+		}
+	}
+}
+
+void AFPSCharacter::HandleCameraOnDeath()
+{
+	FollowCamera->SetActive(false);
+	DeathCamera->SetActive(true);
+
+	UWorld* World = GetWorld();
+	if (World != nullptr)
+	{
+		FHitResult Hit;
+		FVector Start = DeathCamera->GetComponentLocation();
+		FVector End = Start + DeathCamera->GetForwardVector() * -500.f;
+
+		if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility))
+		{
+			DeathCamera->SetWorldLocation(Hit.ImpactPoint);
+		}
+		else
+		{
+			DeathCamera->SetWorldLocation(End);
+		}
+	}
+}
+
 #pragma endregion Spawn & Death
 
 void AFPSCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -634,22 +700,6 @@ void AFPSCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AAc
 		UE_LOG(LogTemp, Warning, TEXT("OtherActor: %s"), *OtherActor->GetName());
 		AFPSWeaponBase* Weapon = IFPSWeaponInterface::Execute_GetWeapon(OtherActor);
 		this->PickupWeapon(Weapon);
-	}
-}
-
-void AFPSCharacter::HandleCollisionOnSpawn()
-{
-	if (GetCapsuleComponent() != nullptr)
-	{
-		GetCapsuleComponent()->SetCollisionProfileName("Pawn");
-	}
-}
-
-void AFPSCharacter::HandleCollisionOnDeath()
-{
-	if (GetCapsuleComponent() != nullptr)
-	{
-		GetCapsuleComponent()->SetCollisionProfileName("IgnoreCharacter");
 	}
 }
 

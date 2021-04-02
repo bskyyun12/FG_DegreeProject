@@ -13,21 +13,29 @@
 void AFPSGunBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	OnReset();
+}
+
+void AFPSGunBase::OnReset()
+{
+	Super::OnReset();
 	CurrentAmmo = MagazineCapacity;	// OnRep_CurrentAmmo()
+	CurrentRemainingAmmo = RemainingAmmo;
+	Client_UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 }
 
 void AFPSGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AFPSGunBase, CurrentAmmo);
-	DOREPLIFETIME(AFPSGunBase, RemainingAmmo);
+	DOREPLIFETIME(AFPSGunBase, CurrentRemainingAmmo);
 }
 
-void AFPSGunBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
+void AFPSGunBase::HandleWeaponEquip()
 {
-	Super::Server_OnWeaponEquipped_Implementation(OwnerCharacter);
-
-	Client_UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
+	Super::HandleWeaponEquip();
+	Client_UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 }
 
 void AFPSGunBase::Server_OnBeginFireWeapon_Implementation()
@@ -78,7 +86,7 @@ void AFPSGunBase::Server_Fire_Implementation()
 	}
 
 	CurrentAmmo--;	// OnRep_CurrentAmmo()
-	Client_UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
+	Client_UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 
 	if (GetOwner() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
 	{
@@ -116,13 +124,13 @@ void AFPSGunBase::Server_Fire_Implementation()
 	}
 }
 
-void AFPSGunBase::Client_UpdateAmmoUI_Implementation(int _CurrentAmmo, int _RemainingAmmo)
+void AFPSGunBase::Client_UpdateAmmoUI_Implementation(int _CurrentAmmo, int _CurrentRemainingAmmo)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::Client_UpdateAmmoUI_Implementation"));
 	if (GetInstigatorController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetInstigatorController(), UFPSPlayerControllerInterface::StaticClass()))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Execute_OnUpdateAmmoUI"));
-		IFPSPlayerControllerInterface::Execute_OnUpdateAmmoUI(GetInstigatorController(), _CurrentAmmo, _RemainingAmmo);
+		IFPSPlayerControllerInterface::Execute_OnUpdateAmmoUI(GetInstigatorController(), _CurrentAmmo, _CurrentRemainingAmmo);
 	}
 }
 
@@ -156,7 +164,7 @@ bool AFPSGunBase::CanReload()
 	{
 		return false;
 	}
-	return RemainingAmmo > 0 && CurrentAmmo != MagazineCapacity;
+	return CurrentRemainingAmmo > 0 && CurrentAmmo != MagazineCapacity;
 }
 
 void AFPSGunBase::Client_OnReload_Implementation()
@@ -170,17 +178,17 @@ void AFPSGunBase::Server_OnEndReload_Implementation()
 	Super::Server_OnEndReload_Implementation();
 	
 	int AmmoToPool = MagazineCapacity - CurrentAmmo;
-	AmmoToPool = (RemainingAmmo < AmmoToPool) ? RemainingAmmo : AmmoToPool;
-	RemainingAmmo -= AmmoToPool;	
+	AmmoToPool = (CurrentRemainingAmmo < AmmoToPool) ? CurrentRemainingAmmo : AmmoToPool;
+	CurrentRemainingAmmo -= AmmoToPool;
 	CurrentAmmo += AmmoToPool;	// OnRep_CurrentAmmo()
 
-	Client_UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
+	Client_UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 }
 
 
 void AFPSGunBase::OnRep_CurrentAmmo()
 {
-	Client_UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
+	Client_UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 }
 
 void AFPSGunBase::Client_OnBeginFireWeapon_Implementation()
@@ -271,15 +279,6 @@ void AFPSGunBase::Recoil()
 		}
 	}
 }
-
-//void AFPSGunBase::OnRep_Owner()
-//{
-//	Super::OnRep_Owner();
-//	if (GetOwner() != nullptr)
-//	{
-//		Client_UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
-//	}
-//}
 
 void AFPSGunBase::CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor)
 {
