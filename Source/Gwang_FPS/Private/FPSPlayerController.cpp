@@ -380,7 +380,6 @@ void AFPSPlayerController::Client_OnUpdateChatUI_Implementation(const FName& Pla
 #pragma region Recoil
 void AFPSPlayerController::ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::ShakeCamera_Implementation"));
 	if (CameraShake != nullptr)
 	{
 		ClientStartCameraShake(CameraShake);

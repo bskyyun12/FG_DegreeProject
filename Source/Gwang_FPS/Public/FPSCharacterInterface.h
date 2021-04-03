@@ -36,7 +36,7 @@ public:
 	float GetArmor();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void TakeDamage(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor);
+	void TakeDamage(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor, FVector const& HitPoint);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnSpawnPlayer();

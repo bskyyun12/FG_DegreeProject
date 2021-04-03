@@ -63,7 +63,7 @@ public:
 	void ToggleScoreBoardWidget(bool bDisplay);
 
 	void HandleCrouch(bool bCrouchButtonDown);
-	UFUNCTION(Server, Unreliable)
+	UFUNCTION(Server, Reliable)
 	void Server_HandleCrouch(bool bCrouchButtonDown);
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_HandleCrouch(bool bCrouchButtonDown);
@@ -82,8 +82,10 @@ public:
 	float GetArmor_Implementation() override;
 
 	void OnSpawnPlayer_Implementation() override;
-	void TakeDamage_Implementation(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor) override;
-#pragma endregion IFPSCharacterInterface
+	void TakeDamage_Implementation(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor, FVector const& HitPoint) override;
+	UFUNCTION(NetMulticast, Unreliable)
+	void Muticast_OnTakeDamage(FVector const& HitPoint, UParticleSystem* HitEmitter);
+	#pragma endregion IFPSCharacterInterface
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -118,6 +120,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<AFPSWeaponBase> PistolClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	UParticleSystem* HitEmitterOnTakeDamage;
 
 	// Cache
 	UPROPERTY()

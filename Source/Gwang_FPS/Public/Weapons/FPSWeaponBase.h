@@ -63,6 +63,10 @@ struct FWeaponInfo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName TP_FireEmitterSocketName;
 
+	// Hit Effects
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UParticleSystem* HitEmitter;
+
 	// AnimMontages
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* FP_EquipAnim;
@@ -93,6 +97,9 @@ struct FWeaponInfo
 		FireSound = nullptr;
 		FP_FireEmitterSocketName = "MuzzleFlash";
 		TP_FireEmitterSocketName = "MuzzleFlash";
+
+		// Hit Effects
+		HitEmitter = nullptr;
 
 		// AnimMontages
 		FP_EquipAnim = nullptr;

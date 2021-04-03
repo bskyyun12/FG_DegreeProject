@@ -2,6 +2,7 @@
 
 
 #include "Weapons/FPSGunBase.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
@@ -44,11 +45,10 @@ void AFPSGunBase::Server_OnBeginFireWeapon_Implementation()
 	if (!ensure(World != nullptr))
 	{
 		return;
-	}	
-	
+	}
+
 	if (CanFire() == false)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("(ServerBeginFire) CanFire() == false"));
 		return;
 	}
 
@@ -77,11 +77,9 @@ void AFPSGunBase::Server_OnBeginFireWeapon_Implementation()
 void AFPSGunBase::Server_Fire_Implementation()
 {
 	Super::Server_Fire_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::Server_Fire_Implementation"));
 
 	if (CanFire() == false)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CanFire() == false"));
 		return;
 	}
 
@@ -105,31 +103,51 @@ void AFPSGunBase::Server_Fire_Implementation()
 		{
 			return;
 		}
-		bool bIsHit = World->LineTraceSingleByChannel(Hit, Start, End, ECC_GameTraceChannel1, Params); // ECC_GameTraceChannel1 = DamageTrace
-		if (bIsHit)
+		if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))	// ECC_GameTraceChannel1 = DamageTrace
 		{
-			if (Hit.GetActor() != nullptr && UKismetSystemLibrary::DoesImplementInterface(Hit.GetActor(), UFPSCharacterInterface::StaticClass()))
+			AActor* HitActor = Hit.GetActor();
+			if (HitActor != nullptr)
 			{
-				float DamageOnHealth = 0.f;
-				float DamageOnArmor = 0.f;
-				CalcDamageToApply(Hit.PhysMaterial.Get(), DamageOnHealth, DamageOnArmor);
-				IFPSCharacterInterface::Execute_TakeDamage(Hit.GetActor(), GetOwner(), DamageOnHealth, DamageOnArmor);
-
-				if (GetInstigatorController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetInstigatorController(), UFPSPlayerControllerInterface::StaticClass()))
+				bool bHitPlayer = UKismetSystemLibrary::DoesImplementInterface(HitActor, UFPSCharacterInterface::StaticClass());
+				if (bHitPlayer)
 				{
-					IFPSPlayerControllerInterface::Execute_OnApplyDamage(GetInstigatorController());
+					float DamageOnHealth = 0.f;
+					float DamageOnArmor = 0.f;
+					CalcDamageToApply(Hit.PhysMaterial.Get(), DamageOnHealth, DamageOnArmor);
+					IFPSCharacterInterface::Execute_TakeDamage(HitActor, GetOwner(), DamageOnHealth, DamageOnArmor, Hit.ImpactPoint);
+
+					if (GetInstigatorController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetInstigatorController(), UFPSPlayerControllerInterface::StaticClass()))
+					{
+						IFPSPlayerControllerInterface::Execute_OnApplyDamage(GetInstigatorController());
+					}
+				}
+				else
+				{
+					Multicast_HitEffect(Hit.ImpactPoint, WeaponInfo.HitEmitter);
 				}
 			}
 		}
 	}
 }
 
+void AFPSGunBase::Multicast_HitEffect_Implementation(FVector const& HitPoint, UParticleSystem* HitEmitter)
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+	if (WeaponInfo.HitEmitter != nullptr)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(World, HitEmitter, HitPoint);
+	}
+}
+
+
 void AFPSGunBase::Client_UpdateAmmoUI_Implementation(int _CurrentAmmo, int _CurrentRemainingAmmo)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::Client_UpdateAmmoUI_Implementation"));
 	if (GetInstigatorController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetInstigatorController(), UFPSPlayerControllerInterface::StaticClass()))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Execute_OnUpdateAmmoUI"));
 		IFPSPlayerControllerInterface::Execute_OnUpdateAmmoUI(GetInstigatorController(), _CurrentAmmo, _CurrentRemainingAmmo);
 	}
 }
@@ -170,13 +188,12 @@ bool AFPSGunBase::CanReload()
 void AFPSGunBase::Client_OnReload_Implementation()
 {
 	Super::Client_OnReload_Implementation();
-	UE_LOG(LogTemp, Warning, TEXT("AFPSGunBase::Client_Reload_Implementation"));
 }
 
 void AFPSGunBase::Server_OnEndReload_Implementation()
 {
 	Super::Server_OnEndReload_Implementation();
-	
+
 	int AmmoToPool = MagazineCapacity - CurrentAmmo;
 	AmmoToPool = (CurrentRemainingAmmo < AmmoToPool) ? CurrentRemainingAmmo : AmmoToPool;
 	CurrentRemainingAmmo -= AmmoToPool;

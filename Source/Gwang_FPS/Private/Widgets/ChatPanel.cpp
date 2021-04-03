@@ -99,6 +99,10 @@ FReply UChatPanel::NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKe
 		{
 			SendChat();
 		}
+		else
+		{
+			EndChat();
+		}
 	}
 	else if (InKeyEvent.GetKey() == EKeys::Escape)
 	{

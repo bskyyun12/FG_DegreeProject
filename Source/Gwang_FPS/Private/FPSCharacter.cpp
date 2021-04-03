@@ -7,6 +7,8 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "DrawDebugHelpers.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
 
@@ -48,7 +50,7 @@ AFPSCharacter::AFPSCharacter()
 
 	DeathCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("DeathCamera"));
 	DeathCamera->SetupAttachment(RootComponent);
-	DeathCamera->SetRelativeRotation(FRotator(-60.f, 0.f, 0.f));
+	DeathCamera->SetRelativeRotation(FRotator(-50.f, 0.f, 0.f));
 	DeathCamera->SetActive(false);
 }
 
@@ -171,7 +173,6 @@ void AFPSCharacter::OnBeginFire()
 
 void AFPSCharacter::Server_OnBeginFire_Implementation(AFPSWeaponBase* Weapon)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Server_OnBeginFire_Implementation"));
 	if (Weapon != nullptr)
 	{
 		Weapon->Server_OnBeginFireWeapon();
@@ -190,7 +191,6 @@ void AFPSCharacter::OnEndFire()
 
 void AFPSCharacter::Server_OnEndFire_Implementation(AFPSWeaponBase* Weapon)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Server_OnEndFire_Implementation"));
 	if (Weapon != nullptr)
 	{
 		Weapon->Server_OnEndFireWeapon();
@@ -200,8 +200,6 @@ void AFPSCharacter::Server_OnEndFire_Implementation(AFPSWeaponBase* Weapon)
 // Bound to input "1"
 void AFPSCharacter::SwitchToMainWeapon()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::SwitchToMainWeapon"));
-
 	OnEndFire();
 	if (CurrentWeapons[1] != nullptr)
 	{
@@ -213,7 +211,6 @@ void AFPSCharacter::SwitchToMainWeapon()
 // Bound to input "2"
 void AFPSCharacter::SwitchToSubWeapon()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::SwitchToSubWeapon"));
 
 	OnEndFire();
 	if (CurrentWeapons[2] != nullptr)
@@ -225,8 +222,6 @@ void AFPSCharacter::SwitchToSubWeapon()
 
 void AFPSCharacter::PickupWeapon(AFPSWeaponBase* const& WeaponToPickup)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::PickupWeapon"));
-
 	if (WeaponToPickup != nullptr)
 	{
 		bool bHasSameTypeWeapon = CurrentWeapons[(uint8)WeaponToPickup->GetWeaponInfo().WeaponType] != nullptr;
@@ -294,8 +289,6 @@ void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* const& Wea
 // Bound to input "F"
 void AFPSCharacter::Drop()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Drop"));
-
 	if (CurrentlyHeldWeapon != nullptr)
 	{
 		GetCapsuleComponent()->SetGenerateOverlapEvents(false);
@@ -316,7 +309,6 @@ void AFPSCharacter::Drop()
 
 void AFPSCharacter::Server_DropWeapon_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Server_DropWeapon_Implementation"));
 	if (CurrentlyHeldWeapon != nullptr)
 	{
 		CurrentlyHeldWeapon->Server_OnWeaponDroped();
@@ -404,21 +396,23 @@ void AFPSCharacter::HandleCrouch(bool bCrouchButtonDown)
 		DesiredCameraRelativeLocation = bCrouchButtonDown ? CameraRelativeLocationOnCrouch : CameraRelativeLocation_Default;
 		World->GetTimerManager().ClearTimer(CrouchTimerHandle);
 		World->GetTimerManager().SetTimer(CrouchTimerHandle, this, &AFPSCharacter::CrouchSimulate, World->GetDeltaSeconds(), true);
+
+		GetCharacterMovement()->MaxWalkSpeed *= bCrouchButtonDown ? 0.5f : 2.0f;
 	}
-	else
-	{
-		Server_HandleCrouch(bCrouchButtonDown);
-	}
+
+	Server_HandleCrouch(bCrouchButtonDown);
 }
 
 void AFPSCharacter::Server_HandleCrouch_Implementation(bool bCrouchButtonDown)
 {
 	Multicast_HandleCrouch(bCrouchButtonDown);
+
+	FollowCamera->SetRelativeLocation(bCrouchButtonDown ? CameraRelativeLocationOnCrouch : CameraRelativeLocation_Default);
+	GetCharacterMovement()->MaxWalkSpeed *= bCrouchButtonDown ? 0.5f : 2.0f;
 }
 
 void AFPSCharacter::Multicast_HandleCrouch_Implementation(bool bCrouchButtonDown)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::Multicast_HandleCrouch_Implementation"));
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
 	{
@@ -442,18 +436,19 @@ void AFPSCharacter::CrouchSimulate()
 {
 	if (FollowCamera != nullptr)
 	{
-		FVector NewCameraRelativeLocation = FMath::LerpStable(FollowCamera->GetRelativeLocation(), DesiredCameraRelativeLocation, 0.05f);
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		FVector NewCameraRelativeLocation = FMath::VInterpTo(FollowCamera->GetRelativeLocation(), DesiredCameraRelativeLocation, World->GetDeltaSeconds(), 10.f);
 		FollowCamera->SetRelativeLocation(NewCameraRelativeLocation);
 
 		if (NewCameraRelativeLocation.Equals(DesiredCameraRelativeLocation, 2.f))
 		{
 			FollowCamera->SetRelativeLocation(DesiredCameraRelativeLocation);
-			UWorld* World = GetWorld();
-			if (!ensure(World != nullptr))
-			{
-				return;
-			}
 			World->GetTimerManager().ClearTimer(CrouchTimerHandle);
+			UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::CrouchSimulate (Timer Cleared)"));
 		}
 	}
 }
@@ -470,6 +465,7 @@ void AFPSCharacter::StartChat()
 		IFPSPlayerControllerInterface::Execute_StartChat(GetController());
 	}
 }
+
 #pragma endregion Input bindings
 
 #pragma region Getters
@@ -510,7 +506,7 @@ USkeletalMeshComponent* AFPSCharacter::GetArmMesh_Implementation()
 #pragma endregion Getters
 
 #pragma region Spawn & Death
-// Called by AFPSPlayerController::OnSpawnPlayer
+// Called by AFPSPlayerController::OnSpawnPlayer (From Server)
 void AFPSCharacter::OnSpawnPlayer_Implementation()
 {
 	if (HealthComponent != nullptr)
@@ -519,13 +515,13 @@ void AFPSCharacter::OnSpawnPlayer_Implementation()
 	}
 
 	Server_WeaponSetupOnSpawn();
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Capsule_Alive"));
+	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh_Alive"));
 }
 
 // Bound to HealthComponent->OnSpawn, This gets called both server and clients
 void AFPSCharacter::OnSpawn()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnSpawn"));
-
 	if (IsLocallyControlled())
 	{
 		HandleCameraOnSpawn();
@@ -542,12 +538,8 @@ void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation()
 {
 	if (CurrentWeapons.Num() != (uint8)EWeaponType::EnumSize)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CurrentWeapons.Num(): %i"), CurrentWeapons.Num());
-		UE_LOG(LogTemp, Warning, TEXT("(uint8)EWeaponType::EnumSize: %i"), (uint8)EWeaponType::EnumSize);
-
 		for (uint8 i = 0; i < (uint8)EWeaponType::EnumSize; i++)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("i: %i"), i);
 			CurrentWeapons.Add(nullptr);
 			StartWeapons.Add(nullptr);
 		}
@@ -612,21 +604,37 @@ void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation()
 }
 
 // Called by DamageCauser ex) AFPSGunBase::Server_Fire
-void AFPSCharacter::TakeDamage_Implementation(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor)
+void AFPSCharacter::TakeDamage_Implementation(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor, FVector const& HitPoint)
 {
 	if (HealthComponent != nullptr)
 	{
 		HealthComponent->Server_TakeDamage(DamageCauser, DamageOnHealth, DamageOnArmor);
+		IFPSPlayerControllerInterface::Execute_OnTakeDamage(GetController());
+		Muticast_OnTakeDamage(HitPoint, HitEmitterOnTakeDamage);
 	}
 }
 
+void AFPSCharacter::Muticast_OnTakeDamage_Implementation(FVector const& HitPoint, UParticleSystem* HitEmitter)
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+	if (HitEmitter != nullptr)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(World, HitEmitter, HitPoint);
+	}
+}
+
+// TODO: Do I really need this??
 // Bound to HealthComponent->OnTakeDamage
 void AFPSCharacter::OnTakeDamage(AActor* DamageSource)
 {
 	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::OnTakeDamage"));
 		UE_LOG(LogTemp, Warning, TEXT("( %s ) is attacked by ( %s )"), *this->GetName(), *DamageSource->GetName());
-		IFPSPlayerControllerInterface::Execute_OnTakeDamage(GetController());
 	}
 }
 
@@ -651,11 +659,6 @@ void AFPSCharacter::OnDeath(AActor* DeathSource)
 {
 	Drop();
 
-	if (IsLocallyControlled())
-	{
-		HandleCameraOnDeath();
-	}
-
 	if (HasAuthority())
 	{
 		if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UFPSPlayerControllerInterface::StaticClass()))
@@ -667,10 +670,18 @@ void AFPSCharacter::OnDeath(AActor* DeathSource)
 			IFPSPlayerControllerInterface::Execute_OnPlayerDeath(GetController());
 		}
 	}
+
+	if (IsLocallyControlled())
+	{
+		HandleCameraOnDeath();
+	}
 }
 
 void AFPSCharacter::Multicast_OnDeath_Implementation()
 {
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Capsule_Dead"));
+	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh_Dead"));
+
 	if (!IsLocallyControlled())
 	{
 		if (GetMesh() != nullptr)
@@ -693,7 +704,7 @@ void AFPSCharacter::HandleCameraOnDeath()
 	if (World != nullptr)
 	{
 		FHitResult Hit;
-		FVector Start = DeathCamera->GetComponentLocation();
+		FVector Start = GetActorLocation();
 		FVector End = Start + DeathCamera->GetForwardVector() * -500.f;
 
 		if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility))
@@ -711,9 +722,10 @@ void AFPSCharacter::HandleCameraOnDeath()
 
 void AFPSCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	//TODO: Work on collision preset so that the log below will only show on weapon overlap
+	UE_LOG(LogTemp, Warning, TEXT("OtherActor: %s"), *OtherActor->GetName());
 	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSWeaponInterface::StaticClass()))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("OtherActor: %s"), *OtherActor->GetName());
 		AFPSWeaponBase* Weapon = IFPSWeaponInterface::Execute_GetWeapon(OtherActor);
 		this->PickupWeapon(Weapon);
 	}

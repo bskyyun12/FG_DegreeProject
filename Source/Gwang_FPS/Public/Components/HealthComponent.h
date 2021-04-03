@@ -23,7 +23,7 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_OnSpawn();
 
-	UFUNCTION(Server, Reliable)
+	UFUNCTION(Server, Reliable)		
 	void Server_TakeDamage(AActor* DamageSource, float DamageOnHealth, float DamageOnArmor);
 
 	UFUNCTION(Server, Reliable)

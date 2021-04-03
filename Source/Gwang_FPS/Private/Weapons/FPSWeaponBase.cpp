@@ -76,8 +76,6 @@ void AFPSWeaponBase::Multicast_ToggleVisibility_Implementation(bool bNewVisibili
 
 void AFPSWeaponBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
 {
-	UE_LOG(LogTemp, Warning, TEXT("(Server)AFPSWeaponBase::OnWeaponEquipped"));
-
 	SetOwner(OwnerCharacter);	// OnRep_Owner()
 	SetInstigator(OwnerCharacter);
 
@@ -86,8 +84,6 @@ void AFPSWeaponBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* Owner
 
 void AFPSWeaponBase::Server_OnWeaponDroped_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("(Server)AFPSWeaponBase::OnWeaponDroped"));
-
 	SetInstigator(nullptr);
 	SetOwner(nullptr);	// OnRep_Owner()
 
@@ -113,6 +109,7 @@ void AFPSWeaponBase::HandleWeaponEquip()
 {
 	TPWeaponMesh->SetSimulatePhysics(false);
 	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	if (UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
@@ -140,10 +137,14 @@ void AFPSWeaponBase::HandleWeaponEquip()
 void AFPSWeaponBase::HandleWeaponDrop()
 {
 	FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+	
 	TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-	InteractCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	TPWeaponMesh->SetCollisionProfileName(TEXT("Weapon_Dropped"));
 	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	TPWeaponMesh->SetSimulatePhysics(true);
+	
+	InteractCollider->SetCollisionProfileName(TEXT("Weapon_Dropped"));
+	InteractCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
 AFPSWeaponBase* AFPSWeaponBase::GetWeapon_Implementation()
@@ -165,10 +166,8 @@ void AFPSWeaponBase::Server_OnBeginFireWeapon_Implementation()
 
 void AFPSWeaponBase::Server_Fire_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_Fire_Implementation"));
 	if (CanFire() == false)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CanFire() == false"));
 		Server_OnEndFireWeapon();
 		return;
 	}
@@ -211,10 +210,8 @@ void AFPSWeaponBase::Client_OnBeginFireWeapon_Implementation()
 
 void AFPSWeaponBase::Client_Fire_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_Fire_Implementation"));
 	if (CanFire() == false)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CanFire() == false"));
 		Client_OnEndFireWeapon();
 		return;
 	}
@@ -249,8 +246,6 @@ bool AFPSWeaponBase::CanReload()
 
 void AFPSWeaponBase::Server_OnReload_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_Reload_Implementation()"));
-
 	bIsReloading = true;
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
@@ -266,8 +261,6 @@ void AFPSWeaponBase::Server_OnReload_Implementation()
 
 void AFPSWeaponBase::Client_OnReload_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Client_Reload_Implementation()"));
-
 	bIsReloading = true;
 
 	// Play FP_WeaponReloadAnim
@@ -279,25 +272,21 @@ void AFPSWeaponBase::Client_OnReload_Implementation()
 
 void AFPSWeaponBase::Server_OnEndReload_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::Server_OnEndReload_Implementation"));
 	bIsReloading = false;
 }
 
 void AFPSWeaponBase::PlayFireEmitter(bool FPWeapon)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AFPSWeaponBase::PlayFireEmitter"));
 	if (FPWeaponMesh != nullptr)
 	{
 		if (WeaponInfo.FireEmitter != nullptr)
 		{
 			if (FPWeapon)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("(FP Weapon) BANG!!"));
 				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, FPWeaponMesh, WeaponInfo.FP_FireEmitterSocketName);
 			}
 			else
 			{
-				UE_LOG(LogTemp, Warning, TEXT("(TP Weapon) BANG!!"));
 				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, TPWeaponMesh, WeaponInfo.TP_FireEmitterSocketName);
 			}
 		}

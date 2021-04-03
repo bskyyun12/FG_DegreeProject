@@ -24,6 +24,8 @@ public:
 	void CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor);
 	void Server_OnBeginFireWeapon_Implementation() override;
 	void Server_Fire_Implementation() override;
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_HitEffect(FVector const& HitPoint, UParticleSystem* HitEmitter);
 	void Server_OnEndFireWeapon_Implementation() override;
 	void Client_OnBeginFireWeapon_Implementation() override;
 	void Client_OnEndFireWeapon_Implementation() override;
