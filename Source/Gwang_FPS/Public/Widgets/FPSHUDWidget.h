@@ -10,6 +10,7 @@ class UTextBlock;
 class UAmmoWidget;
 class UHealthArmorWidget;
 class UWidgetSwitcher;
+class UChatPanel;
 
 UCLASS()
 class GWANG_FPS_API UFPSHUDWidget : public UFPSWidgetBase
@@ -24,6 +25,8 @@ public:
 	void UpdateAmmoUI(int CurrentAmmo, int RemainingAmmo);
 
 	void UpdateScoreUI(int MarvelScore, int DCScore);
+
+	UChatPanel* GetChatPanel() const;
 
 private:
 
@@ -41,6 +44,9 @@ private:
 
 	UPROPERTY(meta = (BindWidget))
 	UWidgetSwitcher* WidgetSwitcher_Crosshair;
+
+	UPROPERTY(meta = (BindWidget))
+	UChatPanel* ChatPanel;
 
 	FTimerHandle CrosshairTimer;
 };

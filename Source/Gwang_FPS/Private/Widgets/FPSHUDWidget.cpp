@@ -40,3 +40,8 @@ void UFPSHUDWidget::UpdateScoreUI(int MarvelScore, int DCScore)
 	Text_MarvelScore->SetText(UKismetTextLibrary::Conv_IntToText(MarvelScore));
 	Text_DCScore->SetText(UKismetTextLibrary::Conv_IntToText(DCScore));
 }
+
+UChatPanel* UFPSHUDWidget::GetChatPanel() const
+{
+	return ChatPanel;
+}

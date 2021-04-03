@@ -22,9 +22,6 @@ class GWANG_FPS_API AFPSPlayerController : public APlayerController, public IFPS
 	GENERATED_BODY()
 	
 public:
-	////////////////////////////////
-	// IFPSPlayerControllerInterface
-
 	// Getters
 	ETeam GetTeam_Implementation() override;
 
@@ -59,14 +56,18 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_OnUpdateAmmoUI(int CurrentAmmo, int RemainingAmmo);
 
+	// Chat
+	void StartChat_Implementation() override;
+	void SendChat_Implementation(const FName& Chat) override;
+	UFUNCTION(Server, Reliable)
+	void Server_OnSendChat(const FName& PlayerName, const FName& Chat);
+	void OnUpdateChatUI_Implementation(const FName& PlayerName, const FName& Chat) override;
+	UFUNCTION(Client, Reliable)
+	void Client_OnUpdateChatUI(const FName& PlayerName, const FName& Chat);
+
 	// Others
 	void ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake) override;
 	void AddControlRotation_Implementation(const FRotator& RotationToAdd) override;
-
-
-
-	// IFPSPlayerControllerInterface
-	////////////////////////////////
 
 protected:
 	// Widgets
@@ -89,13 +90,10 @@ protected:
 	// Non widgets :)
 	UPROPERTY()
 	AFPSGameMode* GameMode;
-
 	UPROPERTY()
 	AFPSGameState* GameState;
-
 	UPROPERTY(Replicated)
 	ETeam Team;
-
 	FTimerHandle DamageReceiveTimer;
 
 protected:

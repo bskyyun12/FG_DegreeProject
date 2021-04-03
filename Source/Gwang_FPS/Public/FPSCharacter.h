@@ -67,6 +67,10 @@ public:
 	void Server_HandleCrouch(bool bCrouchButtonDown);
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_HandleCrouch(bool bCrouchButtonDown);
+
+	void OnEscapeButtonPressed();
+
+	void StartChat();
 #pragma endregion Input bindings
 
 #pragma region IFPSCharacterInterface
@@ -80,9 +84,6 @@ public:
 	void OnSpawnPlayer_Implementation() override;
 	void TakeDamage_Implementation(AActor* DamageCauser, float DamageOnHealth, float DamageOnArmor) override;
 #pragma endregion IFPSCharacterInterface
-
-
-
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -110,7 +111,7 @@ protected:
 	TArray<AFPSWeaponBase*> StartWeapons;
 	
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
-	AFPSWeaponBase* CurrentHoldingWeapon;
+	AFPSWeaponBase* CurrentlyHeldWeapon;
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<AFPSWeaponBase> RifleClass;

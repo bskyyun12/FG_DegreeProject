@@ -2,12 +2,14 @@
 
 
 #include "FPSPlayerController.h"
+#include "GameFramework/PlayerState.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
 
 #include "FPSCharacter.h"
 #include "FPSGameMode.h"
 #include "FPSGameState.h"
+#include "Widgets/ChatPanel.h"
 #include "Widgets/DamageReceiveWidget.h"
 #include "Widgets/FPSHUDWidget.h"
 #include "Widgets/GameOverWidget.h"
@@ -332,6 +334,47 @@ void AFPSPlayerController::Client_LoadGameOver_Implementation(bool bIsWinner, bo
 		GameOverWidget->SetResultText(bIsWinner);
 	}
 }
+
+// Chat
+void AFPSPlayerController::StartChat_Implementation()
+{
+	if (FPSHUDWidget != nullptr && FPSHUDWidget->GetChatPanel() != nullptr)
+	{
+		FPSHUDWidget->GetChatPanel()->OnStartChat();
+	}
+}
+
+void AFPSPlayerController::SendChat_Implementation(const FName& Chat)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Chat Sender: ( %s ) "), *this->GetName());
+	Server_OnSendChat(*PlayerState->GetPlayerName(), Chat);
+}
+
+void AFPSPlayerController::Server_OnSendChat_Implementation(const FName& PlayerName, const FName& Chat)
+{
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		APlayerController* PC = Iterator->Get();
+		if (PC != nullptr && UKismetSystemLibrary::DoesImplementInterface(PC, UFPSPlayerControllerInterface::StaticClass()))
+		{
+			IFPSPlayerControllerInterface::Execute_OnUpdateChatUI(PC, PlayerName, Chat);
+		}
+	}
+}
+
+void AFPSPlayerController::OnUpdateChatUI_Implementation(const FName& PlayerName, const FName& Chat)
+{
+	Client_OnUpdateChatUI(PlayerName, Chat);
+}
+
+void AFPSPlayerController::Client_OnUpdateChatUI_Implementation(const FName& PlayerName, const FName& Chat)
+{
+	if (FPSHUDWidget != nullptr && FPSHUDWidget->GetChatPanel() != nullptr)
+	{
+		FPSHUDWidget->GetChatPanel()->AddChatRow(PlayerName, Chat);
+	}
+}
+
 #pragma endregion Widget
 
 #pragma region Recoil
