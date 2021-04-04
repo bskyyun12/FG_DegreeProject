@@ -60,7 +60,7 @@ void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(AFPSWeaponBase, bIsReloading);
 }
 
-void AFPSWeaponBase::ToggleVisibility_Implementation(bool bNewVisibility)
+void AFPSWeaponBase::ToggleVisibility(bool bNewVisibility)
 {
 	// TODO: Run code below in delay? since it's a multicast reliable function
 	Multicast_ToggleVisibility(bNewVisibility);
@@ -121,19 +121,13 @@ void AFPSWeaponBase::HandleWeaponEquip()
 		USkeletalMeshComponent* CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(GetOwner());
 		if (CharacterMesh != nullptr && TPWeaponMesh != nullptr)
 		{
-			if (TPWeaponMesh->CanAttachAsChild(CharacterMesh, WeaponInfo.TP_CharacterSocketName))
-			{
-				TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
-			}
+			TPWeaponMesh->AttachToComponent(CharacterMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.TP_CharacterSocketName);
 		}
 
 		USkeletalMeshComponent* ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(GetOwner());
 		if (ArmMesh != nullptr && FPWeaponMesh != nullptr)
 		{
-			if (TPWeaponMesh->CanAttachAsChild(ArmMesh, WeaponInfo.FP_ArmsSocketName))
-			{
-				FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.FP_ArmsSocketName);
-			}
+			FPWeaponMesh->AttachToComponent(ArmMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponInfo.FP_ArmsSocketName);
 		}
 	}
 }
@@ -222,7 +216,7 @@ void AFPSWeaponBase::GrenadeSimulation()
 		float DisplacementX = LaunchSpeed * FlightTime * FMath::Cos(LaunchAngleInRad);
 		float DisplacementZ = LaunchSpeed * FlightTime * FMath::Sin(LaunchAngleInRad) - 0.5f * Gravity * FlightTime * FlightTime;
 		FVector NewPoint = LaunchPoint + LaunchForward * DisplacementX + LaunchUp * DisplacementZ;
-		
+
 		FHitResult Hit;
 		FCollisionQueryParams Params;
 		Params.AddIgnoredActor(this);

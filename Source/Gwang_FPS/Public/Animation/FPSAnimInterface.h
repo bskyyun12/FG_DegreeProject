@@ -13,21 +13,18 @@ class UFPSAnimInterface : public UInterface
 	GENERATED_BODY()
 };
 
-/**
- * 
- */
 class GWANG_FPS_API IFPSAnimInterface
 {
 	GENERATED_BODY()
 
-	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
+		// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void UpdateSpineAngle(float Pitch);
+	UFUNCTION(BlueprintNativeEvent)
+	void UpdateSpineAngle(const float Pitch);
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	UFUNCTION(BlueprintNativeEvent)
 	void HandleCrouch(bool bCrouchButtonDown);
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	UFUNCTION(BlueprintNativeEvent)
 	void OnDeath();
 };

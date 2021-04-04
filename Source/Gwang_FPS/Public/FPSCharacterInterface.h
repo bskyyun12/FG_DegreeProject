@@ -25,7 +25,7 @@ public:
 
 	// Getters
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	FTransform GetCameraTransform();
+	const FTransform GetCameraTransform();
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	USkeletalMeshComponent* GetCharacterMesh();
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)

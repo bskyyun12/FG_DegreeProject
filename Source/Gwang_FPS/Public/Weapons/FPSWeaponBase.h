@@ -132,7 +132,6 @@ public:
 	float FlightTime = 0.f;
 	float LifeTime = 0.f;
 	float DebugTime = 0.f;
-
 	// TEST
 
 	AFPSWeaponBase();
@@ -140,7 +139,7 @@ public:
 	virtual void OnReset();
 
 	// Equip & Hide & Drop
-	void ToggleVisibility_Implementation(bool bNewVisibility) override;
+	void ToggleVisibility(bool bNewVisibility);
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_ToggleVisibility(bool bNewVisibility);
 	UFUNCTION(Server, Reliable)

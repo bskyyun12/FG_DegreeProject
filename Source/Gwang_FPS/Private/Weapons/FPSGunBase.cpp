@@ -108,8 +108,8 @@ void AFPSGunBase::Server_Fire_Implementation()
 			AActor* HitActor = Hit.GetActor();
 			if (HitActor != nullptr)
 			{
-				bool bHitPlayer = UKismetSystemLibrary::DoesImplementInterface(HitActor, UFPSCharacterInterface::StaticClass());
-				if (bHitPlayer)
+				bool bIsHitActorPlayer = UKismetSystemLibrary::DoesImplementInterface(HitActor, UFPSCharacterInterface::StaticClass());
+				if (bIsHitActorPlayer)
 				{
 					float DamageOnHealth = 0.f;
 					float DamageOnArmor = 0.f;
@@ -118,6 +118,7 @@ void AFPSGunBase::Server_Fire_Implementation()
 
 					if (GetInstigatorController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetInstigatorController(), UFPSPlayerControllerInterface::StaticClass()))
 					{
+						// This is for shooter(damage causer). Currently used for changing crosshair's appearance on successful hit.
 						IFPSPlayerControllerInterface::Execute_OnApplyDamage(GetInstigatorController());
 					}
 				}

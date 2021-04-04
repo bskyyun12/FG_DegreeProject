@@ -14,6 +14,7 @@ class UBoxComponent;
 class UCameraComponent;
 class USkeletalMeshComponent;
 class UHealthComponent;
+class UAnimInstance;
 class UFPSGameInstance;
 
 UCLASS()
@@ -36,9 +37,9 @@ public:
 	void Turn(float Value);
 	void LookUp(float Value);
 	UFUNCTION(Server, Unreliable)
-	void Server_LookUp(FRotator CameraRot);
+	void Server_LookUp(FRotator const& CameraRot);
 	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_LookUp(FRotator CameraRot);
+	void Multicast_LookUp(FRotator const& CameraRot);
 
 	void OnBeginFire();
 	UFUNCTION(Server, Reliable)
@@ -76,7 +77,7 @@ public:
 
 #pragma region IFPSCharacterInterface
 	// Getters
-	FTransform GetCameraTransform_Implementation() override;
+	const FTransform GetCameraTransform_Implementation() override;
 	USkeletalMeshComponent* GetCharacterMesh_Implementation() override;
 	USkeletalMeshComponent* GetArmMesh_Implementation() override;
 	float GetHealth_Implementation() override;
@@ -133,6 +134,10 @@ protected:
 	// Cache
 	UPROPERTY()
 	UFPSGameInstance* FPSGameInstance;
+	UPROPERTY()
+	UAnimInstance* CharacterAnimInstance;
+	UPROPERTY()
+	UAnimInstance* ArmsAnimInstance;
 
 protected:
 	virtual void BeginPlay() override;

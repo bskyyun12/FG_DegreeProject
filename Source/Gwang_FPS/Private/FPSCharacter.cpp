@@ -13,12 +13,12 @@
 #include "Net/UnrealNetwork.h"
 
 #include "Animation/AnimInstance.h"
-#include "AnimInstances/FPSAnimInterface.h"
 #include "Components/HealthComponent.h"
 #include "FPSPlayerControllerInterface.h"
 #include "FPSPlayerController.h"
 #include "Weapons/FPSWeaponInterface.h"
 #include "Weapons/FPSWeaponBase.h"
+#include "Animation/FPSAnimInterface.h"
 
 void AFPSCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -61,6 +61,23 @@ void AFPSCharacter::BeginPlay()
 	if (FollowCamera != nullptr)
 	{
 		CameraRelativeLocation_Default = FollowCamera->GetRelativeLocation();
+	}
+
+	if (GetMesh() != nullptr)
+	{
+		CharacterAnimInstance = GetMesh()->GetAnimInstance();
+		if (!ensure(CharacterAnimInstance != nullptr))
+		{
+			return;
+		}
+	}
+	if (FPSArmMesh != nullptr)
+	{
+		ArmsAnimInstance = FPSArmMesh->GetAnimInstance();
+		if (!ensure(ArmsAnimInstance != nullptr))
+		{
+			return;
+		}
 	}
 }
 
@@ -139,24 +156,19 @@ void AFPSCharacter::LookUp(float Value)
 	Server_LookUp(GetControlRotation());
 }
 
-void AFPSCharacter::Server_LookUp_Implementation(FRotator CameraRot)
+void AFPSCharacter::Server_LookUp_Implementation(FRotator const& CameraRot)
 {
 	Multicast_LookUp(CameraRot);
 }
 
-void AFPSCharacter::Multicast_LookUp_Implementation(FRotator CameraRot)
+void AFPSCharacter::Multicast_LookUp_Implementation(FRotator const& CameraRot)
 {
 	if (!IsLocallyControlled())
 	{
 		FollowCamera->SetWorldRotation(CameraRot);
-
-		if (GetMesh() != nullptr)
+		if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
 		{
-			UAnimInstance* FPSAnimInstance = GetMesh()->GetAnimInstance();
-			if (FPSAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(FPSAnimInstance, UFPSAnimInterface::StaticClass()))
-			{
-				IFPSAnimInterface::Execute_UpdateSpineAngle(FPSAnimInstance, CameraRot.Pitch);
-			}
+			IFPSAnimInterface::Execute_UpdateSpineAngle(CharacterAnimInstance, CameraRot.Pitch);
 		}
 	}
 }
@@ -211,7 +223,6 @@ void AFPSCharacter::SwitchToMainWeapon()
 // Bound to input "2"
 void AFPSCharacter::SwitchToSubWeapon()
 {
-
 	OnEndFire();
 	if (CurrentWeapons[2] != nullptr)
 	{
@@ -240,10 +251,7 @@ void AFPSCharacter::PickupWeapon(AFPSWeaponBase* const& WeaponToPickup)
 			else
 			{
 				CurrentWeapons[(uint8)WeaponToPickup->GetWeaponInfo().WeaponType] = WeaponToPickup;
-				if (UKismetSystemLibrary::DoesImplementInterface(WeaponToPickup, UFPSWeaponInterface::StaticClass()))
-				{
-					IFPSWeaponInterface::Execute_ToggleVisibility(WeaponToPickup, false);
-				}
+				WeaponToPickup->ToggleVisibility(false);
 			}
 		}
 	}
@@ -255,12 +263,11 @@ void AFPSCharacter::PlayEquipAnim(AFPSWeaponBase* const& WeaponToEquip)
 	if (WeaponToEquip != nullptr)
 	{
 		FWeaponInfo WeaponInfo = WeaponToEquip->GetWeaponInfo();
-		UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
-		if (AnimInstance != nullptr)
+		if (ArmsAnimInstance != nullptr)
 		{
 			if (WeaponInfo.FP_EquipAnim != nullptr)
 			{
-				AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
+				ArmsAnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
 			}
 		}
 	}
@@ -278,9 +285,9 @@ void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* const& Wea
 
 		for (int i = 0; i < CurrentWeapons.Num(); i++)
 		{
-			if (CurrentWeapons[i] != nullptr && UKismetSystemLibrary::DoesImplementInterface(CurrentWeapons[i], UFPSWeaponInterface::StaticClass()))
+			if (CurrentWeapons[i] != nullptr)
 			{
-				IFPSWeaponInterface::Execute_ToggleVisibility(CurrentWeapons[i], CurrentWeapons[i] == CurrentlyHeldWeapon);
+				CurrentWeapons[i]->ToggleVisibility(CurrentWeapons[i] == CurrentlyHeldWeapon);
 			}
 		}
 	}
@@ -328,13 +335,12 @@ void AFPSCharacter::Reload()
 		CurrentlyHeldWeapon->Client_OnReload();
 
 		// Play ArmsReloadAnim
-		UAnimInstance* AnimInstance = FPSArmMesh->GetAnimInstance();
-		if (AnimInstance != nullptr)
+		if (ArmsAnimInstance != nullptr)
 		{
 			FWeaponInfo WeaponInfo = CurrentlyHeldWeapon->GetWeaponInfo();
 			if (WeaponInfo.FP_ArmsReloadAnim != nullptr)
 			{
-				AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
+				ArmsAnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
 			}
 		}
 	}
@@ -361,13 +367,12 @@ void AFPSCharacter::Multicast_PlayReloadAnim_Implementation(AFPSWeaponBase* Weap
 	{
 		if (GetMesh() != nullptr)
 		{
-			UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-			if (AnimInstance != nullptr)
+			if (CharacterAnimInstance != nullptr)
 			{
 				FWeaponInfo WeaponInfo = Weapon->GetWeaponInfo();
 				if (WeaponInfo.TP_ReloadAnim != nullptr)
 				{
-					AnimInstance->Montage_Play(WeaponInfo.TP_ReloadAnim);
+					CharacterAnimInstance->Montage_Play(WeaponInfo.TP_ReloadAnim);
 				}
 			}
 		}
@@ -421,13 +426,9 @@ void AFPSCharacter::Multicast_HandleCrouch_Implementation(bool bCrouchButtonDown
 
 	if (!IsLocallyControlled())
 	{
-		if (GetMesh() != nullptr)
+		if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
 		{
-			UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-			if (AnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(AnimInstance, UFPSAnimInterface::StaticClass()))
-			{
-				IFPSAnimInterface::Execute_HandleCrouch(AnimInstance, bCrouchButtonDown);
-			}
+			IFPSAnimInterface::Execute_HandleCrouch(CharacterAnimInstance, bCrouchButtonDown);
 		}
 	}
 }
@@ -489,7 +490,7 @@ float AFPSCharacter::GetArmor_Implementation()
 	return -1.f;
 }
 
-FTransform AFPSCharacter::GetCameraTransform_Implementation()
+const FTransform AFPSCharacter::GetCameraTransform_Implementation()
 {
 	return FollowCamera->GetComponentTransform();
 }
@@ -701,10 +702,9 @@ void AFPSCharacter::Multicast_OnDeath_Implementation()
 	{
 		if (GetMesh() != nullptr)
 		{
-			UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-			if (AnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(AnimInstance, UFPSAnimInterface::StaticClass()))
+			if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
 			{
-				IFPSAnimInterface::Execute_OnDeath(AnimInstance);
+				IFPSAnimInterface::Execute_OnDeath(CharacterAnimInstance);
 			}
 		}
 	}
