@@ -7,6 +7,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 
 #include "Lobby/LobbyInterface.h"
+#include "Weapons/FPSWeaponBase.h"
 
 bool ULobbyInventory::Initialize()
 {
@@ -14,42 +15,100 @@ bool ULobbyInventory::Initialize()
 
 	Button_MainWeaponLeft->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_MainWeaponLeft);
 	Button_MainWeaponRight->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_MainWeaponRight);
+
+	Button_SubWeaponLeft->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_SubWeaponLeft);
+	Button_SubWeaponRight->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_SubWeaponRight);
+
+	Button_KnifeLeft->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_KnifeLeft);
+	Button_KnifeRight->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_KnifeRight);
+
+	Button_GrenadeLeft->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_GrenadeLeft);
+	Button_GrenadeRight->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_GrenadeRight);
+
 	Button_Apply->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_Apply);
 
 	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
 	{
 		FUserData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
-		CurrentStartMainWeaponIndex = (int)UserData.StartMainWeapon;
-		CurrentStartSubWeaponIndex = (int)UserData.StartSubWeapon;
+		MainWeaponIndex = (int)UserData.StartMainWeapon;
+		SubWeaponIndex = (int)UserData.StartSubWeapon;
+		KnifeIndex = (int)UserData.StartKnife;
+		GrenadeIndex = (int)UserData.StartGrenade;
 	}
 
-	// NAME CHANGING needs a caution
+	// ENUM NAME CHANGING needs a caution
 	MainWeaponEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("EMainWeapon"));
 	SubWeaponEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("ESubWeapon"));
+	KnifeEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("EKnife"));
+	GrenadeEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("EGrenade"));
 
-	Text_MainWeapon->SetText(MainWeaponEnum->GetDisplayNameTextByIndex(CurrentStartMainWeaponIndex));
+	ChangeWeaponText(MainWeaponIndex, MainWeaponEnum, Text_MainWeapon);
+	ChangeWeaponText(SubWeaponIndex, SubWeaponEnum, Text_SubWeapon);
+	ChangeWeaponText(KnifeIndex, KnifeEnum, Text_Knife);
+	ChangeWeaponText(GrenadeIndex, GrenadeEnum, Text_Grenade);
 	
 	return true;
 }
 
 void ULobbyInventory::OnClicked_Button_MainWeaponLeft()
 {
-	CurrentStartMainWeaponIndex--;
-	if (CurrentStartMainWeaponIndex < 0)
-	{
-		CurrentStartMainWeaponIndex = MainWeaponEnum->NumEnums() - 3;
-	}
-	Text_MainWeapon->SetText(MainWeaponEnum->GetDisplayNameTextByIndex(CurrentStartMainWeaponIndex));
+	MainWeaponIndex--;
+	ChangeWeaponText(MainWeaponIndex, MainWeaponEnum, Text_MainWeapon);
 }
 
 void ULobbyInventory::OnClicked_Button_MainWeaponRight()
 {
-	CurrentStartMainWeaponIndex++;
-	if (CurrentStartMainWeaponIndex > MainWeaponEnum->NumEnums() - 3)
+	MainWeaponIndex--;
+	ChangeWeaponText(MainWeaponIndex, MainWeaponEnum, Text_MainWeapon);
+}
+
+void ULobbyInventory::OnClicked_Button_SubWeaponLeft()
+{
+	SubWeaponIndex--;
+	ChangeWeaponText(SubWeaponIndex, SubWeaponEnum, Text_SubWeapon);
+}
+
+void ULobbyInventory::OnClicked_Button_SubWeaponRight()
+{
+	SubWeaponIndex++;
+	ChangeWeaponText(SubWeaponIndex, SubWeaponEnum, Text_SubWeapon);
+}
+
+void ULobbyInventory::OnClicked_Button_KnifeLeft()
+{
+	KnifeIndex--;
+	ChangeWeaponText(KnifeIndex, KnifeEnum, Text_Knife);
+}
+
+void ULobbyInventory::OnClicked_Button_KnifeRight()
+{
+	KnifeIndex++;
+	ChangeWeaponText(KnifeIndex, KnifeEnum, Text_Knife);
+}
+
+void ULobbyInventory::OnClicked_Button_GrenadeLeft()
+{
+	GrenadeIndex--;
+	ChangeWeaponText(GrenadeIndex, GrenadeEnum, Text_Grenade);
+}
+
+void ULobbyInventory::OnClicked_Button_GrenadeRight()
+{
+	GrenadeIndex++;
+	ChangeWeaponText(GrenadeIndex, GrenadeEnum, Text_Grenade);
+}
+
+void ULobbyInventory::ChangeWeaponText(int& Index, UEnum* WeaponEnum, UTextBlock* WeaponText)
+{
+	if (Index < 0)
 	{
-		CurrentStartMainWeaponIndex = 0;
+		Index = WeaponEnum->NumEnums() - 3;
 	}
-	Text_MainWeapon->SetText(MainWeaponEnum->GetDisplayNameTextByIndex(CurrentStartMainWeaponIndex));
+	else if (Index > WeaponEnum->NumEnums() - 3)
+	{
+		Index = 0;
+	}
+	WeaponText->SetText(WeaponEnum->GetDisplayNameTextByIndex(Index));
 }
 
 void ULobbyInventory::OnClicked_Button_Apply()
@@ -59,8 +118,10 @@ void ULobbyInventory::OnClicked_Button_Apply()
 	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
 	{
 		FUserData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
-		UserData.StartMainWeapon = (EMainWeapon)CurrentStartMainWeaponIndex;
-		UserData.StartSubWeapon = (ESubWeapon)CurrentStartSubWeaponIndex;
+		UserData.StartMainWeapon = (EMainWeapon)MainWeaponIndex;
+		UserData.StartSubWeapon = (ESubWeapon)SubWeaponIndex;
+		UserData.StartKnife = (EKnife)KnifeIndex;
+		UserData.StartGrenade = (EGrenade)GrenadeIndex;
 		ILobbyInterface::Execute_UpdateUserData(GetOwningPlayer(), UserData);
 	}
 }

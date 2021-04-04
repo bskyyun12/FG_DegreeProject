@@ -93,6 +93,8 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 	PlayerInputComponent->BindAction("MainWeapon", IE_Pressed, this, &AFPSCharacter::SwitchToMainWeapon);
 	PlayerInputComponent->BindAction("SubWeapon", IE_Pressed, this, &AFPSCharacter::SwitchToSubWeapon);
+	PlayerInputComponent->BindAction("Knife", IE_Pressed, this, &AFPSCharacter::SwitchToKnife);
+	PlayerInputComponent->BindAction("Grenade", IE_Pressed, this, &AFPSCharacter::SwitchToGrenade);
 
 	PlayerInputComponent->BindAction("Drop", IE_Pressed, this, &AFPSCharacter::Drop);
 
@@ -212,22 +214,34 @@ void AFPSCharacter::Server_OnEndFire_Implementation(AFPSWeaponBase* Weapon)
 // Bound to input "1"
 void AFPSCharacter::SwitchToMainWeapon()
 {
-	OnEndFire();
-	if (CurrentWeapons[1] != nullptr)
-	{
-		PlayEquipAnim(CurrentWeapons[1]);
-		Server_EquipWeapon(CurrentWeapons[1]);
-	}
+	SwitchWeapon(CurrentWeapons[1]);
 }
 
 // Bound to input "2"
 void AFPSCharacter::SwitchToSubWeapon()
 {
+	SwitchWeapon(CurrentWeapons[2]);
+}
+
+// Bound to input "3"
+void AFPSCharacter::SwitchToKnife()
+{
+	SwitchWeapon(CurrentWeapons[3]);
+}
+
+// Bound to input "4"
+void AFPSCharacter::SwitchToGrenade()
+{
+	SwitchWeapon(CurrentWeapons[4]);
+}
+
+void AFPSCharacter::SwitchWeapon(AFPSWeaponBase* WeaponToSwitch)
+{
 	OnEndFire();
-	if (CurrentWeapons[2] != nullptr)
+	if (WeaponToSwitch != nullptr)
 	{
-		PlayEquipAnim(CurrentWeapons[2]);
-		Server_EquipWeapon(CurrentWeapons[2]);
+		PlayEquipAnim(WeaponToSwitch);
+		Server_EquipWeapon(WeaponToSwitch);
 	}
 }
 
@@ -574,18 +588,18 @@ void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation(FUserData const& Us
 		default:
 			break;
 		case EMainWeapon::M4A1:
-			if (!ensure(M4A1Class != nullptr))
+			if (!ensure(WeaponClass.M4A1Class != nullptr))
 			{
 				return;
 			}
-			StartWeapons[1] = World->SpawnActor<AFPSWeaponBase>(M4A1Class);
+			StartWeapons[1] = World->SpawnActor<AFPSWeaponBase>(WeaponClass.M4A1Class);
 			break;
 		case EMainWeapon::AK47:
-			if (!ensure(AK47Class != nullptr))
+			if (!ensure(WeaponClass.AK47Class != nullptr))
 			{
 				return;
 			}
-			StartWeapons[1] = World->SpawnActor<AFPSWeaponBase>(AK47Class);
+			StartWeapons[1] = World->SpawnActor<AFPSWeaponBase>(WeaponClass.AK47Class);
 			break;
 		}
 	}
@@ -597,22 +611,54 @@ void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation(FUserData const& Us
 		switch (StartSubWeapon)
 		{
 		case ESubWeapon::Pistol:
-			if (!ensure(PistolClass != nullptr))
+			if (!ensure(WeaponClass.PistolClass != nullptr))
 			{
 				return;
 			}
-			StartWeapons[2] = World->SpawnActor<AFPSWeaponBase>(PistolClass);
+			StartWeapons[2] = World->SpawnActor<AFPSWeaponBase>(WeaponClass.PistolClass);
+			break;
+		}
+	}
+
+	// Knife Setup
+	if (StartWeapons[3] == nullptr)
+	{
+		EKnife StartKnife = UserData.StartKnife;
+		switch (StartKnife)
+		{
+		case EKnife::Knife:
+			if (!ensure(WeaponClass.KnifeClass != nullptr))
+			{
+				return;
+			}
+			StartWeapons[3] = World->SpawnActor<AFPSWeaponBase>(WeaponClass.KnifeClass);
+			break;
+		}
+	}
+
+	// Knife Setup
+	if (StartWeapons[4] == nullptr)
+	{
+		EGrenade StartGrenade = UserData.StartGrenade;
+		switch (StartGrenade)
+		{
+		case EGrenade::Grenade:
+			if (!ensure(WeaponClass.GrenadeClass != nullptr))
+			{
+				return;
+			}
+			StartWeapons[4] = World->SpawnActor<AFPSWeaponBase>(WeaponClass.GrenadeClass);
 			break;
 		}
 	}
 
 	CurrentWeapons = StartWeapons;
-
 	for (AFPSWeaponBase* Weapon : CurrentWeapons)
 	{
 		if (Weapon != nullptr)
 		{
 			Weapon->OnReset();
+			Weapon->ToggleVisibility(false);
 		}
 	}
 

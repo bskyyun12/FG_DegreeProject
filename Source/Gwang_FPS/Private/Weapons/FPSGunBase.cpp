@@ -41,13 +41,15 @@ void AFPSGunBase::HandleWeaponEquip()
 
 void AFPSGunBase::Server_OnBeginFireWeapon_Implementation()
 {
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
+	// Super::Server_OnBeginFireWeapon_Implementation();
+
+	if (CanFire() == false)
 	{
 		return;
 	}
 
-	if (CanFire() == false)
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
 	{
 		return;
 	}

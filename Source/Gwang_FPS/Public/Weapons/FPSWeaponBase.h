@@ -16,14 +16,72 @@ class USphereComponent;
 class UParticleSystem;
 class USoundBase;
 
+// Each enum value represents index of weapon array in FPSCharacter
 UENUM(BlueprintType)
 enum class EWeaponType : uint8
 {
 	None,
 	MainWeapon,
 	SubWeapon,
+	Melee,
+	Grenade,
 
 	EnumSize,	// Leave the enum value as default
+};
+
+UENUM(BlueprintType)
+enum class EMainWeapon : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
+{
+	M4A1,
+	AK47,
+	EnumSize
+};
+
+UENUM(BlueprintType)
+enum class ESubWeapon : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
+{
+	Pistol,
+	EnumSize
+};
+
+UENUM(BlueprintType)
+enum class EKnife : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
+{
+	Knife,
+	EnumSize
+};
+
+UENUM(BlueprintType)
+enum class EGrenade : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
+{
+	Grenade,
+	EnumSize
+};
+
+USTRUCT(BlueprintType)
+struct FWeaponClass
+{
+	GENERATED_BODY()
+
+	// Main Weapons
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AFPSWeaponBase> M4A1Class;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AFPSWeaponBase> PistolClass;
+
+	// Sub Weapons
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AFPSWeaponBase> AK47Class;
+
+	// Knives
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AFPSWeaponBase> KnifeClass;
+
+	// Grenades
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AFPSWeaponBase> GrenadeClass;
+
 };
 
 USTRUCT(BlueprintType)
@@ -115,25 +173,6 @@ class GWANG_FPS_API AFPSWeaponBase : public AActor, public IFPSWeaponInterface
 	GENERATED_BODY()
 	
 public:
-	// TEST
-	UFUNCTION()
-	void GrenadeSimulation();
-
-	float LaunchAngleInRad;
-	float LaunchSpeed;
-	float Gravity = 981.f;
-
-	FVector LaunchPoint;
-	FVector PrevPoint;
-	FVector LaunchForward;
-	FVector LaunchUp;
-
-	FTimerHandle GrenadeTimer;
-	float FlightTime = 0.f;
-	float LifeTime = 0.f;
-	float DebugTime = 0.f;
-	// TEST
-
 	AFPSWeaponBase();
 
 	virtual void OnReset();

@@ -8,6 +8,7 @@
 #include "OnlineSubSystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "MainMenu/MenuWidgets/MainMenuInterface.h"
+#include "Weapons/FPSWeaponBase.h"
 
 #include "FPSGameInstance.generated.h"
 
@@ -21,21 +22,6 @@ enum class ETeam : uint8 {
 	None, 
 	Marvel,
 	DC,
-	EnumSize
-};
-
-UENUM(BlueprintType)
-enum class EMainWeapon : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
-{
-	M4A1,
-	AK47,
-	EnumSize
-};
-
-UENUM(BlueprintType)
-enum class ESubWeapon : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
-{
-	Pistol,
 	EnumSize
 };
 
@@ -62,6 +48,12 @@ struct FUserData
 	UPROPERTY()
 	ESubWeapon StartSubWeapon;
 
+	UPROPERTY()
+	EKnife StartKnife;
+
+	UPROPERTY()
+	EGrenade StartGrenade;
+
 	FUserData()
 	{
 		UserName = "Gwang";
@@ -71,6 +63,8 @@ struct FUserData
 
 		StartMainWeapon = EMainWeapon::M4A1;
 		StartSubWeapon = ESubWeapon::Pistol;
+		StartKnife = EKnife::Knife;
+		StartGrenade = EGrenade::Grenade;
 	}
 
 	bool operator == (FUserData const& UserData)

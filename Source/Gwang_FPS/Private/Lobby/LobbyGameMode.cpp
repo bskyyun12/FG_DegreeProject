@@ -9,6 +9,7 @@
 #include "Lobby/LobbyPlayerController.h"
 #include "FPSGameInstance.h"
 #include "Lobby/LobbyInterface.h"
+#include "Weapons/FPSWeaponBase.h"
 
 void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 {
@@ -27,6 +28,8 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 	NewUserData.Team = GetTeamToJoin();
 	NewUserData.StartMainWeapon = EMainWeapon::M4A1;
 	NewUserData.StartSubWeapon = ESubWeapon::Pistol;
+	NewUserData.StartKnife = EKnife::Knife;
+	NewUserData.StartGrenade = EGrenade::Grenade;
 	UserData.Add(NewUserData);
 
 	if (UKismetSystemLibrary::DoesImplementInterface(NewPlayer, ULobbyInterface::StaticClass()))

@@ -51,6 +51,9 @@ public:
 	// Weapon Equip & Swap
 	void SwitchToMainWeapon();
 	void SwitchToSubWeapon();
+	void SwitchToKnife();
+	void SwitchToGrenade();
+	void SwitchWeapon(AFPSWeaponBase* WeaponToSwitch);
 
 	void Drop();
 	UFUNCTION(Server, Reliable)
@@ -108,24 +111,17 @@ protected:
 	/// Index 1 - MainWeapon
 	/// Index 2 - SubWeapon
 	/// </summary>
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	TArray<AFPSWeaponBase*> CurrentWeapons;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	TArray<AFPSWeaponBase*> StartWeapons;
 	
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	AFPSWeaponBase* CurrentlyHeldWeapon;
 
-	// TODO: Maybe use TMap for all the weapons below?
 	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<AFPSWeaponBase> M4A1Class;
-
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<AFPSWeaponBase> PistolClass;
-
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<AFPSWeaponBase> AK47Class;
+	FWeaponClass WeaponClass;
 
 	// Hit Effect
 	UPROPERTY(EditDefaultsOnly)
