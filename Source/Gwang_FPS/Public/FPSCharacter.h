@@ -115,11 +115,15 @@ protected:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	AFPSWeaponBase* CurrentlyHeldWeapon;
 
+	// TODO: Maybe use TMap for all the weapons below?
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<AFPSWeaponBase> RifleClass;
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<AFPSWeaponBase> PistolClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AFPSWeaponBase> GrenadeLauncherClass;
 
 	UPROPERTY(EditDefaultsOnly)
 	UParticleSystem* HitEmitterOnTakeDamage;

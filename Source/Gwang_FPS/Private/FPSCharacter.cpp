@@ -554,39 +554,52 @@ void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation()
 		}
 	}
 
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
 	// MainWeapon Setup
 	if (StartWeapons[1] == nullptr)
 	{
-		if (FPSGameInstance->GetUserData().MainWeaponType == EMainWeapon::Rifle || FPSGameInstance->GetUserData().MainWeaponType == EMainWeapon::None)
+		EMainWeapon MainWeapon = FPSGameInstance->GetUserData().MainWeaponType;
+		switch (MainWeapon)
 		{
+		default:
+			break;
+		case EMainWeapon::None:
+		case EMainWeapon::Rifle:
 			if (!ensure(RifleClass != nullptr))
 			{
 				return;
 			}
-			UWorld* World = GetWorld();
-			if (!ensure(World != nullptr))
+			StartWeapons[1] = World->SpawnActor<AFPSWeaponBase>(RifleClass);
+			break;
+		case EMainWeapon::GrenadeLauncher:
+			if (!ensure(GrenadeLauncherClass != nullptr))
 			{
 				return;
 			}
-			StartWeapons[1] = World->SpawnActor<AFPSWeaponBase>(RifleClass);
+			StartWeapons[1] = World->SpawnActor<AFPSWeaponBase>(GrenadeLauncherClass);
+			break;
 		}
 	}
 
 	// SubWeapon Setup
 	if (StartWeapons[2] == nullptr)
 	{
-		if (FPSGameInstance->GetUserData().SubWeaponType == ESubWeapon::Pistol || FPSGameInstance->GetUserData().SubWeaponType == ESubWeapon::None)
+		ESubWeapon SubWeapon = FPSGameInstance->GetUserData().SubWeaponType;
+		switch (SubWeapon)
 		{
+		case ESubWeapon::None:
+		case ESubWeapon::Pistol:
 			if (!ensure(PistolClass != nullptr))
 			{
 				return;
 			}
-			UWorld* World = GetWorld();
-			if (!ensure(World != nullptr))
-			{
-				return;
-			}
 			StartWeapons[2] = World->SpawnActor<AFPSWeaponBase>(PistolClass);
+			break;
 		}
 	}
 

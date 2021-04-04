@@ -13,6 +13,10 @@
 #include "FPSCharacterInterface.h"
 #include "FPSPlayerControllerInterface.h"
 
+// Temp
+#include <DrawDebugHelpers.h>
+#include <Kismet/KismetMathLibrary.h>
+
 // Sets default values
 AFPSWeaponBase::AFPSWeaponBase()
 {
@@ -47,7 +51,7 @@ void AFPSWeaponBase::BeginPlay()
 
 void AFPSWeaponBase::OnReset()
 {
-
+	// Children will override this
 }
 
 void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -109,7 +113,7 @@ void AFPSWeaponBase::HandleWeaponEquip()
 {
 	TPWeaponMesh->SetSimulatePhysics(false);
 	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	
+
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	if (UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
@@ -137,12 +141,12 @@ void AFPSWeaponBase::HandleWeaponEquip()
 void AFPSWeaponBase::HandleWeaponDrop()
 {
 	FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-	
+
 	TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 	TPWeaponMesh->SetCollisionProfileName(TEXT("Weapon_Dropped"));
 	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	TPWeaponMesh->SetSimulatePhysics(true);
-	
+
 	InteractCollider->SetCollisionProfileName(TEXT("Weapon_Dropped"));
 	InteractCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
@@ -173,6 +177,85 @@ void AFPSWeaponBase::Server_Fire_Implementation()
 	}
 
 	Multicast_FireEffects();
+
+
+	// Grenade TEST. This should be in grenade class Server_Fire_Implementation
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+	if (GetOwner() != nullptr && GetOwner()->GetInstigatorController() != nullptr)
+	{
+		LaunchAngleInRad = GetOwner()->GetInstigatorController()->GetControlRotation().Pitch * PI / 180.f;
+		LaunchSpeed = 3000.f;
+
+		LaunchPoint = GetOwner()->GetActorLocation() + FVector(0.f, 0.f, 64.f);	// Camera position hardcode
+		PrevPoint = LaunchPoint;
+		LaunchForward = GetOwner()->GetActorForwardVector();
+		LaunchUp = GetOwner()->GetActorUpVector();
+
+		FlightTime = 0.f;
+		DebugTime = 0.f;
+		LifeTime = 0.f;
+		// TODO: Grenade launcher needs grenade components and pool a grenade from the components and so on
+		World->GetTimerManager().SetTimer(GrenadeTimer, this, &AFPSWeaponBase::GrenadeSimulation, World->GetDeltaSeconds(), true);
+	}
+}
+
+void AFPSWeaponBase::GrenadeSimulation()
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+	float DeltaTime = World->GetDeltaSeconds();
+	FlightTime += DeltaTime;
+	DebugTime += DeltaTime;
+	LifeTime += DeltaTime;
+
+	if (DebugTime >= .05f)
+	{
+		DebugTime = 0.f;
+
+		float DisplacementX = LaunchSpeed * FlightTime * FMath::Cos(LaunchAngleInRad);
+		float DisplacementZ = LaunchSpeed * FlightTime * FMath::Sin(LaunchAngleInRad) - 0.5f * Gravity * FlightTime * FlightTime;
+		FVector NewPoint = LaunchPoint + LaunchForward * DisplacementX + LaunchUp * DisplacementZ;
+		
+		FHitResult Hit;
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(this);
+		Params.AddIgnoredActor(this->GetOwner());
+		if (World->LineTraceSingleByChannel(Hit, PrevPoint, NewPoint, ECC_Visibility, Params))
+		{
+			DrawDebugPoint(World, Hit.ImpactPoint, 30.f, FColor::Red, false, 3.f);
+
+			LaunchPoint = Hit.ImpactPoint + Hit.ImpactNormal;
+			NewPoint = LaunchPoint;
+
+			FVector Reflection = FMath::GetReflectionVector((NewPoint - PrevPoint).GetSafeNormal(), Hit.ImpactNormal);
+			FVector RightVector = FVector::CrossProduct(Reflection, LaunchUp);
+			LaunchForward = FVector::CrossProduct(LaunchUp, RightVector);
+
+			LaunchAngleInRad = FMath::Acos(FVector::DotProduct(Reflection, LaunchForward));
+			LaunchAngleInRad *= FMath::Sign(Reflection.Z);
+			UE_LOG(LogTemp, Warning, TEXT("LaunchAngleInRad: %f"), LaunchAngleInRad);
+			FlightTime = 0.f;
+
+			LaunchSpeed *= 0.75f;
+		}
+		else
+		{
+			DrawDebugLine(World, PrevPoint, NewPoint, FColor::Green, false, 1.f, 0, 5.f);
+		}
+		PrevPoint = NewPoint;
+
+		if (LifeTime > 10.f)
+		{
+			World->GetTimerManager().ClearTimer(GrenadeTimer);
+		}
+	}
 }
 
 void AFPSWeaponBase::Multicast_FireEffects_Implementation()

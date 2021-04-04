@@ -28,7 +28,7 @@ enum class EMainWeapon : uint8
 {
 	None,
 	Rifle,
-	Shotgun
+	GrenadeLauncher,
 };
 
 UENUM(BlueprintType)

@@ -114,7 +114,27 @@ class GWANG_FPS_API AFPSWeaponBase : public AActor, public IFPSWeaponInterface
 {
 	GENERATED_BODY()
 	
-public:	
+public:
+	// TEST
+	UFUNCTION()
+	void GrenadeSimulation();
+
+	float LaunchAngleInRad;
+	float LaunchSpeed;
+	float Gravity = 981.f;
+
+	FVector LaunchPoint;
+	FVector PrevPoint;
+	FVector LaunchForward;
+	FVector LaunchUp;
+
+	FTimerHandle GrenadeTimer;
+	float FlightTime = 0.f;
+	float LifeTime = 0.f;
+	float DebugTime = 0.f;
+
+	// TEST
+
 	AFPSWeaponBase();
 
 	virtual void OnReset();
@@ -200,8 +220,4 @@ protected:
 	bool bIsReloading = false;
 
 	FTimerHandle ReloadTimer;
-public:
-
-
-
 };
