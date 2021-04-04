@@ -11,6 +11,7 @@
 #include "Lobby/UserRow.h"
 #include "Lobby/LobbyPlayerController.h"
 #include "Lobby/LobbyInterface.h"
+#include "Lobby/LobbyInventory.h"
 
 bool ULobbyWidget::Initialize()
 {
@@ -25,6 +26,9 @@ bool ULobbyWidget::Initialize()
 	Button_MarvelTeam->OnClicked.AddDynamic(this, &ULobbyWidget::OnClicked_Button_MarvelTeam);
 	Button_DCTeam->OnClicked.AddDynamic(this, &ULobbyWidget::OnClicked_Button_DCTeam);
 	Button_BackToMainMenu->OnClicked.AddDynamic(this, &ULobbyWidget::OnClicked_Button_BackToMainMenu);
+	Button_Inventory->OnClicked.AddDynamic(this, &ULobbyWidget::OnClicked_Button_Inventory);
+
+	LobbyInventory->SetVisibility(ESlateVisibility::Hidden);
 
 	return true;
 }
@@ -105,4 +109,9 @@ void ULobbyWidget::OnClicked_Button_BackToMainMenu()
 	{
 		ILobbyInterface::Execute_LobbyToMainMenu(GetOwningPlayer());
 	}
+}
+
+void ULobbyWidget::OnClicked_Button_Inventory()
+{
+	LobbyInventory->SetVisibility(ESlateVisibility::Visible);
 }

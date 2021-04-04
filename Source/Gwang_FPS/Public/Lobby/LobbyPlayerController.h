@@ -49,7 +49,6 @@ public:
 	// Start Game
 	void StartGame_Implementation() override;
 
-
 private:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUserWidget> LobbyWidgetClass;

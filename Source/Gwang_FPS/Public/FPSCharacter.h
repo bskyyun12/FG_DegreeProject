@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "FPSCharacterInterface.h"
 #include "Weapons/FPSWeaponBase.h"
+#include "FPSGameInstance.h"
 #include "FPSCharacter.generated.h"
 
 class AFPSPlayerController;
@@ -117,14 +118,15 @@ protected:
 
 	// TODO: Maybe use TMap for all the weapons below?
 	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<AFPSWeaponBase> RifleClass;
+	TSubclassOf<AFPSWeaponBase> M4A1Class;
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<AFPSWeaponBase> PistolClass;
 
 	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<AFPSWeaponBase> GrenadeLauncherClass;
+	TSubclassOf<AFPSWeaponBase> AK47Class;
 
+	// Hit Effect
 	UPROPERTY(EditDefaultsOnly)
 	UParticleSystem* HitEmitterOnTakeDamage;
 
@@ -174,8 +176,10 @@ protected:
 	
 	UFUNCTION()
 	void OnSpawn();
+	UFUNCTION(Client, Reliable)
+	void Client_WeaponSetupOnSpawn();
 	UFUNCTION(Server, Reliable)
-	void Server_WeaponSetupOnSpawn();
+	void Server_WeaponSetupOnSpawn(FUserData const& UserData);
 	void HandleCameraOnSpawn();
 #pragma endregion Spawn & Death
 };

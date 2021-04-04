@@ -21,21 +21,22 @@ enum class ETeam : uint8 {
 	None, 
 	Marvel,
 	DC,
+	EnumSize
 };
 
 UENUM(BlueprintType)
-enum class EMainWeapon : uint8
+enum class EMainWeapon : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
 {
-	None,
-	Rifle,
-	GrenadeLauncher,
+	M4A1,
+	AK47,
+	EnumSize
 };
 
 UENUM(BlueprintType)
-enum class ESubWeapon : uint8
+enum class ESubWeapon : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
 {
-	None,
 	Pistol,
+	EnumSize
 };
 
 USTRUCT(BlueprintType)
@@ -56,10 +57,10 @@ struct FUserData
 	ETeam Team;
 
 	UPROPERTY()
-	EMainWeapon MainWeaponType;
+	EMainWeapon StartMainWeapon;
 
 	UPROPERTY()
-	ESubWeapon SubWeaponType;
+	ESubWeapon StartSubWeapon;
 
 	FUserData()
 	{
@@ -68,8 +69,8 @@ struct FUserData
 		bIsReady = false;
 		Team = ETeam::None;
 
-		MainWeaponType = EMainWeapon::None;
-		SubWeaponType = ESubWeapon::None;
+		StartMainWeapon = EMainWeapon::M4A1;
+		StartSubWeapon = ESubWeapon::Pistol;
 	}
 
 	bool operator == (FUserData const& UserData)

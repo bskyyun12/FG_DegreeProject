@@ -11,6 +11,7 @@
 class UUserWidget;
 class UVerticalBox;
 class UButton;
+class ULobbyInventory;
 
 UCLASS()
 class GWANG_FPS_API ULobbyWidget : public UFPSWidgetBase
@@ -46,4 +47,12 @@ private:
 	UButton* Button_BackToMainMenu;
 	UFUNCTION()
 	void OnClicked_Button_BackToMainMenu();
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* Button_Inventory;
+	UFUNCTION()
+	void OnClicked_Button_Inventory();
+
+	UPROPERTY(meta = (BindWidget))
+	ULobbyInventory* LobbyInventory;
 };

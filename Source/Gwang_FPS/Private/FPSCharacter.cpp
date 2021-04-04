@@ -514,7 +514,7 @@ void AFPSCharacter::OnSpawnPlayer_Implementation()
 		HealthComponent->Server_OnSpawn();
 	}
 
-	Server_WeaponSetupOnSpawn();
+	Client_WeaponSetupOnSpawn();
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Capsule_Alive"));
 	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh_Alive"));
 }
@@ -534,7 +534,20 @@ void AFPSCharacter::HandleCameraOnSpawn()
 	DeathCamera->SetActive(false);
 }
 
-void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation()
+void AFPSCharacter::Client_WeaponSetupOnSpawn_Implementation()
+{
+	if (FPSGameInstance == nullptr)
+	{
+		FPSGameInstance = GetGameInstance<UFPSGameInstance>();
+		if (!ensure(FPSGameInstance != nullptr))
+		{
+			return;
+		}
+	}
+	Server_WeaponSetupOnSpawn(FPSGameInstance->GetUserData());
+}
+
+void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation(FUserData const& UserData)
 {
 	if (CurrentWeapons.Num() != (uint8)EWeaponType::EnumSize)
 	{
@@ -542,15 +555,6 @@ void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation()
 		{
 			CurrentWeapons.Add(nullptr);
 			StartWeapons.Add(nullptr);
-		}
-	}
-
-	if (FPSGameInstance == nullptr)
-	{
-		FPSGameInstance = GetGameInstance<UFPSGameInstance>();
-		if (!ensure(FPSGameInstance != nullptr))
-		{
-			return;
 		}
 	}
 
@@ -563,25 +567,24 @@ void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation()
 	// MainWeapon Setup
 	if (StartWeapons[1] == nullptr)
 	{
-		EMainWeapon MainWeapon = FPSGameInstance->GetUserData().MainWeaponType;
-		switch (MainWeapon)
+		EMainWeapon StartMainWeapon = UserData.StartMainWeapon;
+		switch (StartMainWeapon)
 		{
 		default:
 			break;
-		case EMainWeapon::None:
-		case EMainWeapon::Rifle:
-			if (!ensure(RifleClass != nullptr))
+		case EMainWeapon::M4A1:
+			if (!ensure(M4A1Class != nullptr))
 			{
 				return;
 			}
-			StartWeapons[1] = World->SpawnActor<AFPSWeaponBase>(RifleClass);
+			StartWeapons[1] = World->SpawnActor<AFPSWeaponBase>(M4A1Class);
 			break;
-		case EMainWeapon::GrenadeLauncher:
-			if (!ensure(GrenadeLauncherClass != nullptr))
+		case EMainWeapon::AK47:
+			if (!ensure(AK47Class != nullptr))
 			{
 				return;
 			}
-			StartWeapons[1] = World->SpawnActor<AFPSWeaponBase>(GrenadeLauncherClass);
+			StartWeapons[1] = World->SpawnActor<AFPSWeaponBase>(AK47Class);
 			break;
 		}
 	}
@@ -589,10 +592,9 @@ void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation()
 	// SubWeapon Setup
 	if (StartWeapons[2] == nullptr)
 	{
-		ESubWeapon SubWeapon = FPSGameInstance->GetUserData().SubWeaponType;
-		switch (SubWeapon)
+		ESubWeapon StartSubWeapon = UserData.StartSubWeapon;
+		switch (StartSubWeapon)
 		{
-		case ESubWeapon::None:
 		case ESubWeapon::Pistol:
 			if (!ensure(PistolClass != nullptr))
 			{
