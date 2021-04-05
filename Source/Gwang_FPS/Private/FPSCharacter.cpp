@@ -242,6 +242,11 @@ void AFPSCharacter::SwitchWeapon(AFPSWeaponBase* WeaponToSwitch)
 	{
 		PlayEquipAnim(WeaponToSwitch);
 		Server_EquipWeapon(WeaponToSwitch);
+
+		if (ArmsAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(ArmsAnimInstance, UFPSAnimInterface::StaticClass()))
+		{
+			IFPSAnimInterface::Execute_OnChangeWeapon(ArmsAnimInstance, WeaponToSwitch->GetWeaponInfo().WeaponType);
+		}
 	}
 }
 

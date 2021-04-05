@@ -6,24 +6,63 @@
 #include "Weapons/FPSWeaponBase.h"
 #include "FPSGrenadeBase.generated.h"
 
-/**
- * 
- */
+USTRUCT(BlueprintType)
+struct FGrenadeMove
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FVector NewPoint;;
+	UPROPERTY()
+	FVector LaunchPoint;
+	UPROPERTY()
+	FVector PrevPoint;
+	UPROPERTY()
+	FVector LaunchForward;
+	UPROPERTY()
+	FVector LaunchUp;
+	UPROPERTY()
+	float CurrentSpeed;	
+	UPROPERTY()
+	float LaunchAngleInRad;
+	UPROPERTY()
+	float FlightTime;
+
+	UPROPERTY()
+	float DeltaTime;
+	UPROPERTY()
+	float Time;
+};
+
+USTRUCT(BlueprintType)
+struct FGrenadeState
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FGrenadeMove LastMove;
+};
+
 UCLASS()
 class GWANG_FPS_API AFPSGrenadeBase : public AFPSWeaponBase
 {
 	GENERATED_BODY()
 	
 public:
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	AFPSGrenadeBase();
+
 	void Server_OnBeginFireWeapon_Implementation() override;
 	void Server_OnEndFireWeapon_Implementation() override;
 
-	void Client_OnBeginFireWeapon_Implementation() override;
-	void Client_OnEndFireWeapon_Implementation() override;
+	void Tick(float DeltaSeconds) override;
 
 protected:
+	const float GRAVITY = 981.f;
+
 	UPROPERTY(EditDefaultsOnly)
-	float ExplodeDelay = 10.f;
+	float ExplodeDelay = 3.f;
 
 	UPROPERTY(EditDefaultsOnly)
 	float LaunchSpeed = 3000.f;
@@ -31,21 +70,25 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	float PathDrawInSeconds = 0.05f;
 
-	const float GRAVITY = 981.f;
-	float LaunchAngleInRad;
+	UPROPERTY(EditDefaultsOnly)
+	float ExplodeRadius = 550.f;
 
-	FVector LaunchPoint;
-	FVector PrevPoint;
-	FVector LaunchForward;
-	FVector LaunchUp;
+	UPROPERTY(Replicated)
+	FGrenadeState ServerState;
 
-	FTimerHandle GrenadePathTimer;
-	float FlightTime = 0.f;
-	float LifeTime = 0.f;
+	UPROPERTY(Replicated)
+	bool bDrawtrajectory;	
+
+	UWorld* World;
+	FGrenadeMove LastMove;
 
 protected:
 	void BeginPlay() override;
 
-	UFUNCTION()
-	void DrawGrenadePath();
+	FGrenadeMove CreateMove();
+
+	UFUNCTION(Server, Unreliable)
+	void Server_UpdateMoveState(FGrenadeMove Move, bool bShouldServerSimulateMove);
+
+	void SimulateTrajectory(FGrenadeMove Move);
 };

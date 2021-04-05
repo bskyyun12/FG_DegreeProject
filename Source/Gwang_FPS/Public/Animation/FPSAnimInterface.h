@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+#include "Weapons/FPSWeaponBase.h"
 #include "FPSAnimInterface.generated.h"
 
 // This class does not need to be modified.
@@ -27,4 +28,7 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent)
 	void OnDeath();
+
+	UFUNCTION(BlueprintNativeEvent)
+	void OnChangeWeapon(EWeaponType WeaponType);
 };

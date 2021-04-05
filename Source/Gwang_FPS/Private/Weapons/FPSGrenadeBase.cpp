@@ -4,105 +4,137 @@
 #include "Weapons/FPSGrenadeBase.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "DrawDebugHelpers.h"
+#include "Net/UnrealNetwork.h"
 
 #include "FPSCharacterInterface.h"
+
+// Temp
+#include "DrawDebugHelpers.h"
+
+void AFPSGrenadeBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AFPSGrenadeBase, ServerState);
+	DOREPLIFETIME(AFPSGrenadeBase, bDrawtrajectory);
+}
+
+AFPSGrenadeBase::AFPSGrenadeBase()
+{
+	PrimaryActorTick.bCanEverTick = true;
+}
 
 void AFPSGrenadeBase::BeginPlay()
 {
 	Super::BeginPlay();
-	WeaponInfo.WeaponType = EWeaponType::Grenade;
-}
 
-void AFPSGrenadeBase::Server_OnBeginFireWeapon_Implementation()
-{
-	//Super::Server_OnBeginFireWeapon_Implementation();
-}
-
-void AFPSGrenadeBase::Server_OnEndFireWeapon_Implementation()
-{
-	Super::Server_OnEndFireWeapon_Implementation();
-}
-
-void AFPSGrenadeBase::Client_OnBeginFireWeapon_Implementation()
-{
-	//Super::Client_OnBeginFireWeapon_Implementation();
-
-	UWorld* World = GetWorld();
+	World = GetWorld();
 	if (!ensure(World != nullptr))
 	{
 		return;
 	}
-	if (GetOwner() != nullptr && GetOwner()->GetInstigatorController() != nullptr)
+}
+
+void AFPSGrenadeBase::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (bDrawtrajectory)
 	{
-		// TODO: Grenade launcher needs grenade components and pool a grenade from the components and so on
-		World->GetTimerManager().SetTimer(GrenadePathTimer, this, &AFPSGrenadeBase::DrawGrenadePath, World->GetDeltaSeconds(), true);
+		bool IsHostPlayer = GetOwner()->GetLocalRole() == ROLE_Authority && Cast<APawn>(GetOwner())->IsLocallyControlled();
+
+		// Locally controlled host or locally controlled client
+		if (IsHostPlayer || GetOwner()->GetLocalRole() == ROLE_AutonomousProxy)
+		{			
+			// 1. Created Move
+			LastMove = CreateMove();
+
+			// 2. Simulate trajectory
+			SimulateTrajectory(LastMove);
+
+			// 3. Update server's move state, simulate trajectory if it's not host player. (Since the host player simulate the trajectory already in 2nd step)
+			Server_UpdateMoveState(LastMove, !IsHostPlayer);			
+		}
+
+		// Other clients
+		if (GetOwner()->GetLocalRole() == ROLE_SimulatedProxy)
+		{
+			// Get move from ServerState (ServerState is replicated)
+			SimulateTrajectory(ServerState.LastMove);
+		}
 	}
 }
 
-void AFPSGrenadeBase::Client_OnEndFireWeapon_Implementation()
+FGrenadeMove AFPSGrenadeBase::CreateMove()
 {
-	//Super::Client_OnEndFireWeapon_Implementation();
-
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-	World->GetTimerManager().ClearTimer(GrenadePathTimer);
+	FGrenadeMove Move;
+	Move.LaunchPoint = FPWeaponMesh->GetComponentLocation() + GetOwner()->GetActorForwardVector();
+	Move.PrevPoint = Move.LaunchPoint;
+	Move.LaunchForward = GetOwner()->GetActorForwardVector();
+	Move.LaunchUp = GetOwner()->GetActorUpVector();
+	Move.CurrentSpeed = LaunchSpeed;
+	Move.FlightTime = 0.f;
+	Move.LaunchAngleInRad = GetOwner()->GetInstigatorController()->GetControlRotation().Pitch * PI / 180.f;
+	return Move;
 }
 
-void AFPSGrenadeBase::DrawGrenadePath()
+void AFPSGrenadeBase::Server_UpdateMoveState_Implementation(FGrenadeMove Move, bool bShouldServerSimulateMove)
 {
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-	LaunchPoint = FPWeaponMesh->GetComponentLocation() + GetOwner()->GetActorForwardVector();
-	PrevPoint = LaunchPoint;
-	LaunchForward = GetOwner()->GetActorForwardVector();
-	LaunchUp = GetOwner()->GetActorUpVector();
-	float CurrentSpeed = LaunchSpeed;
-	LaunchAngleInRad = GetOwner()->GetInstigatorController()->GetControlRotation().Pitch * PI / 180.f;
-	FlightTime = 0.f;
+	// Update ServerState
+	ServerState.LastMove = Move;
 
-	float DeltaTime = World->GetDeltaSeconds();
+	if (bShouldServerSimulateMove)
+	{
+		SimulateTrajectory(Move);
+	}
+}
+
+void AFPSGrenadeBase::SimulateTrajectory(FGrenadeMove Move)
+{
 	for (float Time = 0.f; Time < 1.f; Time += PathDrawInSeconds)
 	{
-		FlightTime += PathDrawInSeconds;
-		float DisplacementX = CurrentSpeed * FlightTime * FMath::Cos(LaunchAngleInRad);
-		float DisplacementZ = CurrentSpeed * FlightTime * FMath::Sin(LaunchAngleInRad) - 0.5f * GRAVITY * FlightTime * FlightTime;
-		FVector NewPoint = LaunchPoint + LaunchForward * DisplacementX + LaunchUp * DisplacementZ;
+		Move.FlightTime += PathDrawInSeconds;
 
-		DrawDebugLine(World, PrevPoint, NewPoint, FColor::Cyan, false, -1.f, 0, 7.f);
+		float DisplacementX = Move.CurrentSpeed * Move.FlightTime * FMath::Cos(Move.LaunchAngleInRad);
+		float DisplacementZ = Move.CurrentSpeed * Move.FlightTime * FMath::Sin(Move.LaunchAngleInRad) - 0.5f * GRAVITY * Move.FlightTime * Move.FlightTime;
+		Move.NewPoint = Move.LaunchPoint + Move.LaunchForward * DisplacementX + Move.LaunchUp * DisplacementZ;
+
+		DrawDebugLine(World, Move.PrevPoint, Move.NewPoint, FColor::Cyan, false, -1.f, 0, 7.f);
 
 		FHitResult Hit;
 		FCollisionQueryParams Params;
 		Params.AddIgnoredActor(this);
 		Params.AddIgnoredActor(this->GetOwner());
-		if (World->LineTraceSingleByChannel(Hit, PrevPoint, NewPoint, ECC_Visibility, Params))
+		if (World->LineTraceSingleByChannel(Hit, Move.PrevPoint, Move.NewPoint, ECC_Visibility, Params))
 		{
 			DrawDebugPoint(World, Hit.ImpactPoint, 30.f, FColor::Orange);
 
-			FVector Reflection = FMath::GetReflectionVector((Hit.ImpactPoint - PrevPoint).GetSafeNormal(), Hit.ImpactNormal);
-			FVector RightVector = FVector::CrossProduct(Reflection, LaunchUp);
-			LaunchForward = FVector::CrossProduct(LaunchUp, RightVector);
+			FVector Reflection = FMath::GetReflectionVector((Hit.ImpactPoint - Move.PrevPoint).GetSafeNormal(), Hit.ImpactNormal);
+			FVector RightVector = FVector::CrossProduct(Reflection, Move.LaunchUp);
+			Move.LaunchForward = FVector::CrossProduct(Move.LaunchUp, RightVector);
 
-			LaunchAngleInRad = FMath::Acos(FVector::DotProduct(Reflection, LaunchForward));
-			LaunchAngleInRad *= FMath::Sign(Reflection.Z);
+			Move.LaunchAngleInRad = FMath::Acos(FVector::DotProduct(Reflection, Move.LaunchForward));
+			Move.LaunchAngleInRad *= FMath::Sign(Reflection.Z);
 
-			DrawDebugLine(World, Hit.ImpactPoint, Hit.ImpactPoint + Reflection * 150.f, FColor::Purple, false, -1.f, 0, 7.f);
-			DrawDebugLine(World, Hit.ImpactPoint, Hit.ImpactPoint + LaunchForward * 150.f, FColor::Red, false, -1.f, 0, 7.f);
+			Move.LaunchPoint = Hit.ImpactPoint + Hit.ImpactNormal;
+			Move.NewPoint = Move.LaunchPoint;
 
-			LaunchPoint = Hit.ImpactPoint + Hit.ImpactNormal;
-			NewPoint = LaunchPoint;
+			Move.FlightTime = 0.f;
 
-			FlightTime = 0.f;
-
-			CurrentSpeed *= 0.75f;
+			Move.CurrentSpeed *= 0.75f;
 		}
 
-		PrevPoint = NewPoint;
+		Move.PrevPoint = Move.NewPoint;
 	}
+}
+
+void AFPSGrenadeBase::Server_OnBeginFireWeapon_Implementation()
+{
+	//Super::Server_OnBeginFireWeapon_Implementation();
+	bDrawtrajectory = true;
+}
+
+void AFPSGrenadeBase::Server_OnEndFireWeapon_Implementation()
+{
+	//Super::Server_OnEndFireWeapon_Implementation();
+	bDrawtrajectory = false;
 }
