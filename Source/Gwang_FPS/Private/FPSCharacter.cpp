@@ -270,7 +270,7 @@ void AFPSCharacter::PickupWeapon(AFPSWeaponBase* const& WeaponToPickup)
 			else
 			{
 				CurrentWeapons[(uint8)WeaponToPickup->GetWeaponInfo().WeaponType] = WeaponToPickup;
-				WeaponToPickup->ToggleVisibility(false);
+				WeaponToPickup->SetVisibility(false);
 			}
 		}
 	}
@@ -306,7 +306,7 @@ void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* const& Wea
 		{
 			if (CurrentWeapons[i] != nullptr)
 			{
-				CurrentWeapons[i]->ToggleVisibility(CurrentWeapons[i] == CurrentlyHeldWeapon);
+				CurrentWeapons[i]->SetVisibility(CurrentWeapons[i] == CurrentlyHeldWeapon);
 			}
 		}
 	}
@@ -663,7 +663,7 @@ void AFPSCharacter::Server_WeaponSetupOnSpawn_Implementation(FUserData const& Us
 		if (Weapon != nullptr)
 		{
 			Weapon->OnReset();
-			Weapon->ToggleVisibility(false);
+			Weapon->SetVisibility(false);
 		}
 	}
 
@@ -788,7 +788,6 @@ void AFPSCharacter::HandleCameraOnDeath()
 
 void AFPSCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	//TODO: Work on collision preset so that the log below will only show on weapon overlap
 	UE_LOG(LogTemp, Warning, TEXT("OtherActor: %s"), *OtherActor->GetName());
 	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UFPSWeaponInterface::StaticClass()))
 	{

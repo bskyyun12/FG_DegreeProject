@@ -12,35 +12,23 @@ struct FGrenadeMove
 	GENERATED_BODY()
 
 	UPROPERTY()
-	FVector NewPoint;;
-	UPROPERTY()
 	FVector LaunchPoint;
-	UPROPERTY()
-	FVector PrevPoint;
 	UPROPERTY()
 	FVector LaunchForward;
 	UPROPERTY()
-	FVector LaunchUp;
+	FVector NewPoint;
+	UPROPERTY()
+	FVector PrevPoint;
 	UPROPERTY()
 	float CurrentSpeed;	
 	UPROPERTY()
 	float LaunchAngleInRad;
 	UPROPERTY()
 	float FlightTime;
-
 	UPROPERTY()
-	float DeltaTime;
+	float LifeTime;
 	UPROPERTY()
-	float Time;
-};
-
-USTRUCT(BlueprintType)
-struct FGrenadeState
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	FGrenadeMove LastMove;
+	float DeltaSeconds;
 };
 
 UCLASS()
@@ -52,11 +40,19 @@ public:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	AFPSGrenadeBase();
+	
+	void Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter) override;
+	void OnRep_Owner() override;
 
 	void Server_OnBeginFireWeapon_Implementation() override;
 	void Server_OnEndFireWeapon_Implementation() override;
 
+	void Client_OnBeginFireWeapon_Implementation() override;
+	void Client_OnEndFireWeapon_Implementation() override;
+	
 	void Tick(float DeltaSeconds) override;
+
+
 
 protected:
 	const float GRAVITY = 981.f;
@@ -68,27 +64,42 @@ protected:
 	float LaunchSpeed = 3000.f;
 
 	UPROPERTY(EditDefaultsOnly)
-	float PathDrawInSeconds = 0.05f;
+	float TrajectoryDrawingDeltaSeconds = 0.05f;
 
 	UPROPERTY(EditDefaultsOnly)
 	float ExplodeRadius = 550.f;
 
 	UPROPERTY(Replicated)
-	FGrenadeState ServerState;
+	bool bSimulateGrenadeMove;
 
-	UPROPERTY(Replicated)
-	bool bDrawtrajectory;	
+	UPROPERTY(ReplicatedUsing=OnRep_ServerMove)
+	FGrenadeMove ServerMove;
+	UFUNCTION()
+	void OnRep_ServerMove();
+
+	FGrenadeMove ClientMove;
 
 	UWorld* World;
-	FGrenadeMove LastMove;
+	bool bDrawtrajectory;
+	bool bIsLocallyControlled;
+	USkeletalMeshComponent* ArmMesh;
+	USkeletalMeshComponent* CharacterMesh;
+
+
+
+
 
 protected:
 	void BeginPlay() override;
 
-	FGrenadeMove CreateMove();
+	FGrenadeMove InitializeTrajectory(float DeltaSeconds);
 
 	UFUNCTION(Server, Unreliable)
 	void Server_UpdateMoveState(FGrenadeMove Move, bool bShouldServerSimulateMove);
 
-	void SimulateTrajectory(FGrenadeMove Move);
+	void DrawGrenadePath();
+
+	void CalcTrajectory(FGrenadeMove& Move);
+
+	void MoveGrenade(FGrenadeMove& Move);
 };

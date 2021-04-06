@@ -57,13 +57,13 @@ void AFPSWeaponBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(AFPSWeaponBase, bIsReloading);
 }
 
-void AFPSWeaponBase::ToggleVisibility(bool bNewVisibility)
+void AFPSWeaponBase::SetVisibility(bool bNewVisibility)
 {
 	// TODO: Run code below in delay? since it's a multicast reliable function
-	Multicast_ToggleVisibility(bNewVisibility);
+	Multicast_SetVisibility(bNewVisibility);
 }
 
-void AFPSWeaponBase::Multicast_ToggleVisibility_Implementation(bool bNewVisibility)
+void AFPSWeaponBase::Multicast_SetVisibility_Implementation(bool bNewVisibility)
 {
 	if (FPWeaponMesh != nullptr)
 	{

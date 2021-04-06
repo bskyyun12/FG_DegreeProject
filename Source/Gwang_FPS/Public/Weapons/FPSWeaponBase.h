@@ -178,9 +178,9 @@ public:
 	virtual void OnReset();
 
 	// Equip & Hide & Drop
-	void ToggleVisibility(bool bNewVisibility);
+	void SetVisibility(bool bNewVisibility);
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_ToggleVisibility(bool bNewVisibility);
+	void Multicast_SetVisibility(bool bNewVisibility);
 	UFUNCTION(Server, Reliable)
 	void Server_OnWeaponEquipped(AFPSCharacter* OwnerCharacter);
 	UFUNCTION(Server, Reliable)
