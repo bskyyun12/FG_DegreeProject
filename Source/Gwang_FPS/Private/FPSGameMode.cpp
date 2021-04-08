@@ -29,6 +29,13 @@ void AFPSGameMode::PostLogin(APlayerController* NewPlayer)
 	{
 		IFPSPlayerControllerInterface::Execute_OnPostLogin(NewPlayer, this);
 	}
+
+	FPSGameState = GetGameState<AFPSGameState>();
+	if (!ensure(GameState != nullptr))
+	{
+		return;
+	}
+
 }
 
 void AFPSGameMode::BeginPlay()

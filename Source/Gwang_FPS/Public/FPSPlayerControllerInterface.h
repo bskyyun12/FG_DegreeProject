@@ -38,6 +38,8 @@ public:
 	void OnSpawnPlayer(AFPSCharacter* SpawnedPlayer);
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnPlayerDeath();
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void OnPlayerKill();
 
 	// Camera control
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)

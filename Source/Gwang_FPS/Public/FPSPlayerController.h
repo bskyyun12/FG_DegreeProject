@@ -37,6 +37,7 @@ public:
 	void Server_RequestPlayerSpawn();
 	void OnSpawnPlayer_Implementation(AFPSCharacter* SpawnedPlayer) override;
 	void OnPlayerDeath_Implementation() override;
+	void OnPlayerKill_Implementation() override;
 	void OnRep_Pawn() override;
 
 	// Hit & Damage
@@ -68,6 +69,13 @@ public:
 	// Others
 	void ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake) override;
 	void AddControlRotation_Implementation(const FRotator& RotationToAdd) override;
+
+	// Delegates
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FScoreDelegate);
+	FScoreDelegate OnKill;
+	FScoreDelegate OnDeath;
+
+
 
 protected:
 	// Widgets

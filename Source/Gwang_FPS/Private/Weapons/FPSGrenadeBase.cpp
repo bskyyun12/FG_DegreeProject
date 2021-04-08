@@ -200,11 +200,16 @@ void AFPSGrenadeBase::CalcTrajectory(FGrenadeMove& Move)
 	Params.AddIgnoredActor(this->GetOwner());
 	if (World->LineTraceSingleByChannel(Hit, Move.PrevPoint, Move.NewPoint, ECC_Visibility, Params))
 	{
-		DrawDebugPoint(World, Hit.ImpactPoint, 20.f, FColor::Red);
+		DrawDebugPoint(World, Hit.ImpactPoint, 10.f, FColor::Red);
+		DrawDebugPoint(World, Move.PrevPoint, 10.f, FColor::Black);
 
 		FVector Reflection = FMath::GetReflectionVector((Hit.ImpactPoint - Move.PrevPoint).GetSafeNormal(), Hit.ImpactNormal);
 		FVector RightVector = FVector::CrossProduct(Reflection, FVector::UpVector);
 		Move.LaunchForward = FVector::CrossProduct(FVector::UpVector, RightVector);
+
+		DrawDebugLine(World, Hit.ImpactPoint, Hit.ImpactPoint + Reflection * 100.f, FColor::Purple, false, -1.f, 0, 7.f);
+		DrawDebugLine(World, Hit.ImpactPoint, Hit.ImpactPoint + RightVector * 100.f, FColor::Blue, false, -1.f, 0, 7.f);
+		DrawDebugLine(World, Hit.ImpactPoint, Hit.ImpactPoint + Move.LaunchForward * 100.f, FColor::Black, false, -1.f, 0, 7.f);
 
 		Move.LaunchAngleInRad = FMath::Acos(FVector::DotProduct(Reflection, Move.LaunchForward));
 		Move.LaunchAngleInRad *= FMath::Sign(Reflection.Z);
@@ -214,7 +219,7 @@ void AFPSGrenadeBase::CalcTrajectory(FGrenadeMove& Move)
 
 		Move.FlightTime = 0.f;
 
-		Move.CurrentSpeed *= 0.75f;
+		Move.CurrentSpeed *= 0.5f;
 	}
 
 	Move.PrevPoint = Move.NewPoint;

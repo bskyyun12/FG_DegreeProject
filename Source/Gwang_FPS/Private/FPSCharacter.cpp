@@ -309,6 +309,16 @@ void AFPSCharacter::Server_EquipWeapon_Implementation(AFPSWeaponBase* const& Wea
 				CurrentWeapons[i]->SetVisibility(CurrentWeapons[i] == CurrentlyHeldWeapon);
 			}
 		}
+
+		Multicast_OnChangeWeapon(WeaponToEquip->GetWeaponInfo().WeaponType);
+	}
+}
+
+void AFPSCharacter::Multicast_OnChangeWeapon_Implementation(EWeaponType const& WeaponType)
+{
+	if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
+	{
+		IFPSAnimInterface::Execute_OnChangeWeapon(CharacterAnimInstance, WeaponType);
 	}
 }
 

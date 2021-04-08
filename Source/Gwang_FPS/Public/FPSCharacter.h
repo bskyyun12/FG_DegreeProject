@@ -54,6 +54,8 @@ public:
 	void SwitchToKnife();
 	void SwitchToGrenade();
 	void SwitchWeapon(AFPSWeaponBase* WeaponToSwitch);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnChangeWeapon(EWeaponType const& WeaponType);
 
 	void Drop();
 	UFUNCTION(Server, Reliable)

@@ -14,6 +14,7 @@
 #include "Widgets/FPSHUDWidget.h"
 #include "Widgets/GameOverWidget.h"
 #include "Widgets/ScoreBoardWidget.h"
+#include "FPSPlayerState.h"
 
 void AFPSPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -146,6 +147,8 @@ void AFPSPlayerController::OnSpawnPlayer_Implementation(AFPSCharacter* SpawnedPl
 // Called by FPSCharacter::OnDeath
 void AFPSPlayerController::OnPlayerDeath_Implementation()
 {
+	OnDeath.Broadcast();
+
 	if (HasAuthority())
 	{
 		UWorld* World = GetWorld();
@@ -168,6 +171,11 @@ void AFPSPlayerController::OnPlayerDeath_Implementation()
 		InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
 		SetInputMode(InputModeData);
 	}
+}
+
+void AFPSPlayerController::OnPlayerKill_Implementation()
+{
+	OnKill.Broadcast();
 }
 
 void AFPSPlayerController::OnRep_Pawn()

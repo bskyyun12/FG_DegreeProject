@@ -9,6 +9,7 @@
 
 class AFPSGameMode;
 
+
 UCLASS()
 class GWANG_FPS_API AFPSGameState : public AGameStateBase
 {
