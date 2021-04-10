@@ -7,8 +7,18 @@
 #include "Components/InputComponent.h"
 #include "GameFramework/InputSettings.h"
 #include "Kismet/GameplayStatics.h"
+#include "Net/UnrealNetwork.h"
 
 #include "Weapons/WeaponBase.h"
+#include "DeathMatchPlayerState.h"
+
+void ADeathMatchCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, BeginFire, COND_SkipOwner);
+	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, EndFire, COND_SkipOwner);
+	DOREPLIFETIME(ADeathMatchCharacter, Health);
+}
 
 ADeathMatchCharacter::ADeathMatchCharacter()
 {
@@ -31,6 +41,7 @@ ADeathMatchCharacter::ADeathMatchCharacter()
 	ArmMesh->SetRelativeLocation(FVector(-0.5f, -4.4f, -155.7f));
 
 	GetMesh()->SetOwnerNoSee(true);
+
 }
 
 FVector ADeathMatchCharacter::GetCameraLocation() const
@@ -43,6 +54,7 @@ void ADeathMatchCharacter::BeginPlay()
 	// Call the base class  
 	Super::BeginPlay();
 
+	// Spawn weapon
 	if (RifleClass != nullptr)
 	{
 		UWorld* World = GetWorld();
@@ -52,6 +64,7 @@ void ADeathMatchCharacter::BeginPlay()
 		}
 	}
 
+	// Equip the spawned weapon
 	if (CurrentWeapon != nullptr)
 	{
 		CurrentWeapon->OnWeaponEquipped(this);
@@ -80,74 +93,80 @@ void ADeathMatchCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
 }
 
-void ADeathMatchCharacter::OnBeginFire()
+void ADeathMatchCharacter::PossessedBy(AController* NewController)
 {
-	if (CurrentWeapon != nullptr)
-	{
-		CurrentWeapon->OnBeginFire();
+	Super::PossessedBy(NewController);
+	UE_LOG(LogTemp, Warning, TEXT("(Gameflow) ADeathMatchCharacter::PossessedBy"));
 
-		if (GetLocalRole() == ROLE_Authority)
+	if (NewController != nullptr)
+	{
+		PlayerState = NewController->GetPlayerState<ADeathMatchPlayerState>();
+		if (!ensure(PlayerState != nullptr))
 		{
-			Multicast_OnBeginFire();
-		}
-		else
-		{
-			Server_OnBeginFire();
+			return;
 		}
 	}
+}
+
+void ADeathMatchCharacter::UnPossessed()
+{
+	Super::UnPossessed();
+
+}
+
+void ADeathMatchCharacter::OnBeginFire()
+{
+	if (CurrentWeapon == nullptr)
+	{
+		return;
+	}
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("(Client) OnBeginFire"));
+		CurrentWeapon->OnBeginFire();
+	}
+	Server_OnBeginFire();
 }
 
 void ADeathMatchCharacter::Server_OnBeginFire_Implementation()
 {
-	Multicast_OnBeginFire();
+	UE_LOG(LogTemp, Warning, TEXT("(Server) OnBeginFire"));
+	BeginFire++;	// OnRep_BeginFire()
+	CurrentWeapon->OnBeginFire();
 }
 
-void ADeathMatchCharacter::Multicast_OnBeginFire_Implementation()
+// All Other Clients ( COND_SkipOwner )
+void ADeathMatchCharacter::OnRep_BeginFire()
 {
-	if (IsLocallyControlled())
-	{
-		return;
-	}
-
-	if (CurrentWeapon != nullptr)
-	{
-		CurrentWeapon->OnBeginFire();
-	}
+	UE_LOG(LogTemp, Warning, TEXT("(Client2) OnBeginFire"));
+	CurrentWeapon->OnBeginFire();
 }
 
 void ADeathMatchCharacter::OnEndFire()
 {
-	if (CurrentWeapon != nullptr)
+	if (CurrentWeapon == nullptr)
 	{
-		CurrentWeapon->OnEndFire();
-
-		if (GetLocalRole() == ROLE_Authority)
-		{
-			Multicast_OnEndFire();
-		}
-		else
-		{
-			Server_OnEndFire();
-		}
+		return;
 	}
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("(Client) OnEndFire"));
+		CurrentWeapon->OnEndFire();
+	}
+	Server_OnEndFire();
 }
 
 void ADeathMatchCharacter::Server_OnEndFire_Implementation()
 {
-	Multicast_OnEndFire();
+	UE_LOG(LogTemp, Warning, TEXT("(Server) OnEndFire"));
+	EndFire++;
+	CurrentWeapon->OnEndFire();
 }
 
-void ADeathMatchCharacter::Multicast_OnEndFire_Implementation()
+void ADeathMatchCharacter::OnRep_EndFire()
 {
-	if (IsLocallyControlled())
-	{
-		return;
-	}
-
-	if (CurrentWeapon != nullptr)
-	{
-		CurrentWeapon->OnEndFire();
-	}
+	UE_LOG(LogTemp, Warning, TEXT("(Client2) OnEndFire"));
+	CurrentWeapon->OnEndFire();
 }
 
 void ADeathMatchCharacter::MoveForward(float Value)
@@ -165,5 +184,46 @@ void ADeathMatchCharacter::MoveRight(float Value)
 	{
 		// add movement in that direction
 		AddMovementInput(GetActorRightVector(), Value);
+	}
+}
+
+void ADeathMatchCharacter::Server_TakeDamage_Implementation(float DamageOnHealth, float DamageOnArmor, AActor* DamageCauser)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::TakeDamage => ( %s ) Took ( %f ) Damage By ( %s )."), *GetName(), DamageOnHealth, *DamageCauser->GetName());
+
+	// TODO: Implement Armor
+	Health -= DamageOnHealth;
+	if (Health <= 0.f)
+	{
+		Server_OnDeath(DamageCauser);
+	}
+}
+
+void ADeathMatchCharacter::Server_OnDeath_Implementation(AActor* DeathCauser)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnDeath => ( %s ) is killed by ( %s )."), *GetName(), *DeathCauser->GetName());
+
+	if (!ensure(PlayerState != nullptr))
+	{
+		return;
+	}
+	PlayerState->Server_AddNumDeath();
+
+	ADeathMatchCharacter* KillerPlayer = Cast<ADeathMatchCharacter>(DeathCauser);
+	if (KillerPlayer != nullptr)
+	{
+		KillerPlayer->Server_OnKill(this);
+	}
+}
+
+void ADeathMatchCharacter::Server_OnKill_Implementation(ADeathMatchCharacter* DeadPlayer)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnKill => ( %s ) killed ( %s )."), *GetName(), *DeadPlayer->GetName());
+
+	PlayerState->Server_AddNumKill();
+
+	if (DeadPlayer != nullptr)
+	{
+
 	}
 }

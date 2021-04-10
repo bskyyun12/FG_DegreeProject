@@ -4,14 +4,42 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
+#include "FPSGameInstance.h"
 #include "DeathMatchGameState.generated.h"
 
-/**
- * 
- */
+class ADeathMatchGameMode;
+class ADeathMatchPlayerState;
+
 UCLASS()
 class GWANG_FPS_API ADeathMatchGameState : public AGameStateBase
 {
 	GENERATED_BODY()
 	
+public:
+	void AddScore(const ETeam& WinnerTeam);
+
+protected:
+	ADeathMatchGameMode* GM;
+
+	UPROPERTY(Replicated)
+	uint8 MarvelTeamScore;
+
+	UPROPERTY(Replicated)
+	uint8 DCTeamScore;
+
+	UPROPERTY(Replicated)
+	TArray<ADeathMatchPlayerState*> MarvelPlayerStates;
+
+	UPROPERTY(Replicated)
+	TArray<ADeathMatchPlayerState*> DCPlayerStates;
+
+
+protected:
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	void PostInitializeComponents() override;
+
+	// Called by AGameModeBase::StartPlay()
+	void HandleBeginPlay() override;
+	void OnRep_ReplicatedHasBegunPlay() override;
 };

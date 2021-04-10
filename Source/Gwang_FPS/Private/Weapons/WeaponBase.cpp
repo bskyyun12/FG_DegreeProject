@@ -11,16 +11,19 @@ FColor AWeaponBase::GetRoleColor()
 {
 	if (CurrentOwner->GetLocalRole() == ROLE_Authority)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("ROLE_Authority"));
 		return FColor::Red;
 	}
 
 	if (CurrentOwner->GetLocalRole() == ROLE_AutonomousProxy)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("ROLE_AutonomousProxy"));
 		return FColor::Green;
 	}
 
 	if (CurrentOwner->GetLocalRole() == ROLE_SimulatedProxy)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("ROLE_SimulatedProxy"));
 		return FColor::Blue;
 	}
 
@@ -76,18 +79,14 @@ bool AWeaponBase::CanFire()
 	return GetOwner() != nullptr;
 }
 
-void AWeaponBase::OnBeginFire()
+// Here only do effects. Actual fire logic will be handled in children classes
+void AWeaponBase::OnBeginFire() 
 {
-	if (CanFire())
-	{
-		Fire();
-	}
 }
 
+// Here only do effects. Actual fire logic will be handled in children classes
 void AWeaponBase::Fire()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AWeaponBase::Fire"));
-
 	// Play FireSound
 	if (WeaponInfo.FireSound != nullptr)
 	{
@@ -142,8 +141,7 @@ void AWeaponBase::Fire()
 	}
 }
 
+// Here only do effects. Actual fire logic will be handled in children classes
 void AWeaponBase::OnEndFire()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AWeaponBase::OnEndFire"));
 }
-

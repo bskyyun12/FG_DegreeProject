@@ -93,11 +93,10 @@ void AGunBase::Fire()
 
 					if (CurrentOwner->GetLocalRole() == ROLE_Authority)
 					{
-						// TODO: Apply Damage
 						float DamageOnHealth = 0.f;
 						float DamageOnArmor = 0.f;
 						CalcDamageToApply(Hit.PhysMaterial.Get(), DamageOnHealth, DamageOnArmor);
-
+						HitPlayer->Server_TakeDamage(DamageOnHealth, DamageOnArmor, CurrentOwner);
 					}
 				}
 				else
