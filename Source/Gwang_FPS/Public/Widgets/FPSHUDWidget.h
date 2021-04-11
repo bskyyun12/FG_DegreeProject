@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Widgets/FPSWidgetBase.h"
+#include "Blueprint/UserWidget.h"
 #include "FPSHUDWidget.generated.h"
 
 class UTextBlock;
@@ -13,23 +13,24 @@ class UWidgetSwitcher;
 class UChatPanel;
 
 UCLASS()
-class GWANG_FPS_API UFPSHUDWidget : public UFPSWidgetBase
+class GWANG_FPS_API UFPSHUDWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
 public:
-	void OnApplyDamage();
+	void UpdateCrosshairUIOnHit();
 
-	void OnTakeDamage(bool bIsDead);
+	void UpdateHealthArmorUI(const uint8& Health, const uint8& Armor);
 
-	void UpdateAmmoUI(int CurrentAmmo, int RemainingAmmo);
+	void UpdateAmmoUI(const uint16& CurrentAmmo, const uint16& RemainingAmmo);
 
 	void UpdateScoreUI(int MarvelScore, int DCScore);
 
-	UChatPanel* GetChatPanel() const;
+	UChatPanel* GetChatPanel() const { return ChatPanel; }
 
+	void AddChatRow(const FName& PlayerName, const FName& ChatContent);
+	void OnStartChat();
 private:
-
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Text_MarvelScore;
 

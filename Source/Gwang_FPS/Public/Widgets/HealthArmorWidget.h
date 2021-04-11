@@ -3,18 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Widgets/FPSWidgetBase.h"
+#include "Blueprint/UserWidget.h"
 #include "HealthArmorWidget.generated.h"
 
 class UTextBlock;
 
 UCLASS()
-class GWANG_FPS_API UHealthArmorWidget : public UFPSWidgetBase
+class GWANG_FPS_API UHealthArmorWidget : public UUserWidget
 {
 	GENERATED_BODY()
 	
 public:
-	void UpdateUI(bool bIsDead);
+	void UpdateHealthArmorUI(const uint8& Health, const uint8& Armor);
 
 private:
 	UPROPERTY(meta = (BindWidget))

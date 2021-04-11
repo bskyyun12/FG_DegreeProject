@@ -30,7 +30,6 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_TakeDamage(float DamageOnHealth, float DamageOnArmor, AActor* DamageCauser);
 
-
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = Weapon)
 	TSubclassOf<AWeaponBase> RifleClass;

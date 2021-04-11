@@ -8,20 +8,8 @@
 
 #include "FPSCharacterInterface.h"
 
-void UHealthArmorWidget::UpdateUI(bool bIsDead)
+void UHealthArmorWidget::UpdateHealthArmorUI(const uint8& Health, const uint8& Armor)
 {
-	int Health = 0;
-	int Armor = 0;
-
-	if (bIsDead == false)
-	{
-		if (GetOwningPlayerPawn() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayerPawn(), UFPSCharacterInterface::StaticClass()))
-		{
-			Health = (int)IFPSCharacterInterface::Execute_GetHealth(GetOwningPlayerPawn());
-			Armor = (int)IFPSCharacterInterface::Execute_GetArmor(GetOwningPlayerPawn());
-		}
-	}
-
 	Text_Health->SetText(UKismetTextLibrary::Conv_IntToText(Health));
 	Text_Armor->SetText(UKismetTextLibrary::Conv_IntToText(Armor));
 }

@@ -67,7 +67,7 @@ void ADeathMatchCharacter::BeginPlay()
 	// Equip the spawned weapon
 	if (CurrentWeapon != nullptr)
 	{
-		CurrentWeapon->OnWeaponEquipped(this);
+		CurrentWeapon->Client_OnWeaponEquipped(this);
 	}
 }
 
@@ -203,27 +203,27 @@ void ADeathMatchCharacter::Server_OnDeath_Implementation(AActor* DeathCauser)
 {
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnDeath => ( %s ) is killed by ( %s )."), *GetName(), *DeathCauser->GetName());
 
-	if (!ensure(PlayerState != nullptr))
-	{
-		return;
-	}
-	PlayerState->Server_AddNumDeath();
-
+	// Call OnKill() for the killer player
 	ADeathMatchCharacter* KillerPlayer = Cast<ADeathMatchCharacter>(DeathCauser);
 	if (KillerPlayer != nullptr)
 	{
 		KillerPlayer->Server_OnKill(this);
 	}
+
+	// Update PlayerState
+	PlayerState->Server_OnDeath();
+
+	this->Destroy();
 }
 
 void ADeathMatchCharacter::Server_OnKill_Implementation(ADeathMatchCharacter* DeadPlayer)
 {
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnKill => ( %s ) killed ( %s )."), *GetName(), *DeadPlayer->GetName());
 
-	PlayerState->Server_AddNumKill();
+	PlayerState->Server_OnKillPlayer();
 
 	if (DeadPlayer != nullptr)
 	{
-
+		// TODO: DeadPlayer is probably not needed here. Maybe remove?
 	}
 }

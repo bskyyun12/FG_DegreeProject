@@ -14,6 +14,7 @@ void ADeathMatchGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME(ADeathMatchGameState, DCTeamScore);
 	DOREPLIFETIME(ADeathMatchGameState, MarvelPlayerStates);
 	DOREPLIFETIME(ADeathMatchGameState, DCPlayerStates);
+	DOREPLIFETIME(ADeathMatchGameState, TimeLeftInSeconds);
 }
 
 void ADeathMatchGameState::PostInitializeComponents()
@@ -26,22 +27,43 @@ void ADeathMatchGameState::PostInitializeComponents()
 	{
 		return;
 	}
+
+	for (APlayerState* PS : PlayerArray)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("PS->GetInstigatorController()->GetName(): (%s)"), *PS->GetInstigatorController()->GetName());
+	}
 }
 
-// Called by AGameModeBase::StartPlay()
-void ADeathMatchGameState::HandleBeginPlay()
+void ADeathMatchGameState::BeginPlay()
 {
-	Super::HandleBeginPlay();
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameState::HandleBeginPlay (%s)"), *GetName());
+	Super::BeginPlay();
 
-	//GetDefaultGameMode<ADeathMatchGameMode>();
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		GM = Cast<ADeathMatchGameMode>(GetWorld()->GetAuthGameMode());
+		if (!ensure(GM != nullptr))
+		{
+			return;
+		}
+		TimeLeftInSeconds = GM->GetMatchTimeInSeconds();
+
+		UWorld* World = GetWorld();
+		if (World != nullptr)
+		{
+			World->GetTimerManager().SetTimer(MatchTimer, this, &ADeathMatchGameState::MatchTimeCountdown, 1.f, true);
+		}
+	}
 }
 
-void ADeathMatchGameState::OnRep_ReplicatedHasBegunPlay()
+void ADeathMatchGameState::MatchTimeCountdown()
 {
-	Super::OnRep_ReplicatedHasBegunPlay();
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameState::OnRep_ReplicatedHasBegunPlay (%s)"), *GetName());
-
+	TimeLeftInSeconds -= 1.f;
+	UE_LOG(LogTemp, Warning, TEXT("TimeLeftInSeconds: (%f)"), TimeLeftInSeconds);
+	if (TimeLeftInSeconds <= 0.f)
+	{
+		GM->EndMatch();
+		GetWorld()->GetTimerManager().ClearTimer(MatchTimer);
+	}
 }
 
 void ADeathMatchGameState::AddScore(const ETeam& WinnerTeam)

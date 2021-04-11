@@ -15,6 +15,12 @@ class GWANG_FPS_API ADeathMatchGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 
+public:
+	float GetMatchTimeInSeconds() const { return MatchTimeInSeconds; }
+
+	// Finish the game and move players to lobby
+	void EndMatch();
+
 protected:
 	TArray<ADeathMatchPlayerController*> PlayerControllers;
 
@@ -23,6 +29,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<ADeathMatchCharacter> DC_CharacterClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	float MatchTimeInSeconds = 10.f; // TODO: this should be 600.f if the match should last for 10 mins for example
 
 protected:
 	// Called after a successful login
@@ -33,14 +42,12 @@ protected:
 
 	void BeginPlay() override;
 
+	// Spawn players and start the game!
 	UFUNCTION(Exec)
-	void SpawnPlayers();
+	void StartMatch();
+		
+	// Spawn Player
+	void SpawnPlayer(ADeathMatchPlayerController* PC);
 	ETeam GetTeamWithLessPlayers();
 	AActor* GetBestPlayerStart(const FString& PlayerStartTag) const;
-
-
-public:
-
-
-
 };

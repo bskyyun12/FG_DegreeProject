@@ -33,13 +33,18 @@ protected:
 	UPROPERTY(Replicated)
 	TArray<ADeathMatchPlayerState*> DCPlayerStates;
 
+	UPROPERTY(Replicated)
+	float TimeLeftInSeconds;
+
+	FTimerHandle MatchTimer;
 
 protected:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void PostInitializeComponents() override;
 
-	// Called by AGameModeBase::StartPlay()
-	void HandleBeginPlay() override;
-	void OnRep_ReplicatedHasBegunPlay() override;
+	void BeginPlay() override;
+
+	UFUNCTION()
+	void MatchTimeCountdown();	
 };

@@ -34,66 +34,72 @@ void ADeathMatchGameMode::BeginPlay()
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::BeginPlay"));
 	Super::BeginPlay();
 
-	// TEMP
+	// TODO: Check for NumPlayers then start the match? Right now, the match starts in 3 seconds
+	float MatchStartCountdown = 3.f;
 	FTimerHandle StartTimer;
 	GetWorld()->GetTimerManager().SetTimer(StartTimer, [&]()
 		{
 			for (ADeathMatchPlayerController* PC : PlayerControllers)
 			{
-				SpawnPlayers();
+				StartMatch();
 			}
-		}, 3.f, false);
+		}, MatchStartCountdown, false);
 }
 
-void ADeathMatchGameMode::SpawnPlayers()
+// Spawn players and start the game!
+void ADeathMatchGameMode::StartMatch()
 {
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::SpawnPlayers"));
+	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::StartMatch"));
+
+	for (ADeathMatchPlayerController* PC : PlayerControllers)
+	{
+		SpawnPlayer(PC);
+	}
+}
+
+void ADeathMatchGameMode::SpawnPlayer(ADeathMatchPlayerController* PC)
+{
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
 	{
 		return;
 	}
 
-	for (ADeathMatchPlayerController* PC : PlayerControllers)
+	if (PC != nullptr)
 	{
-		if (PC != nullptr)
+		ADeathMatchPlayerState* PS = PC->GetPlayerState<ADeathMatchPlayerState>();
+		if (PS != nullptr)
 		{
-			ADeathMatchPlayerState* PS = PC->GetPlayerState<ADeathMatchPlayerState>();
-			if (PS != nullptr)
+			ETeam Team = PS->GetPlayerInfo().Team;
+
+			// Team is None if the player did not choose a team from lobby
+			if (Team == ETeam::None)
 			{
-				ETeam Team = PS->GetPlayerInfo().Team;
-
-				// Team is None if the player did not choose a team from lobby
-				if (Team == ETeam::None)
-				{
-					// Assign a team with less players
-					Team = GetTeamWithLessPlayers();
-					PS->Server_SetTeam(Team);
-				}
-
-				const TSubclassOf<ADeathMatchCharacter> CharacterClass = (Team == ETeam::Marvel) ? Marvel_CharacterClass : DC_CharacterClass;
-				const FString PlayerStartTag = (Team == ETeam::Marvel) ? "Marvel" : "DC";
-				const AActor* PlayerStart = GetBestPlayerStart(PlayerStartTag);
-				if (PlayerStart == nullptr)
-				{
-					PlayerStart = FindPlayerStart(PC, PlayerStartTag);
-				}
-
-				if (PC->GetPawn() == nullptr)
-				{
-					//ADeathMatchCharacter* SpawnedCharacter = World->SpawnActor<ADeathMatchCharacter>(CharacterClass, SpawnLocation, PlayerStart->GetActorRotation());
-					ADeathMatchCharacter* SpawnedCharacter = World->SpawnActor<ADeathMatchCharacter>(CharacterClass, PlayerStart->GetActorTransform());
-					PC->Possess(SpawnedCharacter);
-				}
-				else
-				{
-					//PC->GetPawn()->SetActorLocation(SpawnLocation);
-					PC->GetPawn()->SetActorLocation(PlayerStart->GetActorLocation());
-					PC->ClientSetRotation(PlayerStart->GetActorRotation(), true);
-				}
-
-				//UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::SpawnPlayers => ( %s ) Spawned! Team: %i"), *PC->GetPawn()->GetName(), Team);
+				// Assign a team with less players
+				Team = GetTeamWithLessPlayers();
+				PS->Server_SetTeam(Team);
 			}
+
+			const TSubclassOf<ADeathMatchCharacter> CharacterClass = (Team == ETeam::Marvel) ? Marvel_CharacterClass : DC_CharacterClass;
+			const FString PlayerStartTag = (Team == ETeam::Marvel) ? "Marvel" : "DC";
+			const AActor* PlayerStart = GetBestPlayerStart(PlayerStartTag);
+			if (PlayerStart == nullptr)
+			{
+				PlayerStart = FindPlayerStart(PC, PlayerStartTag);
+			}
+
+			if (PC->GetPawn() == nullptr)
+			{
+				ADeathMatchCharacter* SpawnedCharacter = World->SpawnActor<ADeathMatchCharacter>(CharacterClass, PlayerStart->GetActorTransform());
+				PC->Possess(SpawnedCharacter);
+			}
+			else
+			{
+				PC->GetPawn()->SetActorLocation(PlayerStart->GetActorLocation());
+				PC->ClientSetRotation(PlayerStart->GetActorRotation(), true);
+			}
+
+			//UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::SpawnPlayers => ( %s ) Spawned! Team: %i"), *PC->GetPawn()->GetName(), Team);
 		}
 	}
 }
@@ -119,6 +125,14 @@ AActor* ADeathMatchGameMode::GetBestPlayerStart(const FString& PlayerStartTag) c
 	}
 
 	return nullptr;
+}
+
+// Finish the game and move players to lobby
+void ADeathMatchGameMode::EndMatch()
+{
+	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::EndMatch"));
+	// TODO: Server travel to lobby
+	
 }
 
 ETeam ADeathMatchGameMode::GetTeamWithLessPlayers()

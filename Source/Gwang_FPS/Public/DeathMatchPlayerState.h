@@ -7,6 +7,8 @@
 #include "FPSGameInstance.h"
 #include "DeathMatchPlayerState.generated.h"
 
+class ADeathMatchPlayerController;
+
 USTRUCT(BlueprintType)
 struct FPlayerInfo
 {
@@ -26,6 +28,21 @@ struct FPlayerInfo
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	uint8 NumDeaths;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsDead;
+};
+
+USTRUCT(BlueprintType)
+struct FChat
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName PlayerName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName ChatContent;
 };
 
 UCLASS()
@@ -40,21 +57,46 @@ public:
 	void Server_SetTeam(const ETeam& NewTeam);
 
 	UFUNCTION(Server, Reliable)
-	void Server_AddNumKill();
+	void Server_OnKillPlayer();
 
 	UFUNCTION(Server, Reliable)
-	void Server_AddNumDeath();
+	void Server_OnDeath();
+
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateMatchTimeLeft(const float& TimeLeft);
+
+	UFUNCTION(Server, Reliable)
+	void Server_OnSendChat(const FName& PlayerName, const FName& ChatContent);
+
+
 
 protected:
-	UPROPERTY(ReplicatedUsing= OnRep_PlayerInfo)
+	ADeathMatchPlayerController* PC;
+
+	UPROPERTY(ReplicatedUsing=OnRep_PlayerInfo)
 	FPlayerInfo PlayerInfo;
 
 	UFUNCTION()
 	void OnRep_PlayerInfo();
 
+	UPROPERTY(ReplicatedUsing=OnRep_MatchTimeLeft)
+	float MatchTimeLeft = 0.f;
+	UFUNCTION()
+	void OnRep_MatchTimeLeft();
+	
+	UPROPERTY(ReplicatedUsing=OnRep_LastChat)
+	FChat LastChat;
+	UFUNCTION()
+	void OnRep_LastChat();
+
+
+
+
 protected:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void PostInitializeComponents() override;
+
+	void BeginPlay() override;
 
 };

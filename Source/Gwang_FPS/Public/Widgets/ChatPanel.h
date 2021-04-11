@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Widgets/FPSWidgetBase.h"
+#include "Blueprint/UserWidget.h"
 #include "ChatPanel.generated.h"
 
 class UScrollBox;
 class UEditableText;
 
 UCLASS()
-class GWANG_FPS_API UChatPanel : public UFPSWidgetBase
+class GWANG_FPS_API UChatPanel : public UUserWidget
 {
 	GENERATED_BODY()
 	

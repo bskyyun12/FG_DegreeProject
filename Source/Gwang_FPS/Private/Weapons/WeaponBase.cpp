@@ -61,17 +61,33 @@ void AWeaponBase::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void AWeaponBase::OnWeaponEquipped(ADeathMatchCharacter* NewOwner)
+void AWeaponBase::Client_OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AWeaponBase::OnWeaponEquipped"));
+	if (NewOwner->GetLocalRole() == ROLE_Authority)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("(Server) AWeaponBase::OnWeaponEquipped"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("(Client) AWeaponBase::OnWeaponEquipped"));
+	}
 
-	SetOwner(NewOwner);
+	SetOwner(NewOwner);	// OnRep_Owner()
 	SetInstigator(NewOwner);
 	CurrentOwner = NewOwner;
 
-	// skeleton is not yet created in the constructor, so this should be happened after constructor
-	FPWeaponMesh->AttachToComponent(NewOwner->GetArmMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), WeaponInfo.FP_SocketName);
+	// skeleton is not yet created in the constructor, so AttachToComponent should be happened after constructor
+	TPWeaponMesh->SetSimulatePhysics(false);
+	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	TPWeaponMesh->AttachToComponent(NewOwner->GetMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), WeaponInfo.TP_SocketName);
+
+	FPWeaponMesh->AttachToComponent(NewOwner->GetArmMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), WeaponInfo.FP_SocketName);
+}
+
+void AWeaponBase::OnRep_Owner()
+{
+	Super::OnRep_Owner();
+
 }
 
 bool AWeaponBase::CanFire()

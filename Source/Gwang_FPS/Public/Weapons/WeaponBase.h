@@ -93,7 +93,8 @@ public:
 
 	FWeaponInfo_Temp GetWeaponInfo() const { return WeaponInfo; };
 
-	void OnWeaponEquipped(ADeathMatchCharacter* NewOwner);
+	UFUNCTION(Client, Reliable)
+	void Client_OnWeaponEquipped(ADeathMatchCharacter* NewOwner);
 
 	virtual void OnBeginFire();
 	virtual void Fire();
@@ -118,10 +119,14 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	ADeathMatchCharacter* CurrentOwner;
 
+
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
 	virtual bool CanFire();
+
+	void OnRep_Owner() override;
 
 };

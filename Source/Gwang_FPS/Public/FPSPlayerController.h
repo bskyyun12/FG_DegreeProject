@@ -11,7 +11,7 @@
 class UUserWidget;
 class AFPSGameMode;
 class AFPSGameState;
-class UFPSHUDWidget;
+//class UFPSHUDWidget;
 class UGameOverWidget;
 class UScoreBoardWidget;
 class UDamageReceiveWidget;
@@ -41,30 +41,30 @@ public:
 	void OnRep_Pawn() override;
 
 	// Hit & Damage
-	void OnApplyDamage_Implementation() override;
-	UFUNCTION(Client, Reliable)
-	void Client_OnApplyDamage();
-	void OnTakeDamage_Implementation() override;
-	UFUNCTION(Client, Reliable)
-	void Client_OnTakeDamage();
+	//void OnApplyDamage_Implementation() override;
+	//UFUNCTION(Client, Reliable)
+	//void Client_OnApplyDamage();
+	//void OnTakeDamage_Implementation() override;
+	//UFUNCTION(Client, Reliable)
+	//void Client_OnTakeDamage();
 
 	// Widgets
-	void ToggleScoreBoardWidget_Implementation(bool bVisible) override;
-	void OnUpdateHealthArmorUI_Implementation(bool bIsDead) override;
-	UFUNCTION(Client, Reliable)
-	void Client_OnUpdateHealthArmorUI(bool bIsDead);
-	void OnUpdateAmmoUI_Implementation(int CurrentAmmo, int RemainingAmmo) override;
-	UFUNCTION(Client, Reliable)
-	void Client_OnUpdateAmmoUI(int CurrentAmmo, int RemainingAmmo);
+	//void ToggleScoreBoardWidget_Implementation(bool bVisible) override;
+	//void OnUpdateHealthArmorUI_Implementation(bool bIsDead) override;
+	//UFUNCTION(Client, Reliable)
+	//void Client_OnUpdateHealthArmorUI(bool bIsDead);
+	//void OnUpdateAmmoUI_Implementation(int CurrentAmmo, int RemainingAmmo) override;
+	//UFUNCTION(Client, Reliable)
+	//void Client_OnUpdateAmmoUI(int CurrentAmmo, int RemainingAmmo);
 
 	// Chat
-	void StartChat_Implementation() override;
-	void SendChat_Implementation(const FName& Chat) override;
-	UFUNCTION(Server, Reliable)
-	void Server_OnSendChat(const FName& PlayerName, const FName& Chat);
-	void OnUpdateChatUI_Implementation(const FName& PlayerName, const FName& Chat) override;
-	UFUNCTION(Client, Reliable)
-	void Client_OnUpdateChatUI(const FName& PlayerName, const FName& Chat);
+	//void StartChat_Implementation() override;
+	//void SendChat_Implementation(const FName& Chat) override;
+	//UFUNCTION(Server, Reliable)
+	//void Server_OnSendChat(const FName& PlayerName, const FName& Chat);
+	//void OnUpdateChatUI_Implementation(const FName& PlayerName, const FName& Chat) override;
+	//UFUNCTION(Client, Reliable)
+	//void Client_OnUpdateChatUI(const FName& PlayerName, const FName& Chat);
 
 	// Others
 	void ShakeCamera_Implementation(TSubclassOf<UCameraShakeBase> CameraShake) override;
@@ -75,25 +75,23 @@ public:
 	FScoreDelegate OnKill;
 	FScoreDelegate OnDeath;
 
-
-
 protected:
 	// Widgets
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UUserWidget> FPSHUDWidgetClass;
-	UFPSHUDWidget* FPSHUDWidget;
+	//UPROPERTY(EditDefaultsOnly)
+	//TSubclassOf<UUserWidget> FPSHUDWidgetClass;
+	//UFPSHUDWidget* FPSHUDWidget;
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUserWidget> GameOverWidgetClass;
 	UGameOverWidget* GameOverWidget;
 
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UUserWidget> ScoreBoardWidgetClass;
-	UScoreBoardWidget* ScoreBoardWidget;
+	//UPROPERTY(EditDefaultsOnly)
+	//TSubclassOf<UUserWidget> ScoreBoardWidgetClass;
+	//UScoreBoardWidget* ScoreBoardWidget;
 
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UUserWidget> DamageReceiveWidgetClass;
-	UDamageReceiveWidget* DamageReceiveWidget;
+	//UPROPERTY(EditDefaultsOnly)
+	//TSubclassOf<UUserWidget> DamageReceiveWidgetClass;
+	//UDamageReceiveWidget* DamageReceiveWidget;
 
 	// Non widgets :)
 	UPROPERTY()
@@ -102,7 +100,7 @@ protected:
 	AFPSGameState* GameState;
 	UPROPERTY(Replicated)
 	ETeam Team;
-	FTimerHandle DamageReceiveTimer;
+	//FTimerHandle DamageReceiveTimer;
 
 protected:
 	void BeginPlay() override;
@@ -123,8 +121,8 @@ protected:
 	UFUNCTION(Client, Reliable)
 	void Client_LoadGameOver(bool bIsWinner, bool bWidgetVisibility);
 	
-	UFUNCTION()
-	void OnUpdateScoreUI(int MarvelScore, int DCScore);	// Bound to GameState->OnUpdateScoreUI
-	UFUNCTION(Client, Reliable)
-	void Client_OnUpdateScoreUI(int MarvelScore, int DCScore);
+	//UFUNCTION()
+	//void OnUpdateScoreUI(int MarvelScore, int DCScore);	// Bound to GameState->OnUpdateScoreUI
+	//UFUNCTION(Client, Reliable)
+	//void Client_OnUpdateScoreUI(int MarvelScore, int DCScore);
 };

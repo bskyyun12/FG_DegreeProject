@@ -76,7 +76,7 @@ void AFPSPlayerController::GameStateSetup()
 	{
 		return;
 	}
-	GameState->OnUpdateScore.AddDynamic(this, &AFPSPlayerController::OnUpdateScoreUI);
+	//GameState->OnUpdateScore.AddDynamic(this, &AFPSPlayerController::OnUpdateScoreUI);
 }
 #pragma endregion GameMode & GameState setup
 
@@ -165,7 +165,7 @@ void AFPSPlayerController::OnPlayerDeath_Implementation()
 
 	if (IsLocalPlayerController())
 	{
-		Client_OnUpdateHealthArmorUI(true);
+		//Client_OnUpdateHealthArmorUI(true);
 
 		FInputModeUIOnly InputModeData;
 		InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
@@ -184,7 +184,7 @@ void AFPSPlayerController::OnRep_Pawn()
 	if (GetPawn() != nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("AFPSPlayerController::OnRep_Pawn (Spawn)"));
-		Client_OnUpdateHealthArmorUI(false);
+		//Client_OnUpdateHealthArmorUI(false);
 	}
 	else
 	{
@@ -215,124 +215,124 @@ void AFPSPlayerController::Client_SetupWidgets_Implementation()
 	GameOverWidget->Setup(EInputMode::GameOnly, false);
 	GameOverWidget->SetVisibility(ESlateVisibility::Hidden);
 
-	if (!ensure(ScoreBoardWidgetClass != nullptr))
-	{
-		return;
-	}
-	ScoreBoardWidget = CreateWidget<UScoreBoardWidget>(World, ScoreBoardWidgetClass);
-	if (!ensure(ScoreBoardWidget != nullptr))
-	{
-		return;
-	}
-	ScoreBoardWidget->Setup(EInputMode::GameOnly, false);
-	ScoreBoardWidget->SetVisibility(ESlateVisibility::Hidden);
+	//if (!ensure(ScoreBoardWidgetClass != nullptr))
+	//{
+	//	return;
+	//}
+	//ScoreBoardWidget = CreateWidget<UScoreBoardWidget>(World, ScoreBoardWidgetClass);
+	//if (!ensure(ScoreBoardWidget != nullptr))
+	//{
+	//	return;
+	//}
+	//ScoreBoardWidget->Setup(EInputMode::GameOnly, false);
+	//ScoreBoardWidget->SetVisibility(ESlateVisibility::Hidden);
 
-	if (!ensure(DamageReceiveWidgetClass != nullptr))
-	{
-		return;
-	}
-	DamageReceiveWidget = CreateWidget<UDamageReceiveWidget>(World, DamageReceiveWidgetClass);
-	if (!ensure(DamageReceiveWidget != nullptr))
-	{
-		return;
-	}
-	DamageReceiveWidget->Setup(EInputMode::GameOnly, false);
-	DamageReceiveWidget->SetVisibility(ESlateVisibility::Hidden);
+	//if (!ensure(DamageReceiveWidgetClass != nullptr))
+	//{
+	//	return;
+	//}
+	//DamageReceiveWidget = CreateWidget<UDamageReceiveWidget>(World, DamageReceiveWidgetClass);
+	//if (!ensure(DamageReceiveWidget != nullptr))
+	//{
+	//	return;
+	//}
+	//DamageReceiveWidget->Setup(EInputMode::GameOnly, false);
+	//DamageReceiveWidget->SetVisibility(ESlateVisibility::Hidden);
 
-	if (!ensure(FPSHUDWidgetClass != nullptr))
-	{
-		return;
-	}
-	FPSHUDWidget = CreateWidget<UFPSHUDWidget>(World, FPSHUDWidgetClass);
-	if (!ensure(FPSHUDWidget != nullptr))
-	{
-		return;
-	}
-	FPSHUDWidget->Setup(EInputMode::GameOnly, false);
+	//if (!ensure(FPSHUDWidgetClass != nullptr))
+	//{
+	//	return;
+	//}
+	//FPSHUDWidget = CreateWidget<UFPSHUDWidget>(World, FPSHUDWidgetClass);
+	//if (!ensure(FPSHUDWidget != nullptr))
+	//{
+	//	return;
+	//}
+	//FPSHUDWidget->Setup(EInputMode::GameOnly, false);
 }
 
-void AFPSPlayerController::OnApplyDamage_Implementation()
-{
-	Client_OnApplyDamage();
-}
+//void AFPSPlayerController::OnApplyDamage_Implementation()
+//{
+//	Client_OnApplyDamage();
+//}
+//
+//void AFPSPlayerController::Client_OnApplyDamage_Implementation()
+//{
+//	if (FPSHUDWidget != nullptr)
+//	{
+//		FPSHUDWidget->OnApplyDamage();
+//	}
+//}
 
-void AFPSPlayerController::Client_OnApplyDamage_Implementation()
-{
-	if (FPSHUDWidget != nullptr)
-	{
-		FPSHUDWidget->OnApplyDamage();
-	}
-}
+//void AFPSPlayerController::OnTakeDamage_Implementation()
+//{
+//	Client_OnTakeDamage();
+//}
+//
+//void AFPSPlayerController::Client_OnTakeDamage_Implementation()
+//{
+//	if (DamageReceiveWidget != nullptr)
+//	{
+//		UWorld* World = GetWorld();
+//		if (!ensure(World != nullptr))
+//		{
+//			return;
+//		}
+//		DamageReceiveWidget->SetVisibility(ESlateVisibility::Visible);
+//		World->GetTimerManager().ClearTimer(DamageReceiveTimer);
+//		World->GetTimerManager().SetTimer(DamageReceiveTimer, [&]()
+//			{
+//				DamageReceiveWidget->SetVisibility(ESlateVisibility::Hidden);
+//			}, 2.f, false);
+//	}
+//}
 
-void AFPSPlayerController::OnTakeDamage_Implementation()
-{
-	Client_OnTakeDamage();
-}
+//void AFPSPlayerController::OnUpdateHealthArmorUI_Implementation(bool bIsDead)
+//{
+//	Client_OnUpdateHealthArmorUI(bIsDead);
+//}
+//
+//void AFPSPlayerController::Client_OnUpdateHealthArmorUI_Implementation(bool bIsDead)
+//{
+//	if (FPSHUDWidget != nullptr)
+//	{
+//		FPSHUDWidget->OnTakeDamage(bIsDead);
+//	}
+//}
 
-void AFPSPlayerController::Client_OnTakeDamage_Implementation()
-{
-	if (DamageReceiveWidget != nullptr)
-	{
-		UWorld* World = GetWorld();
-		if (!ensure(World != nullptr))
-		{
-			return;
-		}
-		DamageReceiveWidget->SetVisibility(ESlateVisibility::Visible);
-		World->GetTimerManager().ClearTimer(DamageReceiveTimer);
-		World->GetTimerManager().SetTimer(DamageReceiveTimer, [&]()
-			{
-				DamageReceiveWidget->SetVisibility(ESlateVisibility::Hidden);
-			}, 2.f, false);
-	}
-}
+//void AFPSPlayerController::OnUpdateAmmoUI_Implementation(int CurrentAmmo, int RemainingAmmo)
+//{
+//	Client_OnUpdateAmmoUI(CurrentAmmo, RemainingAmmo);
+//}
+//
+//void AFPSPlayerController::Client_OnUpdateAmmoUI_Implementation(int CurrentAmmo, int RemainingAmmo)
+//{
+//	if (FPSHUDWidget != nullptr)
+//	{
+//		FPSHUDWidget->UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
+//	}
+//}
 
-void AFPSPlayerController::OnUpdateHealthArmorUI_Implementation(bool bIsDead)
-{
-	Client_OnUpdateHealthArmorUI(bIsDead);
-}
+//void AFPSPlayerController::OnUpdateScoreUI(int MarvelScore, int DCScore)
+//{
+//	Client_OnUpdateScoreUI(MarvelScore, DCScore);
+//}
+//
+//void AFPSPlayerController::Client_OnUpdateScoreUI_Implementation(int MarvelScore, int DCScore)
+//{
+//	if (FPSHUDWidget != nullptr)
+//	{
+//		FPSHUDWidget->UpdateScoreUI(MarvelScore, DCScore);
+//	}
+//}
 
-void AFPSPlayerController::Client_OnUpdateHealthArmorUI_Implementation(bool bIsDead)
-{
-	if (FPSHUDWidget != nullptr)
-	{
-		FPSHUDWidget->OnTakeDamage(bIsDead);
-	}
-}
-
-void AFPSPlayerController::OnUpdateAmmoUI_Implementation(int CurrentAmmo, int RemainingAmmo)
-{
-	Client_OnUpdateAmmoUI(CurrentAmmo, RemainingAmmo);
-}
-
-void AFPSPlayerController::Client_OnUpdateAmmoUI_Implementation(int CurrentAmmo, int RemainingAmmo)
-{
-	if (FPSHUDWidget != nullptr)
-	{
-		FPSHUDWidget->UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
-	}
-}
-
-void AFPSPlayerController::OnUpdateScoreUI(int MarvelScore, int DCScore)
-{
-	Client_OnUpdateScoreUI(MarvelScore, DCScore);
-}
-
-void AFPSPlayerController::Client_OnUpdateScoreUI_Implementation(int MarvelScore, int DCScore)
-{
-	if (FPSHUDWidget != nullptr)
-	{
-		FPSHUDWidget->UpdateScoreUI(MarvelScore, DCScore);
-	}
-}
-
-void AFPSPlayerController::ToggleScoreBoardWidget_Implementation(bool bVisible)
-{
-	if (ScoreBoardWidget != nullptr)
-	{
-		ScoreBoardWidget->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
-	}
-}
+//void AFPSPlayerController::ToggleScoreBoardWidget_Implementation(bool bVisible)
+//{
+//	if (ScoreBoardWidget != nullptr)
+//	{
+//		ScoreBoardWidget->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+//	}
+//}
 
 void AFPSPlayerController::Client_LoadGameOver_Implementation(bool bIsWinner, bool bWidgetVisibility)
 {
@@ -344,44 +344,44 @@ void AFPSPlayerController::Client_LoadGameOver_Implementation(bool bIsWinner, bo
 }
 
 // Chat
-void AFPSPlayerController::StartChat_Implementation()
-{
-	if (FPSHUDWidget != nullptr && FPSHUDWidget->GetChatPanel() != nullptr)
-	{
-		FPSHUDWidget->GetChatPanel()->OnStartChat();
-	}
-}
-
-void AFPSPlayerController::SendChat_Implementation(const FName& Chat)
-{
-	UE_LOG(LogTemp, Warning, TEXT("Chat Sender: ( %s ) "), *this->GetName());
-	Server_OnSendChat(*PlayerState->GetPlayerName(), Chat);
-}
-
-void AFPSPlayerController::Server_OnSendChat_Implementation(const FName& PlayerName, const FName& Chat)
-{
-	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
-	{
-		APlayerController* PC = Iterator->Get();
-		if (PC != nullptr && UKismetSystemLibrary::DoesImplementInterface(PC, UFPSPlayerControllerInterface::StaticClass()))
-		{
-			IFPSPlayerControllerInterface::Execute_OnUpdateChatUI(PC, PlayerName, Chat);
-		}
-	}
-}
-
-void AFPSPlayerController::OnUpdateChatUI_Implementation(const FName& PlayerName, const FName& Chat)
-{
-	Client_OnUpdateChatUI(PlayerName, Chat);
-}
-
-void AFPSPlayerController::Client_OnUpdateChatUI_Implementation(const FName& PlayerName, const FName& Chat)
-{
-	if (FPSHUDWidget != nullptr && FPSHUDWidget->GetChatPanel() != nullptr)
-	{
-		FPSHUDWidget->GetChatPanel()->AddChatRow(PlayerName, Chat);
-	}
-}
+//void AFPSPlayerController::StartChat_Implementation()
+//{
+//	if (FPSHUDWidget != nullptr && FPSHUDWidget->GetChatPanel() != nullptr)
+//	{
+//		FPSHUDWidget->GetChatPanel()->OnStartChat();
+//	}
+//}
+//
+//void AFPSPlayerController::SendChat_Implementation(const FName& Chat)
+//{
+//	UE_LOG(LogTemp, Warning, TEXT("Chat Sender: ( %s ) "), *this->GetName());
+//	Server_OnSendChat(*PlayerState->GetPlayerName(), Chat);
+//}
+//
+//void AFPSPlayerController::Server_OnSendChat_Implementation(const FName& PlayerName, const FName& Chat)
+//{
+//	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+//	{
+//		APlayerController* PC = Iterator->Get();
+//		if (PC != nullptr && UKismetSystemLibrary::DoesImplementInterface(PC, UFPSPlayerControllerInterface::StaticClass()))
+//		{
+//			IFPSPlayerControllerInterface::Execute_OnUpdateChatUI(PC, PlayerName, Chat);
+//		}
+//	}
+//}
+//
+//void AFPSPlayerController::OnUpdateChatUI_Implementation(const FName& PlayerName, const FName& Chat)
+//{
+//	Client_OnUpdateChatUI(PlayerName, Chat);
+//}
+//
+//void AFPSPlayerController::Client_OnUpdateChatUI_Implementation(const FName& PlayerName, const FName& Chat)
+//{
+//	if (FPSHUDWidget != nullptr && FPSHUDWidget->GetChatPanel() != nullptr)
+//	{
+//		FPSHUDWidget->GetChatPanel()->AddChatRow(PlayerName, Chat);
+//	}
+//}
 
 #pragma endregion Widget
 

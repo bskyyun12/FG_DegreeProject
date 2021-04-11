@@ -7,8 +7,10 @@
 #include "Kismet/KismetTextLibrary.h"
 
 #include "Widgets/HealthArmorWidget.h"
+#include "Widgets/ChatPanel.h"
+#include "Widgets/AmmoWidget.h"
 
-void UFPSHUDWidget::OnApplyDamage()
+void UFPSHUDWidget::UpdateCrosshairUIOnHit()
 {
 	// Crosshair UI
 	WidgetSwitcher_Crosshair->SetActiveWidgetIndex(1);
@@ -18,21 +20,20 @@ void UFPSHUDWidget::OnApplyDamage()
 	{
 		return;
 	}
-	World->GetTimerManager().ClearTimer(CrosshairTimer);
 	World->GetTimerManager().SetTimer(CrosshairTimer, [&]()
 		{
 			WidgetSwitcher_Crosshair->SetActiveWidgetIndex(0);
 		}, 0.2f, false);
 }
 
-void UFPSHUDWidget::OnTakeDamage(bool bIsDead)
+void UFPSHUDWidget::UpdateHealthArmorUI(const uint8& Health, const uint8& Armor)
 {
-	HealthArmorWidget->UpdateUI(bIsDead);
+	HealthArmorWidget->UpdateHealthArmorUI(Health, Armor);
 }
 
-void UFPSHUDWidget::UpdateAmmoUI(int CurrentAmmo, int RemainingAmmo)
+void UFPSHUDWidget::UpdateAmmoUI(const uint16& CurrentAmmo, const uint16& RemainingAmmo)
 {
-	AmmoWidget->UpdateUI(CurrentAmmo, RemainingAmmo);
+	AmmoWidget->UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
 }
 
 void UFPSHUDWidget::UpdateScoreUI(int MarvelScore, int DCScore)
@@ -41,7 +42,13 @@ void UFPSHUDWidget::UpdateScoreUI(int MarvelScore, int DCScore)
 	Text_DCScore->SetText(UKismetTextLibrary::Conv_IntToText(DCScore));
 }
 
-UChatPanel* UFPSHUDWidget::GetChatPanel() const
+void UFPSHUDWidget::OnStartChat()
 {
-	return ChatPanel;
+	ChatPanel->OnStartChat();
 }
+
+void UFPSHUDWidget::AddChatRow(const FName& PlayerName, const FName& ChatContent)
+{
+	ChatPanel->AddChatRow(PlayerName, ChatContent);
+}
+
