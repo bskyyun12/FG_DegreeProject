@@ -18,7 +18,7 @@ class GWANG_FPS_API UUserRow : public UFPSWidgetBase
 public:
 	bool Initialize() override;
 
-	void UpdateRow(const FUserData& Data);
+	void UpdateRow(const FPlayerData& Data);
 
 private:
 	UPROPERTY(meta = (BindWidget))

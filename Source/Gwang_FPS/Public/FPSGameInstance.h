@@ -8,14 +8,54 @@
 #include "OnlineSubSystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "MainMenu/MenuWidgets/MainMenuInterface.h"
-#include "Weapons/FPSWeaponBase.h"
 
 #include "FPSGameInstance.generated.h"
 
 class UUserWidget;
 class UMainMenuWidget;
 class FOnlineSessionSearch;
-class AFPSWeaponBase;
+
+// Each enum value represents index of weapon array in FPSCharacter
+UENUM(BlueprintType)
+enum class EWeaponType : uint8
+{
+	None,
+	MainWeapon,
+	SubWeapon,
+	Melee,
+	Grenade,
+
+	EnumSize,	// Leave the enum value as default
+};
+
+UENUM(BlueprintType)
+enum class EMainWeapon : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
+{
+	M4A1,
+	AK47,
+	EnumSize
+};
+
+UENUM(BlueprintType)
+enum class ESubWeapon : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
+{
+	Pistol,
+	EnumSize
+};
+
+UENUM(BlueprintType)
+enum class EKnife : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
+{
+	Knife,
+	EnumSize
+};
+
+UENUM(BlueprintType)
+enum class EGrenade : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
+{
+	Grenade,
+	EnumSize
+};
 
 UENUM(BlueprintType)
 enum class ETeam : uint8 {
@@ -26,7 +66,7 @@ enum class ETeam : uint8 {
 };
 
 USTRUCT(BlueprintType)
-struct FUserData
+struct FPlayerData
 {
 	GENERATED_BODY()
 
@@ -54,7 +94,7 @@ struct FUserData
 	UPROPERTY()
 	EGrenade StartGrenade;
 
-	FUserData()
+	FPlayerData()
 	{
 		UserName = "Gwang";
 		ControllerID = 0;
@@ -67,7 +107,7 @@ struct FUserData
 		StartGrenade = EGrenade::Grenade;
 	}
 
-	bool operator == (FUserData const& UserData)
+	bool operator == (FPlayerData const& UserData)
 	{
 		return ControllerID == UserData.ControllerID;
 	}
@@ -83,8 +123,8 @@ public:
 
 	void Init() override;
 
-	FUserData GetUserData() const;
-	void SetUserData(const FUserData& Data);
+	FPlayerData GetUserData() const;
+	void SetUserData(const FPlayerData& Data);
 
 	void SetMainMenu(UMainMenuWidget* InMainMenu);
 	void LoadMainMenu(TSubclassOf<UUserWidget> MainMenuWidgetClass, TSubclassOf<UUserWidget> SessionInfoRowClass);
@@ -107,7 +147,7 @@ private:
 	FString ServerName = "NO_NAME";
 
 	UMainMenuWidget* MainMenu;
-	FUserData UserData;
+	FPlayerData UserData;
 
 private:
 	void CreateSession();

@@ -7,7 +7,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 
 #include "Lobby/LobbyInterface.h"
-#include "Weapons/FPSWeaponBase.h"
+#include "FPSGameInstance.h"
 
 bool ULobbyInventory::Initialize()
 {
@@ -29,7 +29,7 @@ bool ULobbyInventory::Initialize()
 
 	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
 	{
-		FUserData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
+		FPlayerData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
 		MainWeaponIndex = (int)UserData.StartMainWeapon;
 		SubWeaponIndex = (int)UserData.StartSubWeapon;
 		KnifeIndex = (int)UserData.StartKnife;
@@ -117,7 +117,7 @@ void ULobbyInventory::OnClicked_Button_Apply()
 
 	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
 	{
-		FUserData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
+		FPlayerData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
 		UserData.StartMainWeapon = (EMainWeapon)MainWeaponIndex;
 		UserData.StartSubWeapon = (ESubWeapon)SubWeaponIndex;
 		UserData.StartKnife = (EKnife)KnifeIndex;

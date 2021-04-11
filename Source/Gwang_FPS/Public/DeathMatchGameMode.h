@@ -7,8 +7,35 @@
 #include "FPSGameInstance.h"
 #include "DeathMatchGameMode.generated.h"
 
+class ADeathMatchGameState;
 class ADeathMatchCharacter;
 class ADeathMatchPlayerController;
+
+USTRUCT(BlueprintType)
+struct FWeaponClass
+{
+	GENERATED_BODY()
+
+	// Main Weapons
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AActor> M4A1Class;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AActor> AK47Class;
+
+	// Sub Weapons
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AActor> PistolClass;
+
+	// Knives
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AActor> KnifeClass;
+
+	// Grenades
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AActor> GrenadeClass;
+
+};
 
 UCLASS()
 class GWANG_FPS_API ADeathMatchGameMode : public AGameModeBase
@@ -21,8 +48,15 @@ public:
 	// Finish the game and move players to lobby
 	void EndMatch();
 
+	FWeaponClass GetWeaponClass() const { return WeaponClass; }
+
 protected:
+	ADeathMatchGameState* GS;
+
 	TArray<ADeathMatchPlayerController*> PlayerControllers;
+
+	UPROPERTY(EditDefaultsOnly)
+	FWeaponClass WeaponClass;
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<ADeathMatchCharacter> Marvel_CharacterClass;
@@ -32,6 +66,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly)
 	float MatchTimeInSeconds = 10.f; // TODO: this should be 600.f if the match should last for 10 mins for example
+
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FMatchDelegate);
+	FMatchDelegate OnStartMatch;
+	FMatchDelegate OnEndMatch;
 
 protected:
 	// Called after a successful login
@@ -48,6 +86,6 @@ protected:
 		
 	// Spawn Player
 	void SpawnPlayer(ADeathMatchPlayerController* PC);
-	ETeam GetTeamWithLessPlayers();
+	ETeam GetTeamWithLessPeople();
 	AActor* GetBestPlayerStart(const FString& PlayerStartTag) const;
 };

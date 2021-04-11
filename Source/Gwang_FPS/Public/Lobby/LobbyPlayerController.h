@@ -24,22 +24,22 @@ public:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// GameMode & UserData Setup
-	void OnPostLogin_Implementation(ALobbyGameMode* LobbyGM, const FUserData& NewUserData) override;
+	void OnPostLogin_Implementation(ALobbyGameMode* LobbyGM, const FPlayerData& NewUserData) override;
 	UFUNCTION(Client, Reliable)
 	void Client_LoadLobbyWidget();
 
 	// UserData Handle
-	FUserData GetUserData_Implementation() override;
-	void UpdateUserData_Implementation(const FUserData& NewData) override;
+	FPlayerData GetUserData_Implementation() override;
+	void UpdateUserData_Implementation(const FPlayerData& NewData) override;
 	UFUNCTION(Server, Reliable)
-	void Server_UpdateUserdata(const FUserData& UpdatedData);
+	void Server_UpdateUserdata(const FPlayerData& UpdatedData);
 	UFUNCTION(Client, Reliable)
-	void Client_UpdateUserdata(const FUserData& UpdatedData);
+	void Client_UpdateUserdata(const FPlayerData& UpdatedData);
 
 	// Lobby UI Updating
-	void UpdateLobbyUI_Implementation(const TArray<FUserData>& UserDataList) override;
+	void UpdateLobbyUI_Implementation(const TArray<FPlayerData>& UserDataList) override;
 	UFUNCTION(Client, Reliable)
-	void Client_UpdateLobbyUI(const TArray<FUserData>& UserDataList);
+	void Client_UpdateLobbyUI(const TArray<FPlayerData>& UserDataList);
 
 	// Lobby to MainMenu
 	void LobbyToMainMenu_Implementation() override;

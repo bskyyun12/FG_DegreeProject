@@ -27,11 +27,6 @@ void ADeathMatchGameState::PostInitializeComponents()
 	{
 		return;
 	}
-
-	for (APlayerState* PS : PlayerArray)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("PS->GetInstigatorController()->GetName(): (%s)"), *PS->GetInstigatorController()->GetName());
-	}
 }
 
 void ADeathMatchGameState::BeginPlay()

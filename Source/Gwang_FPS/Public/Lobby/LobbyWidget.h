@@ -21,7 +21,7 @@ class GWANG_FPS_API ULobbyWidget : public UFPSWidgetBase
 public:
 	bool Initialize() override;
 
-	void UpdateUserRowData(TArray<FUserData> UserData);
+	void UpdateUserRowData(TArray<FPlayerData> UserData);
 
 private:
 	UPROPERTY(EditDefaultsOnly)

@@ -6,8 +6,6 @@
 #include "Components/WidgetSwitcher.h"
 #include "Kismet/KismetSystemLibrary.h" // DoesImplementInterface
 
-#include "FPSPlayerControllerInterface.h"
-
 bool UGameOverWidget::Initialize()
 {
 	bool Success = Super::Initialize();

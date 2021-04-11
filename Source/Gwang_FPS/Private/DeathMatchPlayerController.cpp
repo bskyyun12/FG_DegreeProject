@@ -10,6 +10,7 @@
 #include "DeathMatchPlayerState.h"
 #include "Widgets/DamageReceiveWidget.h"
 #include "Widgets/ScoreBoardWidget.h"
+#include "Widgets/GameOverWidget.h"
 
 void ADeathMatchPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -34,6 +35,36 @@ void ADeathMatchPlayerController::BeginPlay()
 		{
 			return;
 		}
+	}
+
+	Client_SetupWidgets();
+}
+
+void ADeathMatchPlayerController::OnPossess(APawn* aPawn)
+{
+	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) PlayerController::OnPossess (%s)"), *GetName());
+	Super::OnPossess(aPawn);
+
+	FInputModeGameOnly InputMode;
+	SetInputMode(InputMode);
+
+	Client_OnPossess();
+}
+
+void ADeathMatchPlayerController::Client_OnPossess_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) PlayerController::Client_OnPossess (%s)"), *GetName());
+	FInputModeGameOnly InputMode;
+	SetInputMode(InputMode);
+}
+
+#pragma region Widget
+void ADeathMatchPlayerController::Client_SetupWidgets_Implementation()
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
 	}
 
 	// HUD widget
@@ -75,44 +106,23 @@ void ADeathMatchPlayerController::BeginPlay()
 	// TODO: Change to widget animation fade in and out
 	VignetteWidget->SetVisibility(ESlateVisibility::Hidden);
 
-	FTimerHandle DelayTimer;
-	World->GetTimerManager().SetTimer(DelayTimer, [&]()
-		{
-			PS = Cast<ADeathMatchPlayerState>(PlayerState);
-			if (!ensure(PS != nullptr))
-			{
-				return;
-			}
-		}, 0.5f, false);
+	// Gameover Widget
+	if (!ensure(GameOverWidgetClass != nullptr))
+	{
+		return;
+	}
+	GameOverWidget = CreateWidget<UGameOverWidget>(World, GameOverWidgetClass);
+	if (!ensure(GameOverWidget != nullptr))
+	{
+		return;
+	}
+	GameOverWidget->Setup(EInputMode::GameOnly, false);
+	GameOverWidget->SetVisibility(ESlateVisibility::Hidden);
 }
 
-void ADeathMatchPlayerController::OnPossess(APawn* aPawn)
-{
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) PlayerController::OnPossess (%s)"), *GetName());
-	Super::OnPossess(aPawn);
-
-	FInputModeGameOnly InputMode;
-	SetInputMode(InputMode);
-
-	Client_OnPossess();
-}
-
-void ADeathMatchPlayerController::Client_OnPossess_Implementation()
-{
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) PlayerController::Client_OnPossess (%s)"), *GetName());
-	FInputModeGameOnly InputMode;
-	SetInputMode(InputMode);
-}
-
-#pragma region Widget
 void ADeathMatchPlayerController::UpdateMatchTimeUI(const float& MatchTime)
 {
 
-}
-
-void ADeathMatchPlayerController::UpdateAmmoUI(const uint16& CurrentAmmo, const uint16& RemainingAmmo)
-{
-	HUDWidget->UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
 }
 
 void ADeathMatchPlayerController::UpdateScoreUI(const uint8& MarvelScore, const uint8& DCScore)
@@ -141,24 +151,48 @@ void ADeathMatchPlayerController::VignetteUIOnTakeDamage()
 		}, 2.f, false);
 }
 
-void ADeathMatchPlayerController::SetScoreBoardUIVisibility(const bool& NewVisibility)
-{
-	ScoreboardWidget->SetVisibility(NewVisibility ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
-}
-
-void ADeathMatchPlayerController::StartChat()
-{
-	HUDWidget->OnStartChat();
-}
-
 void ADeathMatchPlayerController::SendChat(const FName& PlayerName, const FName& ChatContent)
 {
+	if (PS == nullptr)
+	{
+		PS = Cast<ADeathMatchPlayerState>(PlayerState);
+		if (!ensure(PS != nullptr))
+		{
+			return;
+		}
+	}
 	PS->Server_OnSendChat(PlayerName, ChatContent);
 }
 
 void ADeathMatchPlayerController::UpdateChatUI(const FName& PlayerName, const FName& ChatContent)
 {
 	HUDWidget->AddChatRow(PlayerName, ChatContent);
+}
+
+void ADeathMatchPlayerController::UpdateAmmoUI_Implementation(const int& CurrentAmmo, const int& RemainingAmmo)
+{
+	HUDWidget->UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
+}
+
+void ADeathMatchPlayerController::LoadGameOverUI(const bool& bIsWinner, const bool& bWidgetVisibility)
+{
+	GameOverWidget->SetVisibility(bWidgetVisibility ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+	GameOverWidget->SetResultText(bIsWinner);
+}
+
+void ADeathMatchPlayerController::SetScoreBoardUIVisibility_Implementation(bool bNewVisibility)
+{
+	ScoreboardWidget->SetVisibility(bNewVisibility ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+}
+
+void ADeathMatchPlayerController::OnUpdateHealthArmorUI_Implementation(const uint8& CurrentHealth, const uint8& CurrentArmor)
+{
+	HUDWidget->UpdateHealthArmorUI(CurrentHealth, CurrentArmor);
+}
+
+void ADeathMatchPlayerController::StartChat_Implementation()
+{
+	HUDWidget->OnStartChat();
 }
 
 #pragma endregion

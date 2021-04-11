@@ -7,8 +7,8 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/KismetTextLibrary.h"
 
-#include "FPSPlayerControllerInterface.h"
 #include "Widgets/ChatRow.h"
+#include "PlayerControllerInterface.h"
 
 bool UChatPanel::Initialize()
 {
@@ -45,9 +45,9 @@ void UChatPanel::SendChat()
 {
 	UE_LOG(LogTemp, Warning, TEXT("UChatPanel::SendChat"));
 	FName ChatToSend = *(UKismetTextLibrary::Conv_TextToString(EditableText_Chat->GetText()));
-	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), UFPSPlayerControllerInterface::StaticClass()))
+	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), UPlayerControllerInterface::StaticClass()))
 	{
-		IFPSPlayerControllerInterface::Execute_SendChat(GetOwningPlayer(), ChatToSend);
+		IPlayerControllerInterface::Execute_SendChat(GetOwningPlayer(), ChatToSend);
 	}
 
 	EditableText_Chat->SetText(FText::FromString(""));

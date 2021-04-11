@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
-#include "Weapons/FPSWeaponBase.h"
+#include "DeathMatchGameMode.h"
 #include "FPSAnimInterface.generated.h"
 
 // This class does not need to be modified.

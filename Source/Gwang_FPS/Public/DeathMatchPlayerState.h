@@ -89,9 +89,6 @@ protected:
 	UFUNCTION()
 	void OnRep_LastChat();
 
-
-
-
 protected:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

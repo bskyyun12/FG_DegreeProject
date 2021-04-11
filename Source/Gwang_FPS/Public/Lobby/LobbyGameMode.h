@@ -21,13 +21,13 @@ public:
 
 	void StartGame();
 
-	void GwangUpdateLobbyData(const FUserData& UpdatedData);
+	void GwangUpdateLobbyData(const FPlayerData& UpdatedData);
 	void UpdateLobbyUI();
 
 	void RemoveUserData(int ID);
 
 protected:
-	TArray<FUserData> UserData;
+	TArray<FPlayerData> UserData;
 
 protected:
 	void BeginPlay() override;

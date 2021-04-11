@@ -6,8 +6,6 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/KismetTextLibrary.h"
 
-#include "FPSCharacterInterface.h"
-
 void UHealthArmorWidget::UpdateHealthArmorUI(const uint8& Health, const uint8& Armor)
 {
 	Text_Health->SetText(UKismetTextLibrary::Conv_IntToText(Health));

@@ -6,8 +6,6 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
 
-#include "FPSCharacterInterface.h"
-
 // Temp
 #include "DrawDebugHelpers.h"
 
@@ -79,45 +77,45 @@ void AFPSGrenadeBase::Tick(float DeltaSeconds)
 	{
 		if (ArmMesh != nullptr && CharacterMesh != nullptr)
 		{
-			FPWeaponMesh->SetWorldLocation(ArmMesh->GetSocketLocation(WeaponInfo.FP_ArmsSocketName));
-			TPWeaponMesh->SetWorldLocation(CharacterMesh->GetSocketLocation(WeaponInfo.TP_CharacterSocketName));
+			//FPWeaponMesh->SetWorldLocation(ArmMesh->GetSocketLocation(WeaponInfo.FP_ArmsSocketName));
+			//TPWeaponMesh->SetWorldLocation(CharacterMesh->GetSocketLocation(WeaponInfo.TP_CharacterSocketName));
 		}
 	}
 }
 
-void AFPSGrenadeBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
-{
-	Super::Server_OnWeaponEquipped_Implementation(OwnerCharacter);
-
-	if (UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
-	{
-		ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(GetOwner());
-		CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(GetOwner());
-	}
-}
-
-void AFPSGrenadeBase::OnRep_Owner()
-{
-	Super::OnRep_Owner();
-
-	if (UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
-	{
-		ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(GetOwner());
-		CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(GetOwner());
-	}
-}
+//void AFPSGrenadeBase::Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter)
+//{
+//	Super::Server_OnWeaponEquipped_Implementation(OwnerCharacter);
+//
+//	if (UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
+//	{
+//		ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(GetOwner());
+//		CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(GetOwner());
+//	}
+//}
+//
+//void AFPSGrenadeBase::OnRep_Owner()
+//{
+//	Super::OnRep_Owner();
+//
+//	if (UKismetSystemLibrary::DoesImplementInterface(GetOwner(), UFPSCharacterInterface::StaticClass()))
+//	{
+//		ArmMesh = IFPSCharacterInterface::Execute_GetArmMesh(GetOwner());
+//		CharacterMesh = IFPSCharacterInterface::Execute_GetCharacterMesh(GetOwner());
+//	}
+//}
 
 FGrenadeMove AFPSGrenadeBase::InitializeTrajectory(float DeltaSeconds)
 {
 	FGrenadeMove Move;
-	Move.LaunchPoint = FPWeaponMesh->GetComponentLocation() + GetOwner()->GetActorForwardVector();
-	Move.PrevPoint = Move.LaunchPoint;
-	Move.LaunchForward = GetOwner()->GetActorForwardVector();
-	Move.CurrentSpeed = LaunchSpeed;
-	Move.FlightTime = 0.f;
-	Move.LifeTime = 0.f;
-	Move.DeltaSeconds = DeltaSeconds;
-	Move.LaunchAngleInRad = GetOwner()->GetInstigatorController()->GetControlRotation().Pitch * PI / 180.f;
+	//Move.LaunchPoint = FPWeaponMesh->GetComponentLocation() + GetOwner()->GetActorForwardVector();
+	//Move.PrevPoint = Move.LaunchPoint;
+	//Move.LaunchForward = GetOwner()->GetActorForwardVector();
+	//Move.CurrentSpeed = LaunchSpeed;
+	//Move.FlightTime = 0.f;
+	//Move.LifeTime = 0.f;
+	//Move.DeltaSeconds = DeltaSeconds;
+	//Move.LaunchAngleInRad = GetOwner()->GetInstigatorController()->GetControlRotation().Pitch * PI / 180.f;
 
 	return Move;
 }
@@ -165,20 +163,20 @@ void AFPSGrenadeBase::MoveGrenade(FGrenadeMove& Move)
 		bSimulateGrenadeMove = false;
 	}
 
-	if (bIsLocallyControlled)
-	{
-		if (FPWeaponMesh != nullptr)
-		{
-			FPWeaponMesh->SetWorldLocation(Move.NewPoint);
-		}
-	}
-	else
-	{
-		if (TPWeaponMesh != nullptr)
-		{
-			TPWeaponMesh->SetWorldLocation(Move.NewPoint);
-		}
-	}
+	//if (bIsLocallyControlled)
+	//{
+	//	if (FPWeaponMesh != nullptr)
+	//	{
+	//		FPWeaponMesh->SetWorldLocation(Move.NewPoint);
+	//	}
+	//}
+	//else
+	//{
+	//	if (TPWeaponMesh != nullptr)
+	//	{
+	//		TPWeaponMesh->SetWorldLocation(Move.NewPoint);
+	//	}
+	//}
 
 	DrawDebugPoint(World, Move.NewPoint, 10.f, FColor::Purple, false, .5f);
 	CalcTrajectory(Move);
@@ -206,10 +204,6 @@ void AFPSGrenadeBase::CalcTrajectory(FGrenadeMove& Move)
 		FVector Reflection = FMath::GetReflectionVector((Hit.ImpactPoint - Move.PrevPoint).GetSafeNormal(), Hit.ImpactNormal);
 		FVector RightVector = FVector::CrossProduct(Reflection, FVector::UpVector);
 		Move.LaunchForward = FVector::CrossProduct(FVector::UpVector, RightVector);
-
-		DrawDebugLine(World, Hit.ImpactPoint, Hit.ImpactPoint + Reflection * 100.f, FColor::Purple, false, -1.f, 0, 7.f);
-		DrawDebugLine(World, Hit.ImpactPoint, Hit.ImpactPoint + RightVector * 100.f, FColor::Blue, false, -1.f, 0, 7.f);
-		DrawDebugLine(World, Hit.ImpactPoint, Hit.ImpactPoint + Move.LaunchForward * 100.f, FColor::Black, false, -1.f, 0, 7.f);
 
 		Move.LaunchAngleInRad = FMath::Acos(FVector::DotProduct(Reflection, Move.LaunchForward));
 		Move.LaunchAngleInRad *= FMath::Sign(Reflection.Z);

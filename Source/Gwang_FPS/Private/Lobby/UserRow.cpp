@@ -20,7 +20,7 @@ bool UUserRow::Initialize()
 }
 
 // Called by ULobbyWidget::UpdateUserRowData
-void UUserRow::UpdateRow(const FUserData& Data)
+void UUserRow::UpdateRow(const FPlayerData& Data)
 {
 	Text_UserName->SetText(FText::FromName(Data.UserName));
 	Text_ID->SetText(FText::FromString(FString::FromInt(Data.ControllerID)));
@@ -58,7 +58,7 @@ void UUserRow::OnClicked_Button_Ready()
 	{
 		bIsReady = !bIsReady;
 
-		FUserData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
+		FPlayerData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
 		UserData.bIsReady = bIsReady;
 		ILobbyInterface::Execute_UpdateUserData(GetOwningPlayer(), UserData);
 	}

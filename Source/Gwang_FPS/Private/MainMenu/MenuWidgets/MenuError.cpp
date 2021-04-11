@@ -2,6 +2,8 @@
 
 
 #include "MainMenu/MenuWidgets/MenuError.h"
+#include "Components/TextBlock.h"
+#include "Components/Button.h"
 
 bool UMenuError::Initialize()
 {

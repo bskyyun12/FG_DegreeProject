@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Weapons/FPSWeaponBase.h"
+#include "GameFramework/Actor.h"
 #include "FPSGrenadeBase.generated.h"
 
 USTRUCT(BlueprintType)
@@ -32,7 +32,7 @@ struct FGrenadeMove
 };
 
 UCLASS()
-class GWANG_FPS_API AFPSGrenadeBase : public AFPSWeaponBase
+class GWANG_FPS_API AFPSGrenadeBase : public AActor
 {
 	GENERATED_BODY()
 	
@@ -41,14 +41,14 @@ public:
 
 	AFPSGrenadeBase();
 	
-	void Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter) override;
-	void OnRep_Owner() override;
+	//void Server_OnWeaponEquipped_Implementation(AFPSCharacter* OwnerCharacter);
+	//void OnRep_Owner();
 
-	void Server_OnBeginFireWeapon_Implementation() override;
-	void Server_OnEndFireWeapon_Implementation() override;
+	void Server_OnBeginFireWeapon_Implementation();
+	void Server_OnEndFireWeapon_Implementation();
 
-	void Client_OnBeginFireWeapon_Implementation() override;
-	void Client_OnEndFireWeapon_Implementation() override;
+	void Client_OnBeginFireWeapon_Implementation();
+	void Client_OnEndFireWeapon_Implementation();
 	
 	void Tick(float DeltaSeconds) override;
 

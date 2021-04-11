@@ -3,21 +3,30 @@
 #include "DeathMatchCharacter.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/InputSettings.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
-#include "Weapons/WeaponBase.h"
 #include "DeathMatchPlayerState.h"
+#include "Weapons/WeaponInterface.h"
+#include "Weapons/GunBase.h"
+#include "PlayerControllerInterface.h"
+#include "Animation/FPSAnimInterface.h"
+#include "DeathMatchGameMode.h"
 
 void ADeathMatchCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, BeginFire, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, EndFire, COND_SkipOwner);
-	DOREPLIFETIME(ADeathMatchCharacter, Health);
+	DOREPLIFETIME(ADeathMatchCharacter, CurrentHealth);
+	DOREPLIFETIME(ADeathMatchCharacter, CurrentArmor);
+	DOREPLIFETIME(ADeathMatchCharacter, StartWeapons);
+	DOREPLIFETIME(ADeathMatchCharacter, CurrentWeapons);
+	DOREPLIFETIME(ADeathMatchCharacter, CurrentlyHeldWeapon);
 }
 
 ADeathMatchCharacter::ADeathMatchCharacter()
@@ -26,15 +35,15 @@ ADeathMatchCharacter::ADeathMatchCharacter()
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
 
 	// Create a CameraComponent	
-	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
-	FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
-	FirstPersonCameraComponent->SetRelativeLocation(FVector(-39.56f, 1.75f, 64.f)); // Position the camera
-	FirstPersonCameraComponent->bUsePawnControlRotation = true;
+	FP_Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
+	FP_Camera->SetupAttachment(GetCapsuleComponent());
+	FP_Camera->SetRelativeLocation(FVector(-39.56f, 1.75f, 64.f)); // Position the camera
+	FP_Camera->bUsePawnControlRotation = true;
 
 	// Create a mesh component that will be used when being viewed from a '1st person' view (when controlling this pawn)
 	ArmMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ArmsMesh"));
 	ArmMesh->SetOnlyOwnerSee(true);
-	ArmMesh->SetupAttachment(FirstPersonCameraComponent);
+	ArmMesh->SetupAttachment(FP_Camera);
 	ArmMesh->bCastDynamicShadow = false;
 	ArmMesh->CastShadow = false;
 	ArmMesh->SetRelativeRotation(FRotator(1.9f, -19.19f, 5.2f));
@@ -42,17 +51,24 @@ ADeathMatchCharacter::ADeathMatchCharacter()
 
 	GetMesh()->SetOwnerNoSee(true);
 
+	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &ADeathMatchCharacter::OnBeginOverlap);
+
+	DeathCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("DeathCamera"));
+	DeathCamera->SetupAttachment(RootComponent);
+	DeathCamera->SetRelativeRotation(FRotator(-50.f, 0.f, 0.f));
+	DeathCamera->SetActive(false);
 }
 
 FVector ADeathMatchCharacter::GetCameraLocation() const
 {
-	return FirstPersonCameraComponent->GetComponentLocation();
+	return FP_Camera->GetComponentLocation();
 }
 
 void ADeathMatchCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
+	UE_LOG(LogTemp, Warning, TEXT("Character::BeginPlay => Character( %s )'s role: ( %i )"), *GetName(), GetLocalRole());
 
 	// Spawn weapon
 	if (RifleClass != nullptr)
@@ -60,14 +76,16 @@ void ADeathMatchCharacter::BeginPlay()
 		UWorld* World = GetWorld();
 		if (World != nullptr)
 		{
-			CurrentWeapon = World->SpawnActor<AWeaponBase>(RifleClass);
+			CurrentlyHeldWeapon = World->SpawnActor(RifleClass);
+
+			// Equip the spawned weapon
+			IWeaponInterface::Execute_OnWeaponEquipped(CurrentlyHeldWeapon, this);
 		}
 	}
 
-	// Equip the spawned weapon
-	if (CurrentWeapon != nullptr)
+	if (FP_Camera != nullptr)
 	{
-		CurrentWeapon->Client_OnWeaponEquipped(this);
+		CameraRelativeLocation_Default = FP_Camera->GetRelativeLocation();
 	}
 }
 
@@ -80,9 +98,23 @@ void ADeathMatchCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
-	// Bind fire event
+	// Bind fire events
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ADeathMatchCharacter::OnBeginFire);
 	PlayerInputComponent->BindAction("Fire", IE_Released, this, &ADeathMatchCharacter::OnEndFire);
+
+	// Bind weapon equip events
+	PlayerInputComponent->BindAction("MainWeapon", IE_Pressed, this, &ADeathMatchCharacter::EquipMainWeapon);
+	PlayerInputComponent->BindAction("SubWeapon", IE_Pressed, this, &ADeathMatchCharacter::EquipSubWeapon);
+
+	PlayerInputComponent->BindAction("Drop", IE_Pressed, this, &ADeathMatchCharacter::DropWeapon);
+	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &ADeathMatchCharacter::Reload);
+	PlayerInputComponent->BindAction("Chat", IE_Pressed, this, &ADeathMatchCharacter::StartChat);
+
+	PlayerInputComponent->BindAction<FOneBooleanDelegate>("ScoreBoard", IE_Pressed, this, &ADeathMatchCharacter::ToggleScoreBoardWidget, true);
+	PlayerInputComponent->BindAction<FOneBooleanDelegate>("ScoreBoard", IE_Released, this, &ADeathMatchCharacter::ToggleScoreBoardWidget, false);
+
+	PlayerInputComponent->BindAction<FOneBooleanDelegate>("Crouch", IE_Pressed, this, &ADeathMatchCharacter::HandleCrouch, true);
+	PlayerInputComponent->BindAction<FOneBooleanDelegate>("Crouch", IE_Released, this, &ADeathMatchCharacter::HandleCrouch, false);
 
 	// Bind movement events
 	PlayerInputComponent->BindAxis("MoveForward", this, &ADeathMatchCharacter::MoveForward);
@@ -114,16 +146,257 @@ void ADeathMatchCharacter::UnPossessed()
 
 }
 
+void ADeathMatchCharacter::EquipMainWeapon()
+{
+	if (CurrentWeapons[1] != nullptr)
+	{
+		IWeaponInterface::Execute_OnWeaponEquipped(CurrentWeapons[1], this);
+		Server_EquipWeapon(CurrentWeapons[1]);
+	}
+}
+
+void ADeathMatchCharacter::EquipSubWeapon()
+{
+	if (CurrentWeapons[2] != nullptr)
+	{
+		IWeaponInterface::Execute_OnWeaponEquipped(CurrentWeapons[2], this);
+		Server_EquipWeapon(CurrentWeapons[2]);
+	}
+}
+
+void ADeathMatchCharacter::Server_EquipWeapon_Implementation(AActor* Weapon)
+{
+	CurrentlyHeldWeapon = Weapon;
+
+	EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(Weapon);
+	uint8 WeaponIndex = (uint8)WeaponType;
+	CurrentWeapons[WeaponIndex] = Weapon;
+
+	Multicast_EquipWeapon(Weapon);
+}
+
+void ADeathMatchCharacter::Multicast_EquipWeapon_Implementation(AActor* Weapon)
+{
+	if (!IsLocallyControlled())
+	{
+		IWeaponInterface::Execute_OnWeaponEquipped(Weapon, this);
+	}
+}
+
+void ADeathMatchCharacter::DropWeapon()
+{
+	if (CurrentlyHeldWeapon != nullptr)
+	{
+		GetCapsuleComponent()->SetGenerateOverlapEvents(false);
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		FTimerHandle DropTimer;
+		World->GetTimerManager().SetTimer(DropTimer, [&]()
+			{
+				GetCapsuleComponent()->SetGenerateOverlapEvents(true);
+			}, 2.f, false);
+
+		IWeaponInterface::Execute_OnWeaponDropped(CurrentlyHeldWeapon);
+		Server_DropWeapon();
+	}
+}
+
+void ADeathMatchCharacter::Server_DropWeapon_Implementation()
+{
+	if (CurrentlyHeldWeapon != nullptr)
+	{
+		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(CurrentlyHeldWeapon);
+		uint8 WeaponIndex = (uint8)WeaponType;
+		CurrentWeapons[WeaponIndex] = nullptr;
+		CurrentlyHeldWeapon = nullptr;
+
+		Multicast_DropWeapon();
+	}
+}
+
+void ADeathMatchCharacter::Multicast_DropWeapon_Implementation()
+{
+	if (!IsLocallyControlled())
+	{
+		IWeaponInterface::Execute_OnWeaponDropped(CurrentlyHeldWeapon);
+	}
+}
+
+void ADeathMatchCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UWeaponInterface::StaticClass()))
+	{
+		PickupWeapon(OtherActor);
+	}
+}
+
+void ADeathMatchCharacter::PickupWeapon(AActor* const& WeaponToPickup)
+{
+	if (WeaponToPickup != nullptr)
+	{
+		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(WeaponToPickup);
+		uint8 WeaponIndex = (uint8)WeaponType;
+		bool bHasSameTypeWeapon = CurrentWeapons[WeaponIndex] != nullptr;
+		if (bHasSameTypeWeapon)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Already has the same weapon type"));
+		}
+		else
+		{
+			if (CurrentlyHeldWeapon == nullptr)
+			{
+				IWeaponInterface::Execute_OnWeaponEquipped(WeaponToPickup, this);
+				Server_EquipWeapon(WeaponToPickup);
+			}
+			else
+			{
+				CurrentWeapons[WeaponIndex] = WeaponToPickup;
+				//WeaponToPickup->SetVisibility(false);
+			}
+		}
+	}
+}
+
+void ADeathMatchCharacter::Reload()
+{
+	if (CurrentlyHeldWeapon != nullptr)
+	{
+		IWeaponInterface::Execute_Reload(CurrentlyHeldWeapon);
+		Server_Reload();
+	}
+}
+
+void ADeathMatchCharacter::Server_Reload_Implementation()
+{
+	Multicast_Reload();
+}
+
+void ADeathMatchCharacter::Multicast_Reload_Implementation()
+{
+	if (!IsLocallyControlled())
+	{
+		IWeaponInterface::Execute_Reload(CurrentlyHeldWeapon);
+	}
+}
+
+void ADeathMatchCharacter::ToggleScoreBoardWidget(bool bDisplay)
+{
+	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UPlayerControllerInterface::StaticClass()))
+	{
+		IPlayerControllerInterface::Execute_SetScoreBoardUIVisibility(GetController(), bDisplay);
+	}
+}
+
+void ADeathMatchCharacter::HandleCrouch(bool bCrouchButtonDown)
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+	DesiredCameraRelativeLocation = bCrouchButtonDown ? CameraRelativeLocationOnCrouch : CameraRelativeLocation_Default;
+	World->GetTimerManager().SetTimer(CrouchTimerHandle, this, &ADeathMatchCharacter::CrouchSimulate, World->GetDeltaSeconds(), true);
+
+	GetCharacterMovement()->MaxWalkSpeed *= bCrouchButtonDown ? 0.5f : 2.0f;
+
+	Server_HandleCrouch(bCrouchButtonDown);
+}
+
+void ADeathMatchCharacter::CrouchSimulate()
+{
+	if (FP_Camera != nullptr)
+	{
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		FVector NewCameraRelativeLocation = FMath::VInterpTo(FP_Camera->GetRelativeLocation(), DesiredCameraRelativeLocation, World->GetDeltaSeconds(), 10.f);
+		FP_Camera->SetRelativeLocation(NewCameraRelativeLocation);
+
+		if (NewCameraRelativeLocation.Equals(DesiredCameraRelativeLocation, 2.f))
+		{
+			FP_Camera->SetRelativeLocation(DesiredCameraRelativeLocation);
+			World->GetTimerManager().ClearTimer(CrouchTimerHandle);
+			UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::CrouchSimulate (Timer Cleared)"));
+		}
+	}
+}
+
+void ADeathMatchCharacter::Server_HandleCrouch_Implementation(bool bCrouchButtonDown)
+{
+	Multicast_HandleCrouch(bCrouchButtonDown);
+
+	FP_Camera->SetRelativeLocation(bCrouchButtonDown ? CameraRelativeLocationOnCrouch : CameraRelativeLocation_Default);
+}
+
+void ADeathMatchCharacter::Multicast_HandleCrouch_Implementation(bool bCrouchButtonDown)
+{
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	if (!IsLocallyControlled())
+	{	
+		UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
+		if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
+		{
+			IFPSAnimInterface::Execute_HandleCrouch(CharacterAnimInstance, bCrouchButtonDown);
+		}
+
+		GetCharacterMovement()->MaxWalkSpeed *= bCrouchButtonDown ? 0.5f : 2.0f;
+	}
+}
+
+void ADeathMatchCharacter::StartChat()
+{
+	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UPlayerControllerInterface::StaticClass()))
+	{
+		IPlayerControllerInterface::Execute_StartChat(GetController());
+	}
+}
+
+void ADeathMatchCharacter::LookUp(float Value)
+{
+	AddControllerPitchInput(Value);
+	Server_LookUp(Value);
+}
+
+void ADeathMatchCharacter::Server_LookUp_Implementation(const float& Value)
+{
+	Multicast_LookUp(Value);
+}
+
+void ADeathMatchCharacter::Multicast_LookUp_Implementation(const float& Value)
+{
+	if (!IsLocallyControlled())
+	{
+		AddControllerPitchInput(Value);
+
+		FP_Camera->SetWorldRotation(GetControlRotation());
+		UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
+		if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
+		{
+			IFPSAnimInterface::Execute_UpdateSpineAngle(CharacterAnimInstance, GetControlRotation().Pitch);
+		}
+	}
+}
+
 void ADeathMatchCharacter::OnBeginFire()
 {
-	if (CurrentWeapon == nullptr)
+	if (CurrentlyHeldWeapon == nullptr)
 	{
 		return;
 	}
 	if (GetLocalRole() == ROLE_AutonomousProxy)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("(Client) OnBeginFire"));
-		CurrentWeapon->OnBeginFire();
+		IWeaponInterface::Execute_BeginFire(CurrentlyHeldWeapon);
 	}
 	Server_OnBeginFire();
 }
@@ -132,26 +405,26 @@ void ADeathMatchCharacter::Server_OnBeginFire_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("(Server) OnBeginFire"));
 	BeginFire++;	// OnRep_BeginFire()
-	CurrentWeapon->OnBeginFire();
+	IWeaponInterface::Execute_BeginFire(CurrentlyHeldWeapon);
 }
 
 // All Other Clients ( COND_SkipOwner )
 void ADeathMatchCharacter::OnRep_BeginFire()
 {
 	UE_LOG(LogTemp, Warning, TEXT("(Client2) OnBeginFire"));
-	CurrentWeapon->OnBeginFire();
+	IWeaponInterface::Execute_BeginFire(CurrentlyHeldWeapon);
 }
 
 void ADeathMatchCharacter::OnEndFire()
 {
-	if (CurrentWeapon == nullptr)
+	if (CurrentlyHeldWeapon == nullptr)
 	{
 		return;
 	}
 	if (GetLocalRole() == ROLE_AutonomousProxy)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("(Client) OnEndFire"));
-		CurrentWeapon->OnEndFire();
+		IWeaponInterface::Execute_EndFire(CurrentlyHeldWeapon);
 	}
 	Server_OnEndFire();
 }
@@ -160,13 +433,13 @@ void ADeathMatchCharacter::Server_OnEndFire_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("(Server) OnEndFire"));
 	EndFire++;
-	CurrentWeapon->OnEndFire();
+	IWeaponInterface::Execute_EndFire(CurrentlyHeldWeapon);
 }
 
 void ADeathMatchCharacter::OnRep_EndFire()
 {
 	UE_LOG(LogTemp, Warning, TEXT("(Client2) OnEndFire"));
-	CurrentWeapon->OnEndFire();
+	IWeaponInterface::Execute_EndFire(CurrentlyHeldWeapon);
 }
 
 void ADeathMatchCharacter::MoveForward(float Value)
@@ -191,12 +464,150 @@ void ADeathMatchCharacter::Server_TakeDamage_Implementation(float DamageOnHealth
 {
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::TakeDamage => ( %s ) Took ( %f ) Damage By ( %s )."), *GetName(), DamageOnHealth, *DamageCauser->GetName());
 
-	// TODO: Implement Armor
-	Health -= DamageOnHealth;
-	if (Health <= 0.f)
+	float TotalDamageOnHealth = DamageOnHealth;
+	float TotalDamageOnArmor = DamageOnArmor;
+
+	// Take damage on health when incoming armor damage is greater than current armor
+	if (DamageOnArmor > CurrentArmor)
+	{
+		TotalDamageOnHealth += DamageOnArmor - CurrentArmor;
+		TotalDamageOnArmor = CurrentArmor;
+	}
+	CurrentHealth -= TotalDamageOnHealth;
+	CurrentArmor -= TotalDamageOnArmor;
+
+	if (CurrentHealth <= 0.f)
 	{
 		Server_OnDeath(DamageCauser);
 	}
+
+	Client_UpdateHealthArmorUI((uint8)CurrentHealth, (uint8)CurrentArmor);
+}
+
+void ADeathMatchCharacter::Client_UpdateHealthArmorUI_Implementation(const uint8& Health, const uint8& Armor)
+{
+	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UPlayerControllerInterface::StaticClass()))
+	{
+		IPlayerControllerInterface::Execute_OnUpdateHealthArmorUI(GetController(), Health, Armor);
+	}
+}
+
+void ADeathMatchCharacter::Server_OnSpawn_Implementation()
+{
+	CurrentHealth = 100.f;
+	CurrentArmor = 100.f;
+
+	Multicast_OnSpawn();
+}
+
+void ADeathMatchCharacter::Multicast_OnSpawn_Implementation()
+{
+	HandleCameraOnSpawn();
+
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Capsule_Alive"));
+	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh_Alive"));
+
+	if (IsLocallyControlled())
+	{
+		Client_SetupWeaponsOnSpawn();
+	}
+}
+
+void ADeathMatchCharacter::HandleCameraOnSpawn()
+{
+	FP_Camera->SetActive(true);
+	DeathCamera->SetActive(false);
+}
+
+void ADeathMatchCharacter::Client_SetupWeaponsOnSpawn_Implementation()
+{
+	if (GI == nullptr)
+	{
+		GI = GetGameInstance<UFPSGameInstance>();
+		if (!ensure(GI != nullptr))
+		{
+			return;
+		}
+	}
+	Server_SetupWeaponsOnSpawn(GI->GetUserData());
+}
+
+void ADeathMatchCharacter::Server_SetupWeaponsOnSpawn_Implementation(const FPlayerData& UserData)
+{
+	if (CurrentWeapons.Num() != (uint8)EWeaponType::EnumSize)
+	{
+		for (uint8 i = 0; i < (uint8)EWeaponType::EnumSize; i++)
+		{
+			CurrentWeapons.Add(nullptr);
+			StartWeapons.Add(nullptr);
+		}
+	}
+
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	ADeathMatchGameMode* GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
+	if (!ensure(GM != nullptr))
+	{
+		return;
+	}
+	FWeaponClass WeaponClass = GM->GetWeaponClass();
+
+	// MainWeapon Setup
+	if (StartWeapons[1] == nullptr)
+	{
+		EMainWeapon StartMainWeapon = UserData.StartMainWeapon;
+		switch (StartMainWeapon)
+		{
+		default:
+			break;
+		case EMainWeapon::M4A1:
+			if (!ensure(WeaponClass.M4A1Class != nullptr))
+			{
+				return;
+			}
+			StartWeapons[1] = World->SpawnActor<AActor>(WeaponClass.M4A1Class);
+			break;
+		case EMainWeapon::AK47:
+			if (!ensure(WeaponClass.AK47Class != nullptr))
+			{
+				return;
+			}
+			StartWeapons[1] = World->SpawnActor<AActor>(WeaponClass.AK47Class);
+			break;
+		}
+	}
+
+	// SubWeapon Setup
+	if (StartWeapons[2] == nullptr)
+	{
+		ESubWeapon StartSubWeapon = UserData.StartSubWeapon;
+		switch (StartSubWeapon)
+		{
+		case ESubWeapon::Pistol:
+			if (!ensure(WeaponClass.PistolClass != nullptr))
+			{
+				return;
+			}
+			StartWeapons[2] = World->SpawnActor<AActor>(WeaponClass.PistolClass);
+			break;
+		}
+	}
+
+	CurrentWeapons = StartWeapons;
+	for (AActor* Weapon : CurrentWeapons)
+	{
+		if (Weapon != nullptr)
+		{
+			//Weapon->OnReset();
+			//Weapon->SetVisibility(false);
+		}
+	}
+
+	EquipMainWeapon();
 }
 
 void ADeathMatchCharacter::Server_OnDeath_Implementation(AActor* DeathCauser)
@@ -213,7 +624,57 @@ void ADeathMatchCharacter::Server_OnDeath_Implementation(AActor* DeathCauser)
 	// Update PlayerState
 	PlayerState->Server_OnDeath();
 
-	this->Destroy();
+	Multicast_OnDeath();
+}
+
+void ADeathMatchCharacter::Multicast_OnDeath_Implementation()
+{
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Capsule_Dead"));
+	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh_Dead"));
+
+	// Drop Weapon
+	DropWeapon();
+
+	if (IsLocallyControlled())
+	{
+		// Activate DeathCamera
+		HandleCameraOnDeath();
+	}
+
+	if (!IsLocallyControlled())
+	{
+		if (GetMesh() != nullptr)
+		{
+			UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
+			if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
+			{
+				IFPSAnimInterface::Execute_OnDeath(CharacterAnimInstance);
+			}
+		}
+	}
+}
+
+void ADeathMatchCharacter::HandleCameraOnDeath()
+{
+	FP_Camera->SetActive(false);
+	DeathCamera->SetActive(true);
+
+	UWorld* World = GetWorld();
+	if (World != nullptr)
+	{
+		FHitResult Hit;
+		FVector Start = GetActorLocation();
+		FVector End = Start + DeathCamera->GetForwardVector() * -500.f;
+
+		if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility))
+		{
+			DeathCamera->SetWorldLocation(Hit.ImpactPoint);
+		}
+		else
+		{
+			DeathCamera->SetWorldLocation(End);
+		}
+	}
 }
 
 void ADeathMatchCharacter::Server_OnKill_Implementation(ADeathMatchCharacter* DeadPlayer)

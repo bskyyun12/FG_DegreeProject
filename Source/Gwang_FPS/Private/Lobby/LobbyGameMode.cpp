@@ -9,7 +9,6 @@
 #include "Lobby/LobbyPlayerController.h"
 #include "FPSGameInstance.h"
 #include "Lobby/LobbyInterface.h"
-#include "Weapons/FPSWeaponBase.h"
 
 void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 {
@@ -21,7 +20,7 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 		return;
 	}		
 
-	FUserData NewUserData;
+	FPlayerData NewUserData;
 	NewUserData.UserName = GetUserName(NewPlayer);
 	NewUserData.ControllerID = GetPlayerID(NewPlayer);
 	NewUserData.bIsReady = false;
@@ -69,11 +68,11 @@ void ALobbyGameMode::StartGame()
 	World->ServerTravel("/Game/Maps/Gwang_FPS?listen");
 }
 
-void ALobbyGameMode::GwangUpdateLobbyData(const FUserData& UpdatedData)
+void ALobbyGameMode::GwangUpdateLobbyData(const FPlayerData& UpdatedData)
 {
 	UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::GwangUpdateLobbyData"));
 
-	for (FUserData& Data : UserData)
+	for (FPlayerData& Data : UserData)
 	{
 		if (Data == UpdatedData)
 		{
@@ -104,7 +103,7 @@ void ALobbyGameMode::UpdateLobbyUI()
 void ALobbyGameMode::RemoveUserData(int ID)
 {
 	int Index = 0;
-	for (FUserData& Data : UserData)
+	for (FPlayerData& Data : UserData)
 	{
 		if (Data.ControllerID == ID)
 		{
@@ -130,7 +129,7 @@ ETeam ALobbyGameMode::GetTeamToJoin()
 {
 	int MarvelTeamCounter = 0;
 	int DCTeamCounter = 0;
-	for (FUserData& Data : UserData)
+	for (FPlayerData& Data : UserData)
 	{
 		if (Data.Team == ETeam::Marvel)
 		{

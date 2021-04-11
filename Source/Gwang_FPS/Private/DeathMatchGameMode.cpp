@@ -14,10 +14,10 @@
 // Called after a successful login
 void ADeathMatchGameMode::PostLogin(APlayerController* NewPlayer)
 {
+	Super::PostLogin(NewPlayer);
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) ----------------------------------------------------"));
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::PostLogin => ( %s ) successfully Logged in"), *NewPlayer->GetName());
 
-	Super::PostLogin(NewPlayer);
 	PlayerControllers.Add(Cast<ADeathMatchPlayerController>(NewPlayer));
 }
 
@@ -34,15 +34,19 @@ void ADeathMatchGameMode::BeginPlay()
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::BeginPlay"));
 	Super::BeginPlay();
 
+	GS = GetGameState<ADeathMatchGameState>();
+	if (!ensure(GS != nullptr))
+	{
+		return;
+	}
+
 	// TODO: Check for NumPlayers then start the match? Right now, the match starts in 3 seconds
 	float MatchStartCountdown = 3.f;
 	FTimerHandle StartTimer;
 	GetWorld()->GetTimerManager().SetTimer(StartTimer, [&]()
 		{
-			for (ADeathMatchPlayerController* PC : PlayerControllers)
-			{
-				StartMatch();
-			}
+			StartMatch();
+
 		}, MatchStartCountdown, false);
 }
 
@@ -55,6 +59,8 @@ void ADeathMatchGameMode::StartMatch()
 	{
 		SpawnPlayer(PC);
 	}
+
+	OnStartMatch.Broadcast();
 }
 
 void ADeathMatchGameMode::SpawnPlayer(ADeathMatchPlayerController* PC)
@@ -76,7 +82,7 @@ void ADeathMatchGameMode::SpawnPlayer(ADeathMatchPlayerController* PC)
 			if (Team == ETeam::None)
 			{
 				// Assign a team with less players
-				Team = GetTeamWithLessPlayers();
+				Team = GetTeamWithLessPeople();
 				PS->Server_SetTeam(Team);
 			}
 
@@ -132,29 +138,26 @@ void ADeathMatchGameMode::EndMatch()
 {
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::EndMatch"));
 	// TODO: Server travel to lobby
-	
+
+	OnEndMatch.Broadcast();
 }
 
-ETeam ADeathMatchGameMode::GetTeamWithLessPlayers()
+ETeam ADeathMatchGameMode::GetTeamWithLessPeople()
 {
 	int MarvelTeamCounter = 0;
 	int DCTeamCounter = 0;
-	ADeathMatchGameState* GS = GetGameState<ADeathMatchGameState>();
-	if (GS != nullptr)
+	for (APlayerState* PlayerState : GS->PlayerArray)
 	{
-		for (APlayerState* PlayerState : GS->PlayerArray)
+		ADeathMatchPlayerState* PS = Cast<ADeathMatchPlayerState>(PlayerState);
+		if (PS != nullptr)
 		{
-			ADeathMatchPlayerState* PS = Cast<ADeathMatchPlayerState>(PlayerState);
-			if (PS != nullptr)
+			if (PS->GetPlayerInfo().Team == ETeam::Marvel)
 			{
-				if (PS->GetPlayerInfo().Team == ETeam::Marvel)
-				{
-					MarvelTeamCounter++;
-				}
-				else if (PS->GetPlayerInfo().Team == ETeam::DC)
-				{
-					DCTeamCounter++;
-				}
+				MarvelTeamCounter++;
+			}
+			else if (PS->GetPlayerInfo().Team == ETeam::DC)
+			{
+				DCTeamCounter++;
 			}
 		}
 	}

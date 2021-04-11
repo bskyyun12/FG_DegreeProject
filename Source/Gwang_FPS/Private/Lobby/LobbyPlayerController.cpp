@@ -21,7 +21,7 @@ void ALobbyPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(ALobbyPlayerController, ControllerID);
 }
 
-void ALobbyPlayerController::OnPostLogin_Implementation(ALobbyGameMode* LobbyGM, const FUserData& NewUserData)
+void ALobbyPlayerController::OnPostLogin_Implementation(ALobbyGameMode* LobbyGM, const FPlayerData& NewUserData)
 {
 	LobbyGameMode = LobbyGM;
 	ControllerID = NewUserData.ControllerID; 
@@ -51,26 +51,26 @@ void ALobbyPlayerController::Client_LoadLobbyWidget_Implementation()
 }
 
 #pragma region UserData Handle
-FUserData ALobbyPlayerController::GetUserData_Implementation()
+FPlayerData ALobbyPlayerController::GetUserData_Implementation()
 {
 	if (GameInstance == nullptr)
 	{
 		GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
 		if (!ensure(GameInstance != nullptr))
 		{
-			return FUserData();
+			return FPlayerData();
 		}
 	}
 	return GameInstance->GetUserData();
 }
 
-void ALobbyPlayerController::UpdateUserData_Implementation(const FUserData& NewData)
+void ALobbyPlayerController::UpdateUserData_Implementation(const FPlayerData& NewData)
 {
 	Server_UpdateUserdata(NewData);
 	Client_UpdateUserdata(NewData);
 }
 
-void ALobbyPlayerController::Server_UpdateUserdata_Implementation(const FUserData& UpdatedData)
+void ALobbyPlayerController::Server_UpdateUserdata_Implementation(const FPlayerData& UpdatedData)
 {
 	if (LobbyGameMode != nullptr)
 	{
@@ -78,7 +78,7 @@ void ALobbyPlayerController::Server_UpdateUserdata_Implementation(const FUserDat
 	}
 }
 
-void ALobbyPlayerController::Client_UpdateUserdata_Implementation(const FUserData& UpdatedData)
+void ALobbyPlayerController::Client_UpdateUserdata_Implementation(const FPlayerData& UpdatedData)
 {
 	if (GameInstance == nullptr)
 	{
@@ -93,12 +93,12 @@ void ALobbyPlayerController::Client_UpdateUserdata_Implementation(const FUserDat
 #pragma endregion UserData Handle
 
 // Called by ALobbyGameMode::UpdateLobbyUI
-void ALobbyPlayerController::UpdateLobbyUI_Implementation(const TArray<FUserData>& UserDataList)
+void ALobbyPlayerController::UpdateLobbyUI_Implementation(const TArray<FPlayerData>& UserDataList)
 {
 	Client_UpdateLobbyUI(UserDataList);
 }
 
-void ALobbyPlayerController::Client_UpdateLobbyUI_Implementation(const TArray<FUserData>& UserDataList)
+void ALobbyPlayerController::Client_UpdateLobbyUI_Implementation(const TArray<FPlayerData>& UserDataList)
 {
 	LobbyWidget->UpdateUserRowData(UserDataList);
 }

@@ -19,6 +19,8 @@ void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 
 void ADeathMatchPlayerState::PostInitializeComponents()
 {
+	Super::PostInitializeComponents();
+		
 	if (GetLocalRole() == ROLE_Authority)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("(GameFlow) (Server) PlayerState::PostInitializeComponents"));
@@ -27,7 +29,6 @@ void ADeathMatchPlayerState::PostInitializeComponents()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("(GameFlow) (Client) PlayerState::PostInitializeComponents"));
 	}
-	Super::PostInitializeComponents();
 
 	UFPSGameInstance* GI = GetGameInstance<UFPSGameInstance>();
 	if (!ensure(GI != nullptr))
