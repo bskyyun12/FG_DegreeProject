@@ -8,6 +8,7 @@
 #include "DeathMatchPlayerController.generated.h"
 
 class ADeathMatchGameMode;
+class ADeathMatchCharacter;
 class ADeathMatchPlayerState;
 class UFPSHUDWidget;
 class UDamageReceiveWidget;
@@ -20,7 +21,6 @@ class GWANG_FPS_API ADeathMatchPlayerController : public APlayerController, publ
 	GENERATED_BODY()
 
 public:	
-	
 #pragma region Widget Related
 	UFUNCTION(Client, Reliable)
 	void Client_SetupWidgets();
@@ -33,11 +33,12 @@ public:
 	void SendChat(const FName& PlayerName, const FName& ChatContent);
 	void UpdateChatUI(const FName& PlayerName, const FName& ChatContent);
 
+	void UpdateHealthArmorUI(const uint8& CurrentHealth, const uint8& CurrentArmor);
+	
 	// IPlayerControllerInterface
-	void UpdateAmmoUI_Implementation(const int& CurrentAmmo, const int& RemainingAmmo) override;
+	void UpdateWeaponUI_Implementation(const FName& WeaponName, const int& CurrentAmmo, const int& RemainingAmmo) override;
 	void LoadGameOverUI(const bool& bIsWinner, const bool& bWidgetVisibility);
 	void SetScoreBoardUIVisibility_Implementation(bool bNewVisibility) override;
-	void OnUpdateHealthArmorUI_Implementation(const uint8& CurrentHealth, const uint8& CurrentArmor) override;
 	void StartChat_Implementation() override;
 #pragma endregion Widget Related
 
@@ -45,7 +46,6 @@ protected:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	ADeathMatchGameMode* GM;
-
 	ADeathMatchPlayerState* PS;
 
 #pragma region Widget Related
@@ -75,13 +75,5 @@ protected:
 	void OnPossess(APawn* aPawn) override;
 	UFUNCTION(Client, Reliable)
 	void Client_OnPossess();
-
-public:
-
-
-
-
-
-
 
 };

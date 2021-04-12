@@ -61,7 +61,7 @@ FPlayerData ALobbyPlayerController::GetUserData_Implementation()
 			return FPlayerData();
 		}
 	}
-	return GameInstance->GetUserData();
+	return GameInstance->GetPlayerData();
 }
 
 void ALobbyPlayerController::UpdateUserData_Implementation(const FPlayerData& NewData)

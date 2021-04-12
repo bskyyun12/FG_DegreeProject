@@ -50,6 +50,10 @@ public:
 
 	FWeaponClass GetWeaponClass() const { return WeaponClass; }
 
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FMatchDelegate);
+	FMatchDelegate OnStartMatch;
+	FMatchDelegate OnEndMatch;
+
 protected:
 	ADeathMatchGameState* GS;
 
@@ -67,9 +71,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	float MatchTimeInSeconds = 10.f; // TODO: this should be 600.f if the match should last for 10 mins for example
 
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FMatchDelegate);
-	FMatchDelegate OnStartMatch;
-	FMatchDelegate OnEndMatch;
 
 protected:
 	// Called after a successful login

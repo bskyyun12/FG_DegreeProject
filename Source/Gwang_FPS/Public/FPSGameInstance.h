@@ -71,7 +71,7 @@ struct FPlayerData
 	GENERATED_BODY()
 
 	UPROPERTY()
-	FName UserName;
+	FName PlayerName;
 
 	UPROPERTY()
 	int ControllerID;
@@ -96,7 +96,7 @@ struct FPlayerData
 
 	FPlayerData()
 	{
-		UserName = "Gwang";
+		PlayerName = "Gwang";
 		ControllerID = 0;
 		bIsReady = false;
 		Team = ETeam::None;
@@ -107,9 +107,9 @@ struct FPlayerData
 		StartGrenade = EGrenade::Grenade;
 	}
 
-	bool operator == (FPlayerData const& UserData)
+	bool operator == (FPlayerData const& PlayerData)
 	{
-		return ControllerID == UserData.ControllerID;
+		return ControllerID == PlayerData.ControllerID;
 	}
 };
 
@@ -123,7 +123,7 @@ public:
 
 	void Init() override;
 
-	FPlayerData GetUserData() const;
+	FPlayerData GetPlayerData() const;
 	void SetUserData(const FPlayerData& Data);
 
 	void SetMainMenu(UMainMenuWidget* InMainMenu);
@@ -147,7 +147,7 @@ private:
 	FString ServerName = "NO_NAME";
 
 	UMainMenuWidget* MainMenu;
-	FPlayerData UserData;
+	FPlayerData PlayerData;
 
 private:
 	void CreateSession();

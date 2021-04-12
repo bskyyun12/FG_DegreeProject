@@ -7,7 +7,33 @@
 #include "FPSGameInstance.h"
 #include "DeathMatchPlayerState.generated.h"
 
+class ADeathMatchGameMode;
+class UFPSGameInstance;
 class ADeathMatchPlayerController;
+
+USTRUCT(BlueprintType)
+struct FPlayerHealth
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	uint8 CurrentHealth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	uint8 MaxHealth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	uint8 CurrentArmor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	uint8 MaxArmor;
+
+	FPlayerHealth()
+	{
+		MaxHealth = 100;
+		MaxArmor = 100;
+	}
+};
 
 USTRUCT(BlueprintType)
 struct FPlayerInfo
@@ -51,7 +77,19 @@ class GWANG_FPS_API ADeathMatchPlayerState : public APlayerState
 	GENERATED_BODY()
 	
 public:
+	UPROPERTY(ReplicatedUsing=OnRep_PlayerHealth)
+	FPlayerHealth PlayerHealth;
+	UFUNCTION()
+	void OnRep_PlayerHealth();
+
+	UFUNCTION(Server, Reliable)
+	void Server_UpdatePlayerHealth(const uint8& Health);
+
+public:
 	FPlayerInfo GetPlayerInfo() const { return PlayerInfo; }
+	
+	UFUNCTION(Server, Reliable)
+	void Server_OnSpawn();
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetTeam(const ETeam& NewTeam);
@@ -68,14 +106,15 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_OnSendChat(const FName& PlayerName, const FName& ChatContent);
 
-
-
 protected:
+	ADeathMatchGameMode* GM;
+	UFPSGameInstance* GI;
 	ADeathMatchPlayerController* PC;
+
+	FPlayerData PlayerData;
 
 	UPROPERTY(ReplicatedUsing=OnRep_PlayerInfo)
 	FPlayerInfo PlayerInfo;
-
 	UFUNCTION()
 	void OnRep_PlayerInfo();
 

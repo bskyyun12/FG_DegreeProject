@@ -22,7 +22,7 @@ public:
 
 	void UpdateHealthArmorUI(const uint8& Health, const uint8& Armor);
 
-	void UpdateAmmoUI(const uint16& CurrentAmmo, const uint16& RemainingAmmo);
+	void UpdateWeaponUI(const FName& WeaponName, const uint16& CurrentAmmo, const uint16& RemainingAmmo);
 
 	void UpdateScoreUI(int MarvelScore, int DCScore);
 

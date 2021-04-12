@@ -21,7 +21,7 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 	}		
 
 	FPlayerData NewUserData;
-	NewUserData.UserName = GetUserName(NewPlayer);
+	NewUserData.PlayerName = GetUserName(NewPlayer);
 	NewUserData.ControllerID = GetPlayerID(NewPlayer);
 	NewUserData.bIsReady = false;
 	NewUserData.Team = GetTeamToJoin();

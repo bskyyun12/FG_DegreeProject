@@ -16,17 +16,14 @@
 #include "PlayerControllerInterface.h"
 #include "Animation/FPSAnimInterface.h"
 #include "DeathMatchGameMode.h"
+#include "DeathMatchPlayerController.h"
 
 void ADeathMatchCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, BeginFire, COND_SkipOwner);
-	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, EndFire, COND_SkipOwner);
-	DOREPLIFETIME(ADeathMatchCharacter, CurrentHealth);
-	DOREPLIFETIME(ADeathMatchCharacter, CurrentArmor);
-	DOREPLIFETIME(ADeathMatchCharacter, StartWeapons);
-	DOREPLIFETIME(ADeathMatchCharacter, CurrentWeapons);
-	DOREPLIFETIME(ADeathMatchCharacter, CurrentlyHeldWeapon);
+	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, BeginFire, COND_SimulatedOnly);
+	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, EndFire, COND_SimulatedOnly);
+	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, CurrentlyHeldWeapon, COND_SimulatedOnly);
 }
 
 ADeathMatchCharacter::ADeathMatchCharacter()
@@ -66,25 +63,36 @@ FVector ADeathMatchCharacter::GetCameraLocation() const
 
 void ADeathMatchCharacter::BeginPlay()
 {
-	// Call the base class  
 	Super::BeginPlay();
-	UE_LOG(LogTemp, Warning, TEXT("Character::BeginPlay => Character( %s )'s role: ( %i )"), *GetName(), GetLocalRole());
 
-	// Spawn weapon
-	if (RifleClass != nullptr)
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
 	{
-		UWorld* World = GetWorld();
-		if (World != nullptr)
-		{
-			CurrentlyHeldWeapon = World->SpawnActor(RifleClass);
+		return;
+	}
 
-			// Equip the spawned weapon
-			IWeaponInterface::Execute_OnWeaponEquipped(CurrentlyHeldWeapon, this);
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
+		if (!ensure(GM != nullptr))
+		{
+			return;
+		}
+		GM->OnStartMatch.AddDynamic(this, &ADeathMatchCharacter::Server_OnSpawn);
+	}
+
+	if (IsLocallyControlled())
+	{
+		GI = GetGameInstance<UFPSGameInstance>();
+		if (!ensure(GI != nullptr))
+		{
+			return;
 		}
 	}
 
 	if (FP_Camera != nullptr)
 	{
+		// This is used for crouching
 		CameraRelativeLocation_Default = FP_Camera->GetRelativeLocation();
 	}
 }
@@ -104,9 +112,10 @@ void ADeathMatchCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 
 	// Bind weapon equip events
 	PlayerInputComponent->BindAction("MainWeapon", IE_Pressed, this, &ADeathMatchCharacter::EquipMainWeapon);
+
 	PlayerInputComponent->BindAction("SubWeapon", IE_Pressed, this, &ADeathMatchCharacter::EquipSubWeapon);
 
-	PlayerInputComponent->BindAction("Drop", IE_Pressed, this, &ADeathMatchCharacter::DropWeapon);
+	PlayerInputComponent->BindAction("Drop", IE_Pressed, this, &ADeathMatchCharacter::Drop);
 	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &ADeathMatchCharacter::Reload);
 	PlayerInputComponent->BindAction("Chat", IE_Pressed, this, &ADeathMatchCharacter::StartChat);
 
@@ -132,8 +141,8 @@ void ADeathMatchCharacter::PossessedBy(AController* NewController)
 
 	if (NewController != nullptr)
 	{
-		PlayerState = NewController->GetPlayerState<ADeathMatchPlayerState>();
-		if (!ensure(PlayerState != nullptr))
+		PS = NewController->GetPlayerState<ADeathMatchPlayerState>();
+		if (!ensure(PS != nullptr))
 		{
 			return;
 		}
@@ -150,83 +159,130 @@ void ADeathMatchCharacter::EquipMainWeapon()
 {
 	if (CurrentWeapons[1] != nullptr)
 	{
-		IWeaponInterface::Execute_OnWeaponEquipped(CurrentWeapons[1], this);
-		Server_EquipWeapon(CurrentWeapons[1]);
+		if (GetLocalRole() == ROLE_Authority)
+		{
+			CurrentlyHeldWeapon = CurrentWeapons[1];	// OnRep_CurrentlyHeldWeapon
+			EquipWeapon(CurrentlyHeldWeapon);
+		}
+
+		if (GetLocalRole() == ROLE_AutonomousProxy)
+		{
+			CurrentlyHeldWeapon = CurrentWeapons[1];
+			EquipWeapon(CurrentlyHeldWeapon);
+			Server_EquipWeapon(CurrentlyHeldWeapon);
+		}
 	}
+
+	// This should be in pickup?
+	//EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(Weapon);
+	//uint8 WeaponIndex = (uint8)WeaponType;
+	//CurrentWeapons[WeaponIndex] = Weapon;
 }
 
 void ADeathMatchCharacter::EquipSubWeapon()
 {
 	if (CurrentWeapons[2] != nullptr)
 	{
-		IWeaponInterface::Execute_OnWeaponEquipped(CurrentWeapons[2], this);
-		Server_EquipWeapon(CurrentWeapons[2]);
+		if (GetLocalRole() == ROLE_Authority)
+		{
+			CurrentlyHeldWeapon = CurrentWeapons[2];	// OnRep_CurrentlyHeldWeapon
+			EquipWeapon(CurrentlyHeldWeapon);
+		}
+
+		if (GetLocalRole() == ROLE_AutonomousProxy)
+		{
+			CurrentlyHeldWeapon = CurrentWeapons[2];
+			EquipWeapon(CurrentlyHeldWeapon);
+			Server_EquipWeapon(CurrentlyHeldWeapon);
+		}
 	}
 }
 
-void ADeathMatchCharacter::Server_EquipWeapon_Implementation(AActor* Weapon)
+void ADeathMatchCharacter::Server_EquipWeapon_Implementation(AActor* WeaponToEquip)
 {
-	CurrentlyHeldWeapon = Weapon;
-
-	EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(Weapon);
-	uint8 WeaponIndex = (uint8)WeaponType;
-	CurrentWeapons[WeaponIndex] = Weapon;
-
-	Multicast_EquipWeapon(Weapon);
+	CurrentlyHeldWeapon = WeaponToEquip;	// OnRep_CurrentlyHeldWeapon
+	EquipWeapon(CurrentlyHeldWeapon);
 }
 
-void ADeathMatchCharacter::Multicast_EquipWeapon_Implementation(AActor* Weapon)
+void ADeathMatchCharacter::EquipWeapon(AActor* WeaponToEquip)
 {
-	if (!IsLocallyControlled())
-	{
-		IWeaponInterface::Execute_OnWeaponEquipped(Weapon, this);
-	}
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::EquipWeapon => Role: (%i)"), GetLocalRole());
+	IWeaponInterface::Execute_OnWeaponEquipped(WeaponToEquip, this);
 }
 
-void ADeathMatchCharacter::DropWeapon()
+// All Other Clients ( COND_SimulatedOnly )
+void ADeathMatchCharacter::OnRep_CurrentlyHeldWeapon()
 {
 	if (CurrentlyHeldWeapon != nullptr)
 	{
-		GetCapsuleComponent()->SetGenerateOverlapEvents(false);
-		UWorld* World = GetWorld();
-		if (!ensure(World != nullptr))
-		{
-			return;
-		}
-		FTimerHandle DropTimer;
-		World->GetTimerManager().SetTimer(DropTimer, [&]()
-			{
-				GetCapsuleComponent()->SetGenerateOverlapEvents(true);
-			}, 2.f, false);
+		IWeaponInterface::Execute_OnWeaponEquipped(CurrentlyHeldWeapon, this);
+	}
+}
 
-		IWeaponInterface::Execute_OnWeaponDropped(CurrentlyHeldWeapon);
-		Server_DropWeapon();
+void ADeathMatchCharacter::Drop()
+{
+	if (CurrentlyHeldWeapon != nullptr)
+	{
+		UWorld* World = GetWorld();
+		if (World != nullptr)
+		{
+			// Disable Overlap Event for 2 seconds. => Prevents instant pick up after dropping
+			FTimerHandle OverlapDisableTimer;
+			GetCapsuleComponent()->SetGenerateOverlapEvents(false);
+			World->GetTimerManager().SetTimer(OverlapDisableTimer, [&]()
+				{
+					GetCapsuleComponent()->SetGenerateOverlapEvents(true);
+				}, 2.f, false);
+		}
+
+		if (IsLocallyControlled())
+		{
+			DropWeapon();
+		}
+
+		if (GetLocalRole() == ROLE_Authority)
+		{
+			Multicast_DropWeapon();
+		}
+
+		if (GetLocalRole() == ROLE_AutonomousProxy)
+		{
+			Server_DropWeapon();
+		}
 	}
 }
 
 void ADeathMatchCharacter::Server_DropWeapon_Implementation()
 {
-	if (CurrentlyHeldWeapon != nullptr)
-	{
-		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(CurrentlyHeldWeapon);
-		uint8 WeaponIndex = (uint8)WeaponType;
-		CurrentWeapons[WeaponIndex] = nullptr;
-		CurrentlyHeldWeapon = nullptr;
-
-		Multicast_DropWeapon();
-	}
+	Multicast_DropWeapon();
 }
 
 void ADeathMatchCharacter::Multicast_DropWeapon_Implementation()
 {
 	if (!IsLocallyControlled())
 	{
+		DropWeapon();
+	}
+}
+
+void ADeathMatchCharacter::DropWeapon()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::DropWeapon => Role: (%i)"), GetLocalRole());
+
+	if (CurrentlyHeldWeapon != nullptr)
+	{
+		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(CurrentlyHeldWeapon);
+		uint8 WeaponIndex = (uint8)WeaponType;
+		CurrentWeapons[WeaponIndex] = nullptr;
+
 		IWeaponInterface::Execute_OnWeaponDropped(CurrentlyHeldWeapon);
+		CurrentlyHeldWeapon = nullptr;
 	}
 }
 
 void ADeathMatchCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnBeginOverlap => OtherActor: ( %s )."), *OtherActor->GetName());
 	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UWeaponInterface::StaticClass()))
 	{
 		PickupWeapon(OtherActor);
@@ -249,7 +305,7 @@ void ADeathMatchCharacter::PickupWeapon(AActor* const& WeaponToPickup)
 			if (CurrentlyHeldWeapon == nullptr)
 			{
 				IWeaponInterface::Execute_OnWeaponEquipped(WeaponToPickup, this);
-				Server_EquipWeapon(WeaponToPickup);
+				//Server_EquipWeapon(WeaponToPickup);
 			}
 			else
 			{
@@ -342,7 +398,7 @@ void ADeathMatchCharacter::Multicast_HandleCrouch_Implementation(bool bCrouchBut
 	}
 
 	if (!IsLocallyControlled())
-	{	
+	{
 		UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
 		if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
 		{
@@ -393,9 +449,10 @@ void ADeathMatchCharacter::OnBeginFire()
 	{
 		return;
 	}
+
 	if (GetLocalRole() == ROLE_AutonomousProxy)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("(Client) OnBeginFire"));
+		UE_LOG(LogTemp, Warning, TEXT("(ROLE_AutonomousProxy) OnBeginFire"));
 		IWeaponInterface::Execute_BeginFire(CurrentlyHeldWeapon);
 	}
 	Server_OnBeginFire();
@@ -408,10 +465,10 @@ void ADeathMatchCharacter::Server_OnBeginFire_Implementation()
 	IWeaponInterface::Execute_BeginFire(CurrentlyHeldWeapon);
 }
 
-// All Other Clients ( COND_SkipOwner )
+// All Other Clients ( COND_SimulatedOnly )
 void ADeathMatchCharacter::OnRep_BeginFire()
 {
-	UE_LOG(LogTemp, Warning, TEXT("(Client2) OnBeginFire"));
+	UE_LOG(LogTemp, Warning, TEXT("(Simulated Client) OnBeginFire"));
 	IWeaponInterface::Execute_BeginFire(CurrentlyHeldWeapon);
 }
 
@@ -423,7 +480,7 @@ void ADeathMatchCharacter::OnEndFire()
 	}
 	if (GetLocalRole() == ROLE_AutonomousProxy)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("(Client) OnEndFire"));
+		UE_LOG(LogTemp, Warning, TEXT("(ROLE_AutonomousProxy) OnEndFire"));
 		IWeaponInterface::Execute_EndFire(CurrentlyHeldWeapon);
 	}
 	Server_OnEndFire();
@@ -436,9 +493,10 @@ void ADeathMatchCharacter::Server_OnEndFire_Implementation()
 	IWeaponInterface::Execute_EndFire(CurrentlyHeldWeapon);
 }
 
+// All Other Clients ( COND_SimulatedOnly )
 void ADeathMatchCharacter::OnRep_EndFire()
 {
-	UE_LOG(LogTemp, Warning, TEXT("(Client2) OnEndFire"));
+	UE_LOG(LogTemp, Warning, TEXT("(Simulated Client) OnEndFire"));
 	IWeaponInterface::Execute_EndFire(CurrentlyHeldWeapon);
 }
 
@@ -475,65 +533,56 @@ void ADeathMatchCharacter::Server_TakeDamage_Implementation(float DamageOnHealth
 	}
 	CurrentHealth -= TotalDamageOnHealth;
 	CurrentArmor -= TotalDamageOnArmor;
+	Client_UpdateHealthArmorUI((uint8)CurrentHealth, (uint8)CurrentArmor);
 
 	if (CurrentHealth <= 0.f)
 	{
 		Server_OnDeath(DamageCauser);
 	}
-
-	Client_UpdateHealthArmorUI((uint8)CurrentHealth, (uint8)CurrentArmor);
 }
 
 void ADeathMatchCharacter::Client_UpdateHealthArmorUI_Implementation(const uint8& Health, const uint8& Armor)
 {
-	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UPlayerControllerInterface::StaticClass()))
+	if (IsLocallyControlled())
 	{
-		IPlayerControllerInterface::Execute_OnUpdateHealthArmorUI(GetController(), Health, Armor);
+		ADeathMatchPlayerController* PC = Cast<ADeathMatchPlayerController>(GetController());
+		PC->UpdateHealthArmorUI(Health, Armor);
 	}
 }
 
+// This is bound to ADeathMatchGameMode::OnStartMatch delegate call
 void ADeathMatchCharacter::Server_OnSpawn_Implementation()
 {
+	if (!ensure(GM != nullptr))
+	{
+		return;
+	}
+
+	if (!ensure(PS != nullptr))
+	{
+		return;
+	}
+
 	CurrentHealth = 100.f;
 	CurrentArmor = 100.f;
+	Client_UpdateHealthArmorUI((uint8)CurrentHealth, (uint8)CurrentArmor);
 
-	Multicast_OnSpawn();
+	Multicast_OnSpawn(GM->GetWeaponClass());
 }
 
-void ADeathMatchCharacter::Multicast_OnSpawn_Implementation()
+void ADeathMatchCharacter::Multicast_OnSpawn_Implementation(const FWeaponClass& WeaponClass)
 {
-	HandleCameraOnSpawn();
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::Multicast_OnSpawn => Role: (%i)"), GetLocalRole());
 
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Capsule_Alive"));
 	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh_Alive"));
 
 	if (IsLocallyControlled())
 	{
-		Client_SetupWeaponsOnSpawn();
+		HandleCameraOnSpawn();
 	}
-}
 
-void ADeathMatchCharacter::HandleCameraOnSpawn()
-{
-	FP_Camera->SetActive(true);
-	DeathCamera->SetActive(false);
-}
-
-void ADeathMatchCharacter::Client_SetupWeaponsOnSpawn_Implementation()
-{
-	if (GI == nullptr)
-	{
-		GI = GetGameInstance<UFPSGameInstance>();
-		if (!ensure(GI != nullptr))
-		{
-			return;
-		}
-	}
-	Server_SetupWeaponsOnSpawn(GI->GetUserData());
-}
-
-void ADeathMatchCharacter::Server_SetupWeaponsOnSpawn_Implementation(const FPlayerData& UserData)
-{
+	// Initialize the weapon array 
 	if (CurrentWeapons.Num() != (uint8)EWeaponType::EnumSize)
 	{
 		for (uint8 i = 0; i < (uint8)EWeaponType::EnumSize; i++)
@@ -543,71 +592,70 @@ void ADeathMatchCharacter::Server_SetupWeaponsOnSpawn_Implementation(const FPlay
 		}
 	}
 
+	// Set up StartWeapons
 	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
+	if (World != nullptr)
 	{
-		return;
-	}
+		// TODO: Need to do Server -> Client -> Server -> Multicast thing
+		FPlayerData PlayerData = GI->GetPlayerData();
 
-	ADeathMatchGameMode* GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
-	if (!ensure(GM != nullptr))
-	{
-		return;
-	}
-	FWeaponClass WeaponClass = GM->GetWeaponClass();
-
-	// MainWeapon Setup
-	if (StartWeapons[1] == nullptr)
-	{
-		EMainWeapon StartMainWeapon = UserData.StartMainWeapon;
-		switch (StartMainWeapon)
+		// MainWeapon Setup
+		if (StartWeapons[1] == nullptr)
 		{
-		default:
-			break;
-		case EMainWeapon::M4A1:
-			if (!ensure(WeaponClass.M4A1Class != nullptr))
+			EMainWeapon StartMainWeapon = PlayerData.StartMainWeapon;
+			switch (StartMainWeapon)
 			{
-				return;
+			default:
+				break;
+			case EMainWeapon::M4A1:
+				if (!ensure(WeaponClass.M4A1Class != nullptr))
+				{
+					return;
+				}
+				StartWeapons[1] = World->SpawnActor<AActor>(WeaponClass.M4A1Class);
+				break;
+			case EMainWeapon::AK47:
+				if (!ensure(WeaponClass.AK47Class != nullptr))
+				{
+					return;
+				}
+				StartWeapons[1] = World->SpawnActor<AActor>(WeaponClass.AK47Class);
+				break;
 			}
-			StartWeapons[1] = World->SpawnActor<AActor>(WeaponClass.M4A1Class);
-			break;
-		case EMainWeapon::AK47:
-			if (!ensure(WeaponClass.AK47Class != nullptr))
+		}
+
+		// SubWeapon Setup
+		if (StartWeapons[2] == nullptr)
+		{
+			ESubWeapon StartSubWeapon = PlayerData.StartSubWeapon;
+			switch (StartSubWeapon)
 			{
-				return;
+			case ESubWeapon::Pistol:
+				if (!ensure(WeaponClass.PistolClass != nullptr))
+				{
+					return;
+				}
+				StartWeapons[2] = World->SpawnActor<AActor>(WeaponClass.PistolClass);
+				break;
 			}
-			StartWeapons[1] = World->SpawnActor<AActor>(WeaponClass.AK47Class);
-			break;
 		}
 	}
 
-	// SubWeapon Setup
-	if (StartWeapons[2] == nullptr)
-	{
-		ESubWeapon StartSubWeapon = UserData.StartSubWeapon;
-		switch (StartSubWeapon)
-		{
-		case ESubWeapon::Pistol:
-			if (!ensure(WeaponClass.PistolClass != nullptr))
-			{
-				return;
-			}
-			StartWeapons[2] = World->SpawnActor<AActor>(WeaponClass.PistolClass);
-			break;
-		}
-	}
-
+	// Override CurrentWeapons to StartWeapons
 	CurrentWeapons = StartWeapons;
-	for (AActor* Weapon : CurrentWeapons)
-	{
-		if (Weapon != nullptr)
-		{
-			//Weapon->OnReset();
-			//Weapon->SetVisibility(false);
-		}
-	}
 
-	EquipMainWeapon();
+	// Equip the weapon except the SimulatedProxy. They will equip it when "OnRep_CurrentlyHeldWeapon" gets called
+	if (GetLocalRole() == ROLE_Authority || GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		CurrentlyHeldWeapon = CurrentWeapons[1]; 	// (If Server) OnRep_CurrentlyHeldWeapon()
+		EquipWeapon(CurrentlyHeldWeapon);
+	}
+}
+
+void ADeathMatchCharacter::HandleCameraOnSpawn()
+{
+	FP_Camera->SetActive(true);
+	DeathCamera->SetActive(false);
 }
 
 void ADeathMatchCharacter::Server_OnDeath_Implementation(AActor* DeathCauser)
@@ -622,7 +670,7 @@ void ADeathMatchCharacter::Server_OnDeath_Implementation(AActor* DeathCauser)
 	}
 
 	// Update PlayerState
-	PlayerState->Server_OnDeath();
+	PS->Server_OnDeath();
 
 	Multicast_OnDeath();
 }
@@ -643,13 +691,12 @@ void ADeathMatchCharacter::Multicast_OnDeath_Implementation()
 
 	if (!IsLocallyControlled())
 	{
-		if (GetMesh() != nullptr)
+		// Notify player's death to AnimInstance. So it can play death animation. 
+		// TODO: Should I just play death anim here?
+		UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
+		if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
 		{
-			UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
-			if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
-			{
-				IFPSAnimInterface::Execute_OnDeath(CharacterAnimInstance);
-			}
+			IFPSAnimInterface::Execute_OnDeath(CharacterAnimInstance);
 		}
 	}
 }
@@ -681,7 +728,7 @@ void ADeathMatchCharacter::Server_OnKill_Implementation(ADeathMatchCharacter* De
 {
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnKill => ( %s ) killed ( %s )."), *GetName(), *DeadPlayer->GetName());
 
-	PlayerState->Server_OnKillPlayer();
+	PS->Server_OnKillPlayer();
 
 	if (DeadPlayer != nullptr)
 	{

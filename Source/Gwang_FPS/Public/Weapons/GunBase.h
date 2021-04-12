@@ -18,6 +18,8 @@ struct FWeaponInfo
 
 	// Stats
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName DisplayName;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EWeaponType WeaponType;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsAutomatic;
@@ -80,6 +82,7 @@ struct FWeaponInfo
 	FWeaponInfo()
 	{
 		// Stats
+		DisplayName = TEXT("Gweapon");
 		WeaponType = EWeaponType::None;
 		bIsAutomatic = false;
 		Damage = 10.f;
@@ -145,8 +148,8 @@ public:
 	void OnBeginReload();
 	void OnEndReload();
 
-
-
+	// UI
+	void UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo);
 
 
 protected:
@@ -195,5 +198,4 @@ protected:
 
 	void Recoil();
 
-	void UpdateAmmoUI();
 };

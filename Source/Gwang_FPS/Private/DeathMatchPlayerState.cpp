@@ -8,11 +8,15 @@
 
 #include "DeathMatchPlayerController.h"
 #include "DeathMatchGameState.h"
+#include "DeathMatchGameMode.h"
+#include "FPSGameInstance.h"
+#include "DeathMatchCharacter.h"
 
 void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ADeathMatchPlayerState, PlayerInfo);
+	DOREPLIFETIME(ADeathMatchPlayerState, PlayerHealth);
 	DOREPLIFETIME(ADeathMatchPlayerState, MatchTimeLeft);
 	DOREPLIFETIME(ADeathMatchPlayerState, LastChat);
 }
@@ -30,13 +34,15 @@ void ADeathMatchPlayerState::PostInitializeComponents()
 		UE_LOG(LogTemp, Warning, TEXT("(GameFlow) (Client) PlayerState::PostInitializeComponents"));
 	}
 
-	UFPSGameInstance* GI = GetGameInstance<UFPSGameInstance>();
+	// GameInstance Setup
+	GI = GetGameInstance<UFPSGameInstance>();
 	if (!ensure(GI != nullptr))
 	{
 		return;
 	}
-	PlayerInfo.PlayerName = GI->GetUserData().UserName;
-	PlayerInfo.Team = GI->GetUserData().Team;
+	PlayerInfo.PlayerName = GI->GetPlayerData().PlayerName;
+	PlayerInfo.Team = GI->GetPlayerData().Team;
+	PlayerData = GI->GetPlayerData();
 }
 
 void ADeathMatchPlayerState::BeginPlay()
@@ -48,11 +54,45 @@ void ADeathMatchPlayerState::BeginPlay()
 	{
 		return;
 	}
+
+	// PlayerController Setup
 	PC = Cast<ADeathMatchPlayerController>(UGameplayStatics::GetPlayerController(World, 0));
 	if (!ensure(PC != nullptr))
 	{
 		return;
 	}
+
+	// GameMode Setup
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
+		if (!ensure(GM != nullptr))
+		{
+			return;
+		}
+		GM->OnStartMatch.AddDynamic(this, &ADeathMatchPlayerState::Server_OnSpawn);
+	}
+}
+
+// This is bound to ADeathMatchGameMode::OnStartMatch delegate call
+void ADeathMatchPlayerState::Server_OnSpawn_Implementation()
+{
+	PlayerHealth.CurrentHealth = PlayerHealth.MaxHealth;
+	PlayerHealth.CurrentArmor = PlayerHealth.MaxArmor;
+	OnRep_PlayerHealth();
+}
+
+void ADeathMatchPlayerState::OnRep_PlayerHealth()
+{
+	//if (PC && PC->IsLocalController())
+	//{
+	//	PC->UpdateHealthArmorUI(PlayerHealth.CurrentHealth, PlayerHealth.CurrentArmor);
+	//}
+}
+
+void ADeathMatchPlayerState::Server_UpdatePlayerHealth_Implementation(const uint8& Health)
+{
+	PlayerHealth.CurrentHealth = Health;
 }
 
 void ADeathMatchPlayerState::Server_SetTeam_Implementation(const ETeam& NewTeam)
@@ -70,6 +110,8 @@ void ADeathMatchPlayerState::Server_OnDeath_Implementation()
 {
 	PlayerInfo.NumDeaths++;	// OnRep_PlayerInfo()
 	PlayerInfo.bIsDead = true;
+	PlayerHealth.CurrentHealth = 0;
+	PlayerHealth.CurrentArmor = 0;
 }
 
 void ADeathMatchPlayerState::OnRep_PlayerInfo()

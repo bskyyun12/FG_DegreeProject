@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "FPSGameInstance.h"
+#include "DeathMatchGameMode.h"
 #include "DeathMatchCharacter.generated.h"
 
 class UInputComponent;
@@ -13,6 +14,7 @@ class UCameraComponent;
 class AGunBase;
 class ADeathMatchPlayerState;
 class UFPSGameInstance;
+class ADeathMatchGameMode;
 
 UCLASS()
 class GWANG_FPS_API ADeathMatchCharacter : public ACharacter
@@ -28,7 +30,6 @@ public:
 
 	USkeletalMeshComponent* GetArmMesh() const { return ArmMesh; }
 	FVector GetCameraLocation() const;
-	ADeathMatchPlayerState* GetPlayerState() const { return PlayerState; }
 
 	bool IsServerPlayer() const { return GetLocalRole() == ROLE_Authority && IsLocallyControlled(); }
 
@@ -37,8 +38,8 @@ public:
 	void Server_TakeDamage(float DamageOnHealth, float DamageOnArmor, AActor* DamageCauser);
 
 protected:
-	UPROPERTY(EditDefaultsOnly, Category = Weapon)
-	TSubclassOf<AGunBase> RifleClass;
+	//UPROPERTY(EditDefaultsOnly, Category = Weapon)
+	//TSubclassOf<AGunBase> RifleClass;
 
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
@@ -52,18 +53,26 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UCameraComponent* DeathCamera;
 
-	ADeathMatchPlayerState* PlayerState;
-	UFPSGameInstance* GI;
-
 	// Weapons
-	UPROPERTY(Replicated, BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly)
 	TArray<AActor*> StartWeapons;
 
-	UPROPERTY(Replicated, BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly)
 	TArray<AActor*> CurrentWeapons;
 
-	UPROPERTY(Replicated, BlueprintReadOnly)
+	UPROPERTY(ReplicatedUsing=OnRep_CurrentlyHeldWeapon, BlueprintReadOnly)
 	AActor* CurrentlyHeldWeapon;
+	UFUNCTION()
+	void OnRep_CurrentlyHeldWeapon();
+
+	// Health & Armor
+	float CurrentHealth = 100.f;
+	float CurrentArmor = 100.f;
+
+	// Cache
+	ADeathMatchGameMode* GM;
+	UFPSGameInstance* GI;
+	ADeathMatchPlayerState* PS;
 
 protected:
 	virtual void BeginPlay();
@@ -80,16 +89,16 @@ protected:
 	void EquipMainWeapon();
 	void EquipSubWeapon();
 	UFUNCTION(Server, Reliable)
-	void Server_EquipWeapon(AActor* Weapon);
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_EquipWeapon(AActor* Weapon);
+	void Server_EquipWeapon(AActor* WeaponToEquip);
+	void EquipWeapon(AActor* WeaponToEquip);
 
 	// Weapon drop
-	void DropWeapon();
+	void Drop();
 	UFUNCTION(Server, Reliable)
 	void Server_DropWeapon();
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_DropWeapon();
+	void DropWeapon();
 
 	// Weapon pickup
 	UFUNCTION()
@@ -134,11 +143,7 @@ protected:
 	UFUNCTION()
 	void OnRep_EndFire();
 
-	// Health & Armor
-	UPROPERTY(Replicated)
-	float CurrentHealth = 100.f;
-	UPROPERTY(Replicated)
-	float CurrentArmor = 100.f;
+	// UI
 	UFUNCTION(Client, Reliable)
 	void Client_UpdateHealthArmorUI(const uint8& Health, const uint8& Armor);
 
@@ -146,12 +151,8 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_OnSpawn();
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnSpawn();
+	void Multicast_OnSpawn(const FWeaponClass& WeaponClass);
 	void HandleCameraOnSpawn();
-	UFUNCTION(Client, Reliable)
-	void Client_SetupWeaponsOnSpawn();
-	UFUNCTION(Server, Reliable)
-	void Server_SetupWeaponsOnSpawn(const FPlayerData& UserData);
 
 	// OnDeath
 	UFUNCTION(Server, Reliable)

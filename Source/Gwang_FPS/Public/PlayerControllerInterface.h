@@ -23,13 +23,10 @@ class GWANG_FPS_API IPlayerControllerInterface
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void UpdateAmmoUI(const int& CurrentAmmo, const int& RemainingAmmo);
+	void UpdateWeaponUI(const FName& WeaponName, const int& CurrentAmmo, const int& RemainingAmmo);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void SetScoreBoardUIVisibility(bool bNewVisibility);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnUpdateHealthArmorUI(const uint8& CurrentHealth, const uint8& CurrentArmor);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void StartChat();

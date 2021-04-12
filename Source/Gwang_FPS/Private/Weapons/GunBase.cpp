@@ -76,8 +76,7 @@ void AGunBase::BeginPlay()
 
 void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 {
-	// Server => 3, 3
-	UE_LOG(LogTemp, Warning, TEXT("GunBase::OnWeaponEquipped => NewOwner(%s)'s role: %i. / Weapon's role: %i."), *NewOwner->GetName(), NewOwner->GetLocalRole(), GetLocalRole());
+	UE_LOG(LogTemp, Warning, TEXT("GunBase::OnWeaponEquipped => NewOwner(%s)'s role: %i. / Weapon(%s)'s role: %i."), *NewOwner->GetName(), NewOwner->GetLocalRole(), *GetName(), GetLocalRole());
 
 	if (NewOwner->IsLocallyControlled())
 	{
@@ -88,7 +87,7 @@ void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 	CurrentOwner = NewOwner;
 	if (CurrentOwner->IsLocallyControlled())
 	{
-		UpdateAmmoUI();
+		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 	}
 
 	// skeleton is not yet created in the constructor, so AttachToComponent should be happened after constructor
@@ -104,12 +103,24 @@ void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 	//{
 	//	IFPSAnimInterface::Execute_OnChangeWeapon(ArmsAnimInstance, WeaponInfo.WeaponType);
 	//}
-
 }
 
 void AGunBase::OnWeaponDropped_Implementation()
 {
+	FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 
+	TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+	TPWeaponMesh->SetCollisionProfileName(TEXT("Weapon_Dropped"));
+	TPWeaponMesh->SetSimulatePhysics(true);
+
+	if (CurrentOwner->IsLocallyControlled())
+	{
+		UpdateAmmoUI(0, 0);
+	}
+
+	CurrentOwner = nullptr;
+	SetOwner(nullptr);
+	SetInstigator(nullptr);
 }
 
 void AGunBase::BeginFire_Implementation()
@@ -159,12 +170,8 @@ void AGunBase::Fire()
 	CurrentAmmo--;
 	if (CurrentOwner->IsLocallyControlled())
 	{
-		UpdateAmmoUI();
+		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 	}
-	//if (CurrentOwner->IsServerPlayer())
-	//{
-	//	Client_UpdateAmmoUI();
-	//}
 
 	if (CurrentOwner != nullptr)
 	{
@@ -299,15 +306,13 @@ void AGunBase::FireEffects()
 	}
 }
 
-void AGunBase::UpdateAmmoUI()
+void AGunBase::UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo)
 {
-	UE_LOG(LogTemp, Warning, TEXT("AGunBase::UpdateAmmoUI (CurrentAmmo: %i)"), CurrentAmmo);
-
 	if (CurrentOwner && CurrentOwner->IsLocallyControlled())
 	{
 		if (GetInstigatorController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetInstigatorController(), UPlayerControllerInterface::StaticClass()))
 		{
-			IPlayerControllerInterface::Execute_UpdateAmmoUI(GetInstigatorController(), CurrentAmmo, CurrentRemainingAmmo);
+			IPlayerControllerInterface::Execute_UpdateWeaponUI(GetInstigatorController(), WeaponInfo.DisplayName, InCurrentAmmo, InRemainingAmmo);
 		}
 	}
 }
@@ -367,9 +372,10 @@ void AGunBase::OnEndReload()
 	AmmoToPool = (CurrentRemainingAmmo < AmmoToPool) ? CurrentRemainingAmmo : AmmoToPool;
 	CurrentRemainingAmmo -= AmmoToPool;
 	CurrentAmmo += AmmoToPool;
-	if (CurrentOwner->IsLocalizedResource())
+
+	if (CurrentOwner->IsLocallyControlled())
 	{
-		UpdateAmmoUI();
+		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 	}
 }
 

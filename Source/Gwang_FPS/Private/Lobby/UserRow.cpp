@@ -22,7 +22,7 @@ bool UUserRow::Initialize()
 // Called by ULobbyWidget::UpdateUserRowData
 void UUserRow::UpdateRow(const FPlayerData& Data)
 {
-	Text_UserName->SetText(FText::FromName(Data.UserName));
+	Text_UserName->SetText(FText::FromName(Data.PlayerName));
 	Text_ID->SetText(FText::FromString(FString::FromInt(Data.ControllerID)));
 
 	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))

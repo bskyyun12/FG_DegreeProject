@@ -31,9 +31,9 @@ void UFPSHUDWidget::UpdateHealthArmorUI(const uint8& Health, const uint8& Armor)
 	HealthArmorWidget->UpdateHealthArmorUI(Health, Armor);
 }
 
-void UFPSHUDWidget::UpdateAmmoUI(const uint16& CurrentAmmo, const uint16& RemainingAmmo)
+void UFPSHUDWidget::UpdateWeaponUI(const FName& WeaponName, const uint16& CurrentAmmo, const uint16& RemainingAmmo)
 {
-	AmmoWidget->UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
+	AmmoWidget->UpdateWeaponUI(WeaponName, CurrentAmmo, RemainingAmmo);
 }
 
 void UFPSHUDWidget::UpdateScoreUI(int MarvelScore, int DCScore)

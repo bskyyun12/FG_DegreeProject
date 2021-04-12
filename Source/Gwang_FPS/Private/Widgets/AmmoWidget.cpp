@@ -5,8 +5,9 @@
 #include "Components/TextBlock.h"
 #include "Kismet/KismetTextLibrary.h"
 
-void UAmmoWidget::UpdateAmmoUI(const uint16& CurrentAmmo, const uint16& RemainingAmmo)
+void UAmmoWidget::UpdateWeaponUI(const FName& WeaponName, const uint16& CurrentAmmo, const uint16& RemainingAmmo)
 {
+	Text_WeaponName->SetText(FText::FromName(WeaponName));
 	Text_CurrentAmmo->SetText(UKismetTextLibrary::Conv_IntToText(CurrentAmmo));
 	Text_RemainingAmmo->SetText(UKismetTextLibrary::Conv_IntToText(RemainingAmmo));
 }

@@ -284,12 +284,12 @@ void UFPSGameInstance::DestroySession()
 	}
 }
 
-FPlayerData UFPSGameInstance::GetUserData() const
+FPlayerData UFPSGameInstance::GetPlayerData() const
 {
-	return UserData;
+	return PlayerData;
 }
 
 void UFPSGameInstance::SetUserData(const FPlayerData& Data)
 {
-	UserData = Data;
+	PlayerData = Data;
 }

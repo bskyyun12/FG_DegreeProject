@@ -13,9 +13,12 @@ class GWANG_FPS_API UAmmoWidget : public UUserWidget
 {
 	GENERATED_BODY()
 public:
-	void UpdateAmmoUI(const uint16& CurrentAmmo, const uint16& RemainingAmmo);
+	void UpdateWeaponUI(const FName& WeaponName, const uint16& CurrentAmmo, const uint16& RemainingAmmo);
 
 private:	
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* Text_WeaponName;
+
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Text_CurrentAmmo;
 

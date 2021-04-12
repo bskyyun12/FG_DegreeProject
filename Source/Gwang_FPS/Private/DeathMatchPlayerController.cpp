@@ -11,6 +11,7 @@
 #include "Widgets/DamageReceiveWidget.h"
 #include "Widgets/ScoreBoardWidget.h"
 #include "Widgets/GameOverWidget.h"
+#include "DeathMatchCharacter.h"
 
 void ADeathMatchPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -45,20 +46,19 @@ void ADeathMatchPlayerController::OnPossess(APawn* aPawn)
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) PlayerController::OnPossess (%s)"), *GetName());
 	Super::OnPossess(aPawn);
 
-	FInputModeGameOnly InputMode;
-	SetInputMode(InputMode);
-
 	Client_OnPossess();
 }
 
 void ADeathMatchPlayerController::Client_OnPossess_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) PlayerController::Client_OnPossess (%s)"), *GetName());
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerController::Client_OnPossess => Role: ( %i )"), GetLocalRole());
+
 	FInputModeGameOnly InputMode;
 	SetInputMode(InputMode);
 }
 
 #pragma region Widget
+
 void ADeathMatchPlayerController::Client_SetupWidgets_Implementation()
 {
 	UWorld* World = GetWorld();
@@ -153,13 +153,10 @@ void ADeathMatchPlayerController::VignetteUIOnTakeDamage()
 
 void ADeathMatchPlayerController::SendChat(const FName& PlayerName, const FName& ChatContent)
 {
-	if (PS == nullptr)
+	PS = GetPlayerState<ADeathMatchPlayerState>();
+	if (!ensure(PS != nullptr))
 	{
-		PS = Cast<ADeathMatchPlayerState>(PlayerState);
-		if (!ensure(PS != nullptr))
-		{
-			return;
-		}
+		return;
 	}
 	PS->Server_OnSendChat(PlayerName, ChatContent);
 }
@@ -169,9 +166,9 @@ void ADeathMatchPlayerController::UpdateChatUI(const FName& PlayerName, const FN
 	HUDWidget->AddChatRow(PlayerName, ChatContent);
 }
 
-void ADeathMatchPlayerController::UpdateAmmoUI_Implementation(const int& CurrentAmmo, const int& RemainingAmmo)
+void ADeathMatchPlayerController::UpdateWeaponUI_Implementation(const FName& WeaponName, const int& CurrentAmmo, const int& RemainingAmmo)
 {
-	HUDWidget->UpdateAmmoUI(CurrentAmmo, RemainingAmmo);
+	HUDWidget->UpdateWeaponUI(WeaponName, CurrentAmmo, RemainingAmmo);
 }
 
 void ADeathMatchPlayerController::LoadGameOverUI(const bool& bIsWinner, const bool& bWidgetVisibility)
@@ -185,7 +182,7 @@ void ADeathMatchPlayerController::SetScoreBoardUIVisibility_Implementation(bool 
 	ScoreboardWidget->SetVisibility(bNewVisibility ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
 }
 
-void ADeathMatchPlayerController::OnUpdateHealthArmorUI_Implementation(const uint8& CurrentHealth, const uint8& CurrentArmor)
+void ADeathMatchPlayerController::UpdateHealthArmorUI(const uint8& CurrentHealth, const uint8& CurrentArmor)
 {
 	HUDWidget->UpdateHealthArmorUI(CurrentHealth, CurrentArmor);
 }
