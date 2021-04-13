@@ -27,19 +27,22 @@ public:
 
 	void UpdateMatchTimeUI(const float& MatchTime);
 	void UpdateScoreUI(const uint8& MarvelScore, const uint8& DCScore);
+
+	// Crosshair
 	void UpdateCrosshairUIOnHit();
+
+	// TakeDamage
 	void VignetteUIOnTakeDamage();
-
-	void SendChat(const FName& PlayerName, const FName& ChatContent);
-	void UpdateChatUI(const FName& PlayerName, const FName& ChatContent);
-
 	void UpdateHealthArmorUI(const uint8& CurrentHealth, const uint8& CurrentArmor);
+
+	// Chat
+	void StartChat_Implementation() override;
+	void SendChat(const FName& ChatContent);
+	void UpdateChatUI(const FName& PlayerName, const FName& ChatContent);
 	
-	// IPlayerControllerInterface
 	void UpdateWeaponUI_Implementation(const FName& WeaponName, const int& CurrentAmmo, const int& RemainingAmmo) override;
 	void LoadGameOverUI(const bool& bIsWinner, const bool& bWidgetVisibility);
 	void SetScoreBoardUIVisibility_Implementation(bool bNewVisibility) override;
-	void StartChat_Implementation() override;
 #pragma endregion Widget Related
 
 protected:

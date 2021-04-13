@@ -198,7 +198,7 @@ void AGunBase::Fire()
 					float DamageOnHealth = 0.f;
 					float DamageOnArmor = 0.f;
 					CalcDamageToApply(Hit.PhysMaterial.Get(), DamageOnHealth, DamageOnArmor);
-					HitPlayer->Server_TakeDamage(DamageOnHealth, DamageOnArmor, CurrentOwner);
+					HitPlayer->Server_TakeDamage((uint8)DamageOnHealth, (uint8)DamageOnArmor, CurrentOwner);
 				}
 			}
 			else

@@ -35,7 +35,7 @@ public:
 
 	// TakeDamage
 	UFUNCTION(Server, Reliable)
-	void Server_TakeDamage(float DamageOnHealth, float DamageOnArmor, AActor* DamageCauser);
+	void Server_TakeDamage(const uint8& DamageOnHealth, const uint8& DamageOnArmor, AActor* DamageCauser);
 
 protected:
 	//UPROPERTY(EditDefaultsOnly, Category = Weapon)
@@ -66,8 +66,8 @@ protected:
 	void OnRep_CurrentlyHeldWeapon();
 
 	// Health & Armor
-	float CurrentHealth = 100.f;
-	float CurrentArmor = 100.f;
+	//float CurrentHealth = 100.f;
+	//float CurrentArmor = 100.f;
 
 	// Cache
 	ADeathMatchGameMode* GM;
@@ -151,7 +151,7 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_OnSpawn();
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnSpawn(const FWeaponClass& WeaponClass);
+	void Multicast_WeaponSetupOnSpawn(const FWeaponClass& WeaponClass);
 	void HandleCameraOnSpawn();
 
 	// OnDeath

@@ -71,7 +71,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	float MatchTimeInSeconds = 10.f; // TODO: this should be 600.f if the match should last for 10 mins for example
 
-
 protected:
 	// Called after a successful login
 	void PostLogin(APlayerController* NewPlayer) override;

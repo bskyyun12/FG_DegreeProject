@@ -15,8 +15,19 @@
 void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(ADeathMatchPlayerState, PlayerInfo);
-	DOREPLIFETIME(ADeathMatchPlayerState, PlayerHealth);
+
+	DOREPLIFETIME(ADeathMatchPlayerState, PlayerName);
+	DOREPLIFETIME(ADeathMatchPlayerState, Team);
+	DOREPLIFETIME(ADeathMatchPlayerState, StartMainWeapon);
+	DOREPLIFETIME(ADeathMatchPlayerState, StartSubWeapon);
+
+	DOREPLIFETIME(ADeathMatchPlayerState, CurrentHealth);
+	DOREPLIFETIME(ADeathMatchPlayerState, CurrentArmor);
+
+	DOREPLIFETIME(ADeathMatchPlayerState, NumKills);
+	DOREPLIFETIME(ADeathMatchPlayerState, NumDeaths);
+	DOREPLIFETIME(ADeathMatchPlayerState, bIsDead);
+
 	DOREPLIFETIME(ADeathMatchPlayerState, MatchTimeLeft);
 	DOREPLIFETIME(ADeathMatchPlayerState, LastChat);
 }
@@ -34,15 +45,27 @@ void ADeathMatchPlayerState::PostInitializeComponents()
 		UE_LOG(LogTemp, Warning, TEXT("(GameFlow) (Client) PlayerState::PostInitializeComponents"));
 	}
 
-	// GameInstance Setup
-	GI = GetGameInstance<UFPSGameInstance>();
+	Client_ReadData();
+}
+
+void ADeathMatchPlayerState::Client_ReadData_Implementation()
+{
+	UFPSGameInstance* GI = GetGameInstance<UFPSGameInstance>();
 	if (!ensure(GI != nullptr))
 	{
 		return;
 	}
-	PlayerInfo.PlayerName = GI->GetPlayerData().PlayerName;
-	PlayerInfo.Team = GI->GetPlayerData().Team;
-	PlayerData = GI->GetPlayerData();
+	Server_ReceiveData(GI->GetPlayerData());
+}
+
+void ADeathMatchPlayerState::Server_ReceiveData_Implementation(const FPlayerData& PlayerData)
+{
+	PlayerName = PlayerData.PlayerName;
+	Team = PlayerData.Team;
+	StartMainWeapon = PlayerData.StartMainWeapon;
+	StartSubWeapon = PlayerData.StartSubWeapon;
+
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => ( %s ), PlayerName: ( %s ), Team ( %i )"), *GetName(), *PlayerName.ToString(), Team);
 }
 
 void ADeathMatchPlayerState::BeginPlay()
@@ -77,69 +100,112 @@ void ADeathMatchPlayerState::BeginPlay()
 // This is bound to ADeathMatchGameMode::OnStartMatch delegate call
 void ADeathMatchPlayerState::Server_OnSpawn_Implementation()
 {
-	PlayerHealth.CurrentHealth = PlayerHealth.MaxHealth;
-	PlayerHealth.CurrentArmor = PlayerHealth.MaxArmor;
-	OnRep_PlayerHealth();
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Server_OnSpawn"));
+	Multicast_OnSpawn();
 }
 
-void ADeathMatchPlayerState::OnRep_PlayerHealth()
+void ADeathMatchPlayerState::Multicast_OnSpawn_Implementation()
 {
-	//if (PC && PC->IsLocalController())
-	//{
-	//	PC->UpdateHealthArmorUI(PlayerHealth.CurrentHealth, PlayerHealth.CurrentArmor);
-	//}
+	CurrentHealth = 100;	// OnRep_CurrentHealth()
+	CurrentArmor = 100;	// OnRep_CurrentArmor()
+
+	if (PC == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Multicast_OnSpawn => PC == nullptr"));
+		return;
+	}
+	if (PC->IsLocalController())
+	{
+		PC->UpdateHealthArmorUI(CurrentHealth, CurrentArmor);
+	}
 }
 
-void ADeathMatchPlayerState::Server_UpdatePlayerHealth_Implementation(const uint8& Health)
+void ADeathMatchPlayerState::Server_UpdateHealthArmor_Implementation(const uint8& NewHealth, const uint8& NewArmor)
 {
-	PlayerHealth.CurrentHealth = Health;
+	CurrentHealth = NewHealth;
+	CurrentArmor = NewArmor;
+
+	Client_UpdateHealthUI(CurrentHealth, CurrentArmor);
+}
+
+void ADeathMatchPlayerState::Client_UpdateHealthUI_Implementation(const uint8& NewHealth, const uint8& NewArmor)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Client_UpdateHealthUI => Player ( %s ), Role: %i, CurrentHealth: ( %i )."), *GetPawn()->GetName(), GetLocalRole(), CurrentHealth);
+	PC->UpdateHealthArmorUI(NewHealth, NewArmor);
 }
 
 void ADeathMatchPlayerState::Server_SetTeam_Implementation(const ETeam& NewTeam)
 {
-	PlayerInfo.Team = NewTeam;	// OnRep_PlayerInfo()
+	Team = NewTeam;	// OnRep_PlayerInfo()
 	// TODO: Send PlayerInfo to GameState and then update HUD??
 }
 
 void ADeathMatchPlayerState::Server_OnKillPlayer_Implementation()
 {
-	PlayerInfo.NumKills++;	// OnRep_PlayerInfo()
+	NumKills++;	// OnRep_NumKills()
+}
+
+void ADeathMatchPlayerState::OnRep_NumKills()
+{
+	if (GetPawn() == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => GetPawn() == nullptr"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => Player ( %s ) NumKills: ( %i )."), *GetPawn()->GetName(), NumKills);
 }
 
 void ADeathMatchPlayerState::Server_OnDeath_Implementation()
 {
-	PlayerInfo.NumDeaths++;	// OnRep_PlayerInfo()
-	PlayerInfo.bIsDead = true;
-	PlayerHealth.CurrentHealth = 0;
-	PlayerHealth.CurrentArmor = 0;
+	NumDeaths++;	// OnRep_NumDeaths()
+	bIsDead = true;	// OnRep_bIsDead()
 }
 
-void ADeathMatchPlayerState::OnRep_PlayerInfo()
+void ADeathMatchPlayerState::OnRep_NumDeaths()
 {
-	UE_LOG(LogTemp, Warning, TEXT("(Client) PlayerState => Team: %i, Kills: %i, Deaths: %i"), PlayerInfo.Team, PlayerInfo.NumKills, PlayerInfo.NumDeaths);
+	if (GetPawn() == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => GetPawn() == nullptr"));
+		return;
+	}
 
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => Player ( %s ) NumDeaths: ( %i )."), *GetPawn()->GetName(), NumDeaths);
+}
+
+void ADeathMatchPlayerState::OnRep_bIsDead()
+{
+	if (GetPawn() == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => GetPawn() == nullptr"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => Player ( %s ) bIsDead: ( %i )."), *GetPawn()->GetName(), bIsDead);
+}
+
+void ADeathMatchPlayerState::Server_OnSendChat_Implementation(const FName& ChatContent)
+{
+	LastChat = ChatContent;	// OnRep_LastChat()
+
+	if (PC->IsLocalController())
+	{
+		PC->UpdateChatUI(PlayerName, LastChat);
+	}
+}
+
+void ADeathMatchPlayerState::OnRep_LastChat()
+{
+	if (PC->IsLocalController())
+	{
+		PC->UpdateChatUI(PlayerName, LastChat);
+	}
 }
 
 void ADeathMatchPlayerState::Server_UpdateMatchTimeLeft_Implementation(const float& TimeLeft)
 {
 	MatchTimeLeft = TimeLeft;	// OnRep_MatchTimeLeft()
 	PC->UpdateMatchTimeUI(MatchTimeLeft);
-}
-
-void ADeathMatchPlayerState::Server_OnSendChat_Implementation(const FName& PlayerName, const FName& ChatContent)
-{
-	FChat Chat;
-	Chat.PlayerName = PlayerName;
-	Chat.ChatContent = ChatContent;
-
-	LastChat = Chat;	// OnRep_LastChat()
-
-	PC->UpdateChatUI(PlayerName, ChatContent);
-}
-
-void ADeathMatchPlayerState::OnRep_LastChat()
-{
-	PC->UpdateChatUI(LastChat.PlayerName, LastChat.ChatContent);
 }
 
 void ADeathMatchPlayerState::OnRep_MatchTimeLeft()

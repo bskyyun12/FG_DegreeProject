@@ -518,22 +518,35 @@ void ADeathMatchCharacter::MoveRight(float Value)
 	}
 }
 
-void ADeathMatchCharacter::Server_TakeDamage_Implementation(float DamageOnHealth, float DamageOnArmor, AActor* DamageCauser)
+void ADeathMatchCharacter::Server_TakeDamage_Implementation(const uint8& DamageOnHealth, const uint8& DamageOnArmor, AActor* DamageCauser)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::TakeDamage => ( %s ) Took ( %f ) Damage By ( %s )."), *GetName(), DamageOnHealth, *DamageCauser->GetName());
+	if (PS == nullptr)
+	{
+		PS = GetPlayerState<ADeathMatchPlayerState>();
+	}
 
-	float TotalDamageOnHealth = DamageOnHealth;
-	float TotalDamageOnArmor = DamageOnArmor;
+	uint8 CurrentHealth = PS->GetCurrentHealth();
+	uint8 CurrentArmor = PS->GetCurrentArmor();
+
+	uint8 TotalDamageOnHealth = DamageOnHealth;
+	uint8 TotalDamageOnArmor = DamageOnArmor;
 
 	// Take damage on health when incoming armor damage is greater than current armor
 	if (DamageOnArmor > CurrentArmor)
 	{
 		TotalDamageOnHealth += DamageOnArmor - CurrentArmor;
-		TotalDamageOnArmor = CurrentArmor;
 	}
+
+	// Make sure total damage doesn't go below 0
+	TotalDamageOnHealth = (TotalDamageOnHealth > CurrentHealth) ? CurrentHealth : TotalDamageOnHealth;
+	TotalDamageOnArmor = (TotalDamageOnArmor > CurrentArmor) ? CurrentArmor : TotalDamageOnArmor;
+
 	CurrentHealth -= TotalDamageOnHealth;
 	CurrentArmor -= TotalDamageOnArmor;
-	Client_UpdateHealthArmorUI((uint8)CurrentHealth, (uint8)CurrentArmor);
+
+	PS->Server_UpdateHealthArmor(CurrentHealth, CurrentArmor);
+
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::TakeDamage => ( %s ) Took ( %i ) Damage By ( %s ). CurrentHealth: %i"), *GetName(), DamageOnHealth, *DamageCauser->GetName(), CurrentHealth);
 
 	if (CurrentHealth <= 0.f)
 	{
@@ -563,17 +576,11 @@ void ADeathMatchCharacter::Server_OnSpawn_Implementation()
 		return;
 	}
 
-	CurrentHealth = 100.f;
-	CurrentArmor = 100.f;
-	Client_UpdateHealthArmorUI((uint8)CurrentHealth, (uint8)CurrentArmor);
-
-	Multicast_OnSpawn(GM->GetWeaponClass());
+	Multicast_WeaponSetupOnSpawn(GM->GetWeaponClass());
 }
 
-void ADeathMatchCharacter::Multicast_OnSpawn_Implementation(const FWeaponClass& WeaponClass)
+void ADeathMatchCharacter::Multicast_WeaponSetupOnSpawn_Implementation(const FWeaponClass& WeaponClass)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::Multicast_OnSpawn => Role: (%i)"), GetLocalRole());
-
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Capsule_Alive"));
 	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh_Alive"));
 
@@ -581,6 +588,8 @@ void ADeathMatchCharacter::Multicast_OnSpawn_Implementation(const FWeaponClass& 
 	{
 		HandleCameraOnSpawn();
 	}
+
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::Multicast_OnSpawn => Role: (%i)"), GetLocalRole());
 
 	// Initialize the weapon array 
 	if (CurrentWeapons.Num() != (uint8)EWeaponType::EnumSize)
@@ -592,18 +601,19 @@ void ADeathMatchCharacter::Multicast_OnSpawn_Implementation(const FWeaponClass& 
 		}
 	}
 
+	if (PS == nullptr)
+	{
+		PS = GetPlayerState<ADeathMatchPlayerState>();
+	}
+
 	// Set up StartWeapons
 	UWorld* World = GetWorld();
 	if (World != nullptr)
 	{
-		// TODO: Need to do Server -> Client -> Server -> Multicast thing
-		FPlayerData PlayerData = GI->GetPlayerData();
-
 		// MainWeapon Setup
 		if (StartWeapons[1] == nullptr)
 		{
-			EMainWeapon StartMainWeapon = PlayerData.StartMainWeapon;
-			switch (StartMainWeapon)
+			switch (PS->GetStartMainWeapon())
 			{
 			default:
 				break;
@@ -627,8 +637,7 @@ void ADeathMatchCharacter::Multicast_OnSpawn_Implementation(const FWeaponClass& 
 		// SubWeapon Setup
 		if (StartWeapons[2] == nullptr)
 		{
-			ESubWeapon StartSubWeapon = PlayerData.StartSubWeapon;
-			switch (StartSubWeapon)
+			switch (PS->GetStartSubWeapon())
 			{
 			case ESubWeapon::Pistol:
 				if (!ensure(WeaponClass.PistolClass != nullptr))

@@ -76,7 +76,7 @@ void ADeathMatchGameMode::SpawnPlayer(ADeathMatchPlayerController* PC)
 		ADeathMatchPlayerState* PS = PC->GetPlayerState<ADeathMatchPlayerState>();
 		if (PS != nullptr)
 		{
-			ETeam Team = PS->GetPlayerInfo().Team;
+			ETeam Team = PS->GetTeam();
 
 			// Team is None if the player did not choose a team from lobby
 			if (Team == ETeam::None)
@@ -151,11 +151,11 @@ ETeam ADeathMatchGameMode::GetTeamWithLessPeople()
 		ADeathMatchPlayerState* PS = Cast<ADeathMatchPlayerState>(PlayerState);
 		if (PS != nullptr)
 		{
-			if (PS->GetPlayerInfo().Team == ETeam::Marvel)
+			if (PS->GetTeam() == ETeam::Marvel)
 			{
 				MarvelTeamCounter++;
 			}
-			else if (PS->GetPlayerInfo().Team == ETeam::DC)
+			else if (PS->GetTeam() == ETeam::DC)
 			{
 				DCTeamCounter++;
 			}

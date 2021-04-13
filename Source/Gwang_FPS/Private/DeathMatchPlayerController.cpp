@@ -151,14 +151,14 @@ void ADeathMatchPlayerController::VignetteUIOnTakeDamage()
 		}, 2.f, false);
 }
 
-void ADeathMatchPlayerController::SendChat(const FName& PlayerName, const FName& ChatContent)
+void ADeathMatchPlayerController::SendChat(const FName& ChatContent)
 {
 	PS = GetPlayerState<ADeathMatchPlayerState>();
 	if (!ensure(PS != nullptr))
 	{
 		return;
 	}
-	PS->Server_OnSendChat(PlayerName, ChatContent);
+	PS->Server_OnSendChat(ChatContent);
 }
 
 void ADeathMatchPlayerController::UpdateChatUI(const FName& PlayerName, const FName& ChatContent)
