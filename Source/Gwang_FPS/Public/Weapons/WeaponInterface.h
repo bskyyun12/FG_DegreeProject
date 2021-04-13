@@ -29,6 +29,9 @@ public:
 	void OnWeaponEquipped(ADeathMatchCharacter* NewOwner);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void SetVisibility(bool NewVisibility);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnWeaponDropped();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)

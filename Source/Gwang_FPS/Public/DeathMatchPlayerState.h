@@ -18,13 +18,19 @@ class GWANG_FPS_API ADeathMatchPlayerState : public APlayerState
 	
 public:
 	// Getters
+	ETeam GetTeam() const { return Team; }
 	uint8 GetCurrentHealth() const { return CurrentHealth; }
 	uint8 GetCurrentArmor() const { return CurrentArmor; }
-	EMainWeapon GetStartMainWeapon() const { return StartMainWeapon; }
-	ESubWeapon GetStartSubWeapon() const { return StartSubWeapon; }
-	ETeam GetTeam() const { return Team; }
-	
+	TArray<AActor*> GetCurrentWeapons() const { return CurrentWeapons; }
+	AActor* GetStartMainWeapon() const { return StartWeapons[1]; }
+	AActor* GetCurrentMainWeapon() const { return CurrentWeapons[1]; }
+	AActor* GetCurrentSubWeapon() const { return CurrentWeapons[2]; }
+	AActor* GetCurrentWeaponWithIndex(const uint8& Index) const;
+		
 	void OnPostLogin();
+
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateCurrentWeapons(const uint8& Index, AActor* NewWeapon);
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetTeam(const ETeam& NewTeam);
@@ -43,26 +49,25 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_UpdateHealthArmor(const uint8& NewHealth, const uint8& NewArmor);
-	UFUNCTION(Client, Reliable)
-	void Client_UpdateHealthUI(const uint8& NewHealth, const uint8& NewArmor);
 
 
 protected:
 	ADeathMatchGameMode* GM;
 	ADeathMatchPlayerController* PC;
 
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	FName PlayerName;
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	ETeam Team;
-	UPROPERTY(Replicated)
-	EMainWeapon StartMainWeapon;
-	UPROPERTY(Replicated)
-	ESubWeapon StartSubWeapon;
 
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	TArray<AActor*> StartWeapons;
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	TArray<AActor*> CurrentWeapons;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	uint8 CurrentHealth;
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	uint8 CurrentArmor;
 
 	UPROPERTY(ReplicatedUsing = OnRep_NumKills)
@@ -105,8 +110,10 @@ protected:
 
 
 	UFUNCTION(Server, Reliable)
-	void Server_OnStartMatch();
+	void Server_OnStartMatch(); // This is bound to ADeathMatchGameMode::OnStartMatch delegate call
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateHealthUI(const uint8& NewHealth, const uint8& NewArmor);
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnSpawn();
+	void Multicast_OnStartMatch();
 
 };

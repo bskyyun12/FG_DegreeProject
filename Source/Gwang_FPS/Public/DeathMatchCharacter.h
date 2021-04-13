@@ -37,10 +37,10 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_TakeDamage(const uint8& DamageOnHealth, const uint8& DamageOnArmor, AActor* DamageCauser);
 
-protected:
-	//UPROPERTY(EditDefaultsOnly, Category = Weapon)
-	//TSubclassOf<AGunBase> RifleClass;
+	// Weapon
+	void EquipWeapon(AActor* const& WeaponToEquip);
 
+protected:
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* ArmMesh;
@@ -54,20 +54,8 @@ protected:
 	UCameraComponent* DeathCamera;
 
 	// Weapons
-	UPROPERTY(BlueprintReadOnly)
-	TArray<AActor*> StartWeapons;
-
-	UPROPERTY(BlueprintReadOnly)
-	TArray<AActor*> CurrentWeapons;
-
-	UPROPERTY(ReplicatedUsing=OnRep_CurrentlyHeldWeapon, BlueprintReadOnly)
+	UPROPERTY(Replicated)
 	AActor* CurrentlyHeldWeapon;
-	UFUNCTION()
-	void OnRep_CurrentlyHeldWeapon();
-
-	// Health & Armor
-	//float CurrentHealth = 100.f;
-	//float CurrentArmor = 100.f;
 
 	// Cache
 	ADeathMatchGameMode* GM;
@@ -90,7 +78,8 @@ protected:
 	void EquipSubWeapon();
 	UFUNCTION(Server, Reliable)
 	void Server_EquipWeapon(AActor* WeaponToEquip);
-	void EquipWeapon(AActor* WeaponToEquip);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_EquipWeapon(AActor* WeaponToEquip);
 
 	// Weapon drop
 	void Drop();
@@ -149,9 +138,9 @@ protected:
 
 	// OnSpawn
 	UFUNCTION(Server, Reliable)
-	void Server_OnSpawn();
+	void Server_OnStartMatch(); // This is bound to ADeathMatchGameMode::OnStartMatch delegate call
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_WeaponSetupOnSpawn(const FWeaponClass& WeaponClass);
+	void Multicast_WeaponSetupOnSpawn();
 	void HandleCameraOnSpawn();
 
 	// OnDeath

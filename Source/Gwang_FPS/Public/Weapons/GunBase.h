@@ -9,6 +9,7 @@
 #include "GunBase.generated.h"
 
 class UAnimMontage;
+class UBoxComponent;
 class USoundBase;
 
 USTRUCT(BlueprintType)
@@ -134,6 +135,9 @@ public:
 	// Weapon Equip
 	void OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner) override;
 
+	// Visibility change for weapon swapping
+	void SetVisibility_Implementation(bool NewVisibility) override;
+
 	// Weapon Drop
 	void OnWeaponDropped_Implementation() override;
 	
@@ -153,6 +157,9 @@ public:
 
 
 protected:
+	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
+	USceneComponent* Root;
+
 	/** Weapon mesh: 1st person view (seen only by self) */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* FPWeaponMesh;
@@ -160,6 +167,9 @@ protected:
 	/** Weapon mesh: 3rd person view (seen only by others) */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* TPWeaponMesh;
+	
+	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
+	UBoxComponent* InteractCollider;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	FWeaponInfo WeaponInfo;

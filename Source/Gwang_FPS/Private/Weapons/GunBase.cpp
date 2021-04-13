@@ -2,6 +2,7 @@
 
 
 #include "Weapons/GunBase.h"
+#include "Components/BoxComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
@@ -51,7 +52,10 @@ AGunBase::AGunBase()
 
 	bReplicates = true;	// Otherwise, RPC calls are ignored
 
-	// Create a weapon mesh component
+	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	SetRootComponent(Root);
+
+	// Create a 1st person weapon mesh component
 	FPWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPWeaponMesh"));
 	FPWeaponMesh->SetOnlyOwnerSee(true);
 	FPWeaponMesh->bCastDynamicShadow = false;
@@ -59,11 +63,15 @@ AGunBase::AGunBase()
 	FPWeaponMesh->SetCollisionProfileName(TEXT("NoCollision"));
 	FPWeaponMesh->SetupAttachment(RootComponent);
 
-	// Create a weapon mesh component
+	// Create a 3rd person weapon mesh component
 	TPWeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("TPWeaponMesh"));
 	TPWeaponMesh->SetOwnerNoSee(true);
 	TPWeaponMesh->SetCollisionProfileName(TEXT("NoCollision"));
 	TPWeaponMesh->SetupAttachment(RootComponent);
+
+	InteractCollider = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractCollider"));
+	InteractCollider->SetCollisionProfileName(TEXT("NoCollision"));
+	InteractCollider->SetupAttachment(TPWeaponMesh);
 }
 
 void AGunBase::BeginPlay()
@@ -77,6 +85,10 @@ void AGunBase::BeginPlay()
 void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 {
 	UE_LOG(LogTemp, Warning, TEXT("GunBase::OnWeaponEquipped => NewOwner(%s)'s role: %i. / Weapon(%s)'s role: %i."), *NewOwner->GetName(), NewOwner->GetLocalRole(), *GetName(), GetLocalRole());
+	if (!ensure(NewOwner != nullptr))
+	{
+		return;
+	}
 
 	if (NewOwner->IsLocallyControlled())
 	{
@@ -97,6 +109,8 @@ void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 
 	FPWeaponMesh->AttachToComponent(NewOwner->GetArmMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), WeaponInfo.FP_SocketName);
 
+	InteractCollider->SetCollisionProfileName(TEXT("NoCollision"));
+
 	// TODO: Notify Arm mesh to change animations
 	//UAnimInstance* ArmsAnimInstance = CurrentOwner->GetArmMesh()->GetAnimInstance();
 	//if (ArmsAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(ArmsAnimInstance, UFPSAnimInterface::StaticClass()))
@@ -107,6 +121,13 @@ void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 
 void AGunBase::OnWeaponDropped_Implementation()
 {
+	if (!ensure(CurrentOwner != nullptr))
+	{
+		return;
+	}
+
+	InteractCollider->SetCollisionProfileName(TEXT("Weapon_Dropped"));
+
 	FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 
 	TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
@@ -315,6 +336,12 @@ void AGunBase::UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo
 			IPlayerControllerInterface::Execute_UpdateWeaponUI(GetInstigatorController(), WeaponInfo.DisplayName, InCurrentAmmo, InRemainingAmmo);
 		}
 	}
+}
+
+void AGunBase::SetVisibility_Implementation(bool NewVisibility)
+{
+	FPWeaponMesh->SetVisibility(NewVisibility);
+	TPWeaponMesh->SetVisibility(NewVisibility);
 }
 
 bool AGunBase::CanReload()

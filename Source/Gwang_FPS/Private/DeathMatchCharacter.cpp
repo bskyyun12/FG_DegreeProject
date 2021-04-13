@@ -23,7 +23,7 @@ void ADeathMatchCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, BeginFire, COND_SimulatedOnly);
 	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, EndFire, COND_SimulatedOnly);
-	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, CurrentlyHeldWeapon, COND_SimulatedOnly);
+	DOREPLIFETIME(ADeathMatchCharacter, CurrentlyHeldWeapon);
 }
 
 ADeathMatchCharacter::ADeathMatchCharacter()
@@ -78,7 +78,7 @@ void ADeathMatchCharacter::BeginPlay()
 		{
 			return;
 		}
-		GM->OnStartMatch.AddDynamic(this, &ADeathMatchCharacter::Server_OnSpawn);
+		GM->OnStartMatch.AddDynamic(this, &ADeathMatchCharacter::Server_OnStartMatch);
 	}
 
 	if (IsLocallyControlled())
@@ -95,6 +95,7 @@ void ADeathMatchCharacter::BeginPlay()
 		// This is used for crouching
 		CameraRelativeLocation_Default = FP_Camera->GetRelativeLocation();
 	}
+
 }
 
 void ADeathMatchCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
@@ -138,15 +139,6 @@ void ADeathMatchCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	UE_LOG(LogTemp, Warning, TEXT("(Gameflow) ADeathMatchCharacter::PossessedBy"));
-
-	if (NewController != nullptr)
-	{
-		PS = NewController->GetPlayerState<ADeathMatchPlayerState>();
-		if (!ensure(PS != nullptr))
-		{
-			return;
-		}
-	}
 }
 
 void ADeathMatchCharacter::UnPossessed()
@@ -157,65 +149,72 @@ void ADeathMatchCharacter::UnPossessed()
 
 void ADeathMatchCharacter::EquipMainWeapon()
 {
-	if (CurrentWeapons[1] != nullptr)
+	if (PS->GetCurrentMainWeapon() != nullptr)
 	{
+		EquipWeapon(PS->GetCurrentMainWeapon());
+
 		if (GetLocalRole() == ROLE_Authority)
 		{
-			CurrentlyHeldWeapon = CurrentWeapons[1];	// OnRep_CurrentlyHeldWeapon
-			EquipWeapon(CurrentlyHeldWeapon);
+			Multicast_EquipWeapon(PS->GetCurrentMainWeapon());
 		}
 
 		if (GetLocalRole() == ROLE_AutonomousProxy)
 		{
-			CurrentlyHeldWeapon = CurrentWeapons[1];
-			EquipWeapon(CurrentlyHeldWeapon);
-			Server_EquipWeapon(CurrentlyHeldWeapon);
+			Server_EquipWeapon(PS->GetCurrentMainWeapon());
 		}
 	}
-
-	// This should be in pickup?
-	//EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(Weapon);
-	//uint8 WeaponIndex = (uint8)WeaponType;
-	//CurrentWeapons[WeaponIndex] = Weapon;
 }
 
 void ADeathMatchCharacter::EquipSubWeapon()
 {
-	if (CurrentWeapons[2] != nullptr)
+	if (PS->GetCurrentSubWeapon() != nullptr)
 	{
+		EquipWeapon(PS->GetCurrentSubWeapon());
+
 		if (GetLocalRole() == ROLE_Authority)
 		{
-			CurrentlyHeldWeapon = CurrentWeapons[2];	// OnRep_CurrentlyHeldWeapon
-			EquipWeapon(CurrentlyHeldWeapon);
+			Multicast_EquipWeapon(PS->GetCurrentSubWeapon());
 		}
 
 		if (GetLocalRole() == ROLE_AutonomousProxy)
 		{
-			CurrentlyHeldWeapon = CurrentWeapons[2];
-			EquipWeapon(CurrentlyHeldWeapon);
-			Server_EquipWeapon(CurrentlyHeldWeapon);
+			Server_EquipWeapon(PS->GetCurrentSubWeapon());
 		}
 	}
 }
 
 void ADeathMatchCharacter::Server_EquipWeapon_Implementation(AActor* WeaponToEquip)
 {
-	CurrentlyHeldWeapon = WeaponToEquip;	// OnRep_CurrentlyHeldWeapon
-	EquipWeapon(CurrentlyHeldWeapon);
+	Multicast_EquipWeapon(WeaponToEquip);
 }
 
-void ADeathMatchCharacter::EquipWeapon(AActor* WeaponToEquip)
+void ADeathMatchCharacter::Multicast_EquipWeapon_Implementation(AActor* WeaponToEquip)
+{
+	if (!IsLocallyControlled())
+	{
+		EquipWeapon(WeaponToEquip);
+	}
+}
+
+void ADeathMatchCharacter::EquipWeapon(AActor* const& WeaponToEquip)
 {
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::EquipWeapon => Role: (%i)"), GetLocalRole());
-	IWeaponInterface::Execute_OnWeaponEquipped(WeaponToEquip, this);
-}
 
-// All Other Clients ( COND_SimulatedOnly )
-void ADeathMatchCharacter::OnRep_CurrentlyHeldWeapon()
-{
-	if (CurrentlyHeldWeapon != nullptr)
+	if (WeaponToEquip != nullptr)
 	{
-		IWeaponInterface::Execute_OnWeaponEquipped(CurrentlyHeldWeapon, this);
+		CurrentlyHeldWeapon = WeaponToEquip;
+		IWeaponInterface::Execute_OnWeaponEquipped(WeaponToEquip, this);
+
+		// Hide other weapons
+		EWeaponType WeaponToEquipType = IWeaponInterface::Execute_GetWeaponType(WeaponToEquip);
+		for (AActor* Weapon : PS->GetCurrentWeapons())
+		{
+			if (Weapon != nullptr)
+			{
+				EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(Weapon);
+				IWeaponInterface::Execute_SetVisibility(Weapon, WeaponToEquipType == WeaponType);
+			}
+		}
 	}
 }
 
@@ -235,10 +234,7 @@ void ADeathMatchCharacter::Drop()
 				}, 2.f, false);
 		}
 
-		if (IsLocallyControlled())
-		{
-			DropWeapon();
-		}
+		DropWeapon();
 
 		if (GetLocalRole() == ROLE_Authority)
 		{
@@ -273,7 +269,7 @@ void ADeathMatchCharacter::DropWeapon()
 	{
 		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(CurrentlyHeldWeapon);
 		uint8 WeaponIndex = (uint8)WeaponType;
-		CurrentWeapons[WeaponIndex] = nullptr;
+		PS->Server_UpdateCurrentWeapons(WeaponIndex, nullptr);
 
 		IWeaponInterface::Execute_OnWeaponDropped(CurrentlyHeldWeapon);
 		CurrentlyHeldWeapon = nullptr;
@@ -285,7 +281,7 @@ void ADeathMatchCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedCompone
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnBeginOverlap => OtherActor: ( %s )."), *OtherActor->GetName());
 	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UWeaponInterface::StaticClass()))
 	{
-		PickupWeapon(OtherActor);
+		//PickupWeapon(OtherActor);
 	}
 }
 
@@ -293,9 +289,14 @@ void ADeathMatchCharacter::PickupWeapon(AActor* const& WeaponToPickup)
 {
 	if (WeaponToPickup != nullptr)
 	{
+		// This should be in pickup?
+		//EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(Weapon);
+		//uint8 WeaponIndex = (uint8)WeaponType;
+		//CurrentWeapons[WeaponIndex] = Weapon;
+
 		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(WeaponToPickup);
 		uint8 WeaponIndex = (uint8)WeaponType;
-		bool bHasSameTypeWeapon = CurrentWeapons[WeaponIndex] != nullptr;
+		bool bHasSameTypeWeapon = PS->GetCurrentWeaponWithIndex(WeaponIndex) != nullptr;
 		if (bHasSameTypeWeapon)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Already has the same weapon type"));
@@ -309,7 +310,7 @@ void ADeathMatchCharacter::PickupWeapon(AActor* const& WeaponToPickup)
 			}
 			else
 			{
-				CurrentWeapons[WeaponIndex] = WeaponToPickup;
+				PS->Server_UpdateCurrentWeapons(WeaponIndex, WeaponToPickup);
 				//WeaponToPickup->SetVisibility(false);
 			}
 		}
@@ -564,22 +565,17 @@ void ADeathMatchCharacter::Client_UpdateHealthArmorUI_Implementation(const uint8
 }
 
 // This is bound to ADeathMatchGameMode::OnStartMatch delegate call
-void ADeathMatchCharacter::Server_OnSpawn_Implementation()
+void ADeathMatchCharacter::Server_OnStartMatch_Implementation()
 {
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::Server_OnStartMatch"));
 	if (!ensure(GM != nullptr))
 	{
 		return;
 	}
-
-	if (!ensure(PS != nullptr))
-	{
-		return;
-	}
-
-	Multicast_WeaponSetupOnSpawn(GM->GetWeaponClass());
+	Multicast_WeaponSetupOnSpawn();
 }
 
-void ADeathMatchCharacter::Multicast_WeaponSetupOnSpawn_Implementation(const FWeaponClass& WeaponClass)
+void ADeathMatchCharacter::Multicast_WeaponSetupOnSpawn_Implementation()
 {
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Capsule_Alive"));
 	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh_Alive"));
@@ -589,75 +585,12 @@ void ADeathMatchCharacter::Multicast_WeaponSetupOnSpawn_Implementation(const FWe
 		HandleCameraOnSpawn();
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::Multicast_OnSpawn => Role: (%i)"), GetLocalRole());
+	//UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::Multicast_OnSpawn => Role: (%i)"), GetLocalRole());
 
-	// Initialize the weapon array 
-	if (CurrentWeapons.Num() != (uint8)EWeaponType::EnumSize)
+	PS = GetPlayerState<ADeathMatchPlayerState>();
+	if (PS != nullptr)
 	{
-		for (uint8 i = 0; i < (uint8)EWeaponType::EnumSize; i++)
-		{
-			CurrentWeapons.Add(nullptr);
-			StartWeapons.Add(nullptr);
-		}
-	}
-
-	if (PS == nullptr)
-	{
-		PS = GetPlayerState<ADeathMatchPlayerState>();
-	}
-
-	// Set up StartWeapons
-	UWorld* World = GetWorld();
-	if (World != nullptr)
-	{
-		// MainWeapon Setup
-		if (StartWeapons[1] == nullptr)
-		{
-			switch (PS->GetStartMainWeapon())
-			{
-			default:
-				break;
-			case EMainWeapon::M4A1:
-				if (!ensure(WeaponClass.M4A1Class != nullptr))
-				{
-					return;
-				}
-				StartWeapons[1] = World->SpawnActor<AActor>(WeaponClass.M4A1Class);
-				break;
-			case EMainWeapon::AK47:
-				if (!ensure(WeaponClass.AK47Class != nullptr))
-				{
-					return;
-				}
-				StartWeapons[1] = World->SpawnActor<AActor>(WeaponClass.AK47Class);
-				break;
-			}
-		}
-
-		// SubWeapon Setup
-		if (StartWeapons[2] == nullptr)
-		{
-			switch (PS->GetStartSubWeapon())
-			{
-			case ESubWeapon::Pistol:
-				if (!ensure(WeaponClass.PistolClass != nullptr))
-				{
-					return;
-				}
-				StartWeapons[2] = World->SpawnActor<AActor>(WeaponClass.PistolClass);
-				break;
-			}
-		}
-	}
-
-	// Override CurrentWeapons to StartWeapons
-	CurrentWeapons = StartWeapons;
-
-	// Equip the weapon except the SimulatedProxy. They will equip it when "OnRep_CurrentlyHeldWeapon" gets called
-	if (GetLocalRole() == ROLE_Authority || GetLocalRole() == ROLE_AutonomousProxy)
-	{
-		CurrentlyHeldWeapon = CurrentWeapons[1]; 	// (If Server) OnRep_CurrentlyHeldWeapon()
-		EquipWeapon(CurrentlyHeldWeapon);
+		EquipWeapon(PS->GetStartMainWeapon());
 	}
 }
 
@@ -679,7 +612,10 @@ void ADeathMatchCharacter::Server_OnDeath_Implementation(AActor* DeathCauser)
 	}
 
 	// Update PlayerState
-	PS->Server_OnDeath();
+	if (PS != nullptr)
+	{
+		PS->Server_OnDeath();
+	}
 
 	Multicast_OnDeath();
 }

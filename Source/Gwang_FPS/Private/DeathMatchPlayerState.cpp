@@ -18,12 +18,16 @@ void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 
 	DOREPLIFETIME(ADeathMatchPlayerState, PlayerName);
 	DOREPLIFETIME(ADeathMatchPlayerState, Team);
-	DOREPLIFETIME(ADeathMatchPlayerState, StartMainWeapon);
-	DOREPLIFETIME(ADeathMatchPlayerState, StartSubWeapon);
 
+	// Weapons
+	DOREPLIFETIME(ADeathMatchPlayerState, StartWeapons);
+	DOREPLIFETIME(ADeathMatchPlayerState, CurrentWeapons);
+
+	// Health & Armor
 	DOREPLIFETIME(ADeathMatchPlayerState, CurrentHealth);
 	DOREPLIFETIME(ADeathMatchPlayerState, CurrentArmor);
 
+	// ScoreBoard
 	DOREPLIFETIME(ADeathMatchPlayerState, NumKills);
 	DOREPLIFETIME(ADeathMatchPlayerState, NumDeaths);
 	DOREPLIFETIME(ADeathMatchPlayerState, bIsDead);
@@ -34,12 +38,36 @@ void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 
 void ADeathMatchPlayerState::PostInitializeComponents()
 {
-	Super::PostInitializeComponents();	
+	Super::PostInitializeComponents();
+}
+
+AActor* ADeathMatchPlayerState::GetCurrentWeaponWithIndex(const uint8& Index) const
+{
+	if (Index >= CurrentWeapons.Num())
+	{
+		return nullptr;
+	}
+
+	return CurrentWeapons[Index];
 }
 
 void ADeathMatchPlayerState::OnPostLogin()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnPostLogin => LocalRole: %i, RemoteRole: %i"), GetLocalRole(), GetRemoteRole());
+
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+
+	GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
+	if (!ensure(GM != nullptr))
+	{
+		return;
+	}
+	GM->OnStartMatch.AddDynamic(this, &ADeathMatchPlayerState::Server_OnStartMatch);
+
 	Client_ReadData();
 }
 
@@ -57,10 +85,53 @@ void ADeathMatchPlayerState::Server_ReceiveData_Implementation(const FPlayerData
 {
 	PlayerName = PlayerData.PlayerName;
 	Team = PlayerData.Team;
-	StartMainWeapon = PlayerData.StartMainWeapon;
-	StartSubWeapon = PlayerData.StartSubWeapon;
 
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => ( %s ), PlayerName: ( %s ), Team ( %i ), StartMainWeapon ( %i )"), *GetName(), *PlayerName.ToString(), Team, StartMainWeapon);
+	for (uint8 i = 0; i < (uint8)EWeaponType::EnumSize; i++)
+	{
+		CurrentWeapons.Add(nullptr);
+		StartWeapons.Add(nullptr);
+	}
+
+	// Main weapon setup
+	UWorld* World = GetWorld();
+	if (World != nullptr)
+	{
+		FWeaponClass WeaponClass = GM->GetWeaponClass();
+		switch (PlayerData.StartMainWeapon)
+		{
+		case EMainWeapon::M4A1:
+			if (!ensure(WeaponClass.M4A1Class != nullptr))
+			{
+				return;
+			}
+			StartWeapons[1] = World->SpawnActor<AActor>(WeaponClass.M4A1Class);
+			break;
+
+		case EMainWeapon::AK47:
+			if (!ensure(WeaponClass.AK47Class != nullptr))
+			{
+				return;
+			}
+			StartWeapons[1] = World->SpawnActor<AActor>(WeaponClass.AK47Class);
+			break;
+		}
+
+		// Sub weapon setup
+		switch (PlayerData.StartSubWeapon)
+		{
+		case ESubWeapon::Pistol:
+			if (!ensure(WeaponClass.PistolClass != nullptr))
+			{
+				return;
+			}
+			StartWeapons[2] = World->SpawnActor<AActor>(WeaponClass.PistolClass);
+			break;
+		}
+	}
+
+	CurrentWeapons = StartWeapons;
+
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Server_ReceiveData => StartWeapons.Num(): %i"), StartWeapons.Num());
 }
 
 void ADeathMatchPlayerState::BeginPlay()
@@ -80,39 +151,41 @@ void ADeathMatchPlayerState::BeginPlay()
 		return;
 	}
 
-	// GameMode Setup
-	if (GetLocalRole() == ROLE_Authority)
-	{
-		GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
-		if (!ensure(GM != nullptr))
-		{
-			return;
-		}
-		GM->OnStartMatch.AddDynamic(this, &ADeathMatchPlayerState::Server_OnStartMatch);
-	}
+	//// GameMode Setup
+	//if (GetLocalRole() == ROLE_Authority)
+	//{
+	//	GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
+	//	if (!ensure(GM != nullptr))
+	//	{
+	//		return;
+	//	}
+	//	GM->OnStartMatch.AddDynamic(this, &ADeathMatchPlayerState::Server_OnStartMatch);
+	//}
 }
 
 // This is bound to ADeathMatchGameMode::OnStartMatch delegate call
 void ADeathMatchPlayerState::Server_OnStartMatch_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Server_OnStartMatch"));
-	Multicast_OnSpawn();
+	Multicast_OnStartMatch();
 }
 
-void ADeathMatchPlayerState::Multicast_OnSpawn_Implementation()
+void ADeathMatchPlayerState::Multicast_OnStartMatch_Implementation()
 {
 	CurrentHealth = 100;	// OnRep_CurrentHealth()
 	CurrentArmor = 100;	// OnRep_CurrentArmor()
 
-	if (PC == nullptr)
+	if (!ensure(PC != nullptr))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Multicast_OnSpawn => PC == nullptr"));
 		return;
 	}
 	if (PC->IsLocalController())
 	{
 		PC->UpdateHealthArmorUI(CurrentHealth, CurrentArmor);
 	}
+
+	// Current weapon setup
+	CurrentWeapons = StartWeapons;
 }
 
 void ADeathMatchPlayerState::Server_UpdateHealthArmor_Implementation(const uint8& NewHealth, const uint8& NewArmor)
@@ -127,6 +200,11 @@ void ADeathMatchPlayerState::Client_UpdateHealthUI_Implementation(const uint8& N
 {
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Client_UpdateHealthUI => Player ( %s ), Role: %i, CurrentHealth: ( %i )."), *GetPawn()->GetName(), GetLocalRole(), CurrentHealth);
 	PC->UpdateHealthArmorUI(NewHealth, NewArmor);
+}
+
+void ADeathMatchPlayerState::Server_UpdateCurrentWeapons_Implementation(const uint8& Index, AActor* NewWeapon)
+{
+	CurrentWeapons[Index] = NewWeapon;
 }
 
 void ADeathMatchPlayerState::Server_SetTeam_Implementation(const ETeam& NewTeam)
