@@ -21,6 +21,8 @@ class GWANG_FPS_API ADeathMatchPlayerController : public APlayerController, publ
 	GENERATED_BODY()
 
 public:	
+	void OnPostLogin();
+
 #pragma region Widget Related
 	UFUNCTION(Client, Reliable)
 	void Client_SetupWidgets();
@@ -73,6 +75,7 @@ protected:
 #pragma endregion Widget Related
 
 protected:
+
 	void BeginPlay() override;
 
 	void OnPossess(APawn* aPawn) override;

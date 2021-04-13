@@ -18,6 +18,16 @@ void ADeathMatchPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimePro
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 }
 
+void ADeathMatchPlayerController::OnPostLogin()
+{
+	PS = GetPlayerState<ADeathMatchPlayerState>();
+	if (!ensure(PS != nullptr))
+	{
+		return;
+	}
+	PS->OnPostLogin();
+}
+
 void ADeathMatchPlayerController::BeginPlay()
 {
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) PlayerController::BeginPlay (%s)"), *GetName());
@@ -153,11 +163,6 @@ void ADeathMatchPlayerController::VignetteUIOnTakeDamage()
 
 void ADeathMatchPlayerController::SendChat(const FName& ChatContent)
 {
-	PS = GetPlayerState<ADeathMatchPlayerState>();
-	if (!ensure(PS != nullptr))
-	{
-		return;
-	}
 	PS->Server_OnSendChat(ChatContent);
 }
 

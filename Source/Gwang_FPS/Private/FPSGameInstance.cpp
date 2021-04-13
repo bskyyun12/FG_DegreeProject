@@ -292,4 +292,6 @@ FPlayerData UFPSGameInstance::GetPlayerData() const
 void UFPSGameInstance::SetUserData(const FPlayerData& Data)
 {
 	PlayerData = Data;
+
+	UE_LOG(LogTemp, Warning, TEXT("UFPSGameInstance::SetUserData => PlayerName: %s, NewTeam: %i"), *Data.PlayerName.ToString(), Data.Team);
 }

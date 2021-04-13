@@ -18,7 +18,10 @@ void ADeathMatchGameMode::PostLogin(APlayerController* NewPlayer)
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) ----------------------------------------------------"));
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::PostLogin => ( %s ) successfully Logged in"), *NewPlayer->GetName());
 
-	PlayerControllers.Add(Cast<ADeathMatchPlayerController>(NewPlayer));
+	ADeathMatchPlayerController* PC = Cast<ADeathMatchPlayerController>(NewPlayer);
+	PC->OnPostLogin();
+
+	PlayerControllers.Add(PC);
 }
 
 // Called when a player leaves the game or is destroyed.

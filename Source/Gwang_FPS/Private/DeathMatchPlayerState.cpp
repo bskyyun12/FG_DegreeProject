@@ -34,17 +34,12 @@ void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 
 void ADeathMatchPlayerState::PostInitializeComponents()
 {
-	Super::PostInitializeComponents();
-		
-	if (GetLocalRole() == ROLE_Authority)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("(GameFlow) (Server) PlayerState::PostInitializeComponents"));
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("(GameFlow) (Client) PlayerState::PostInitializeComponents"));
-	}
+	Super::PostInitializeComponents();	
+}
 
+void ADeathMatchPlayerState::OnPostLogin()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnPostLogin => LocalRole: %i, RemoteRole: %i"), GetLocalRole(), GetRemoteRole());
 	Client_ReadData();
 }
 
@@ -65,7 +60,7 @@ void ADeathMatchPlayerState::Server_ReceiveData_Implementation(const FPlayerData
 	StartMainWeapon = PlayerData.StartMainWeapon;
 	StartSubWeapon = PlayerData.StartSubWeapon;
 
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => ( %s ), PlayerName: ( %s ), Team ( %i )"), *GetName(), *PlayerName.ToString(), Team);
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => ( %s ), PlayerName: ( %s ), Team ( %i ), StartMainWeapon ( %i )"), *GetName(), *PlayerName.ToString(), Team, StartMainWeapon);
 }
 
 void ADeathMatchPlayerState::BeginPlay()
@@ -93,14 +88,14 @@ void ADeathMatchPlayerState::BeginPlay()
 		{
 			return;
 		}
-		GM->OnStartMatch.AddDynamic(this, &ADeathMatchPlayerState::Server_OnSpawn);
+		GM->OnStartMatch.AddDynamic(this, &ADeathMatchPlayerState::Server_OnStartMatch);
 	}
 }
 
 // This is bound to ADeathMatchGameMode::OnStartMatch delegate call
-void ADeathMatchPlayerState::Server_OnSpawn_Implementation()
+void ADeathMatchPlayerState::Server_OnStartMatch_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Server_OnSpawn"));
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Server_OnStartMatch"));
 	Multicast_OnSpawn();
 }
 

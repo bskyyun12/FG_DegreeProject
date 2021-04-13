@@ -23,6 +23,8 @@ public:
 	EMainWeapon GetStartMainWeapon() const { return StartMainWeapon; }
 	ESubWeapon GetStartSubWeapon() const { return StartSubWeapon; }
 	ETeam GetTeam() const { return Team; }
+	
+	void OnPostLogin();
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetTeam(const ETeam& NewTeam);
@@ -92,6 +94,8 @@ protected:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void PostInitializeComponents() override;
+
+
 	UFUNCTION(Client, Reliable)
 	void Client_ReadData();
 	UFUNCTION(Server, Reliable)
@@ -99,8 +103,9 @@ protected:
 
 	void BeginPlay() override;
 
+
 	UFUNCTION(Server, Reliable)
-	void Server_OnSpawn();
+	void Server_OnStartMatch();
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnSpawn();
 
