@@ -38,7 +38,7 @@ public:
 	void Server_TakeDamage(const uint8& DamageOnHealth, const uint8& DamageOnArmor, AActor* DamageCauser);
 
 	// Weapon
-	void EquipWeapon(AActor* const& WeaponToEquip);
+	void EquipWeapon(AActor* WeaponToEquip);
 
 protected:
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
@@ -92,7 +92,7 @@ protected:
 	// Weapon pickup
 	UFUNCTION()
 	void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-	void PickupWeapon(AActor* const& WeaponToPickup);
+	void PickupWeapon(AActor* WeaponToPickup);
 
 	// Weapon Reload
 	void Reload();

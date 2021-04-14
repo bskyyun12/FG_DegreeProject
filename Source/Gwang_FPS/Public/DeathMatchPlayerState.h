@@ -54,7 +54,7 @@ public:
 protected:
 	ADeathMatchGameMode* GM;
 	ADeathMatchPlayerController* PC;
-
+	
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FName PlayerName;
 	UPROPERTY(Replicated, BlueprintReadOnly)
@@ -100,17 +100,15 @@ protected:
 
 	void PostInitializeComponents() override;
 
-
+	// Called after PostLogin
 	UFUNCTION(Client, Reliable)
 	void Client_ReadData();
 	UFUNCTION(Server, Reliable)
 	void Server_ReceiveData(const FPlayerData& PlayerData);
 
-	void BeginPlay() override;
-
-
+	// bound to ADeathMatchGameMode::OnStartMatch delegate
 	UFUNCTION(Server, Reliable)
-	void Server_OnStartMatch(); // This is bound to ADeathMatchGameMode::OnStartMatch delegate call
+	void Server_OnStartMatch();
 	UFUNCTION(Client, Reliable)
 	void Client_UpdateHealthUI(const uint8& NewHealth, const uint8& NewArmor);
 	UFUNCTION(NetMulticast, Reliable)

@@ -39,21 +39,6 @@ void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 void ADeathMatchPlayerState::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
-}
-
-AActor* ADeathMatchPlayerState::GetCurrentWeaponWithIndex(const uint8& Index) const
-{
-	if (Index >= CurrentWeapons.Num())
-	{
-		return nullptr;
-	}
-
-	return CurrentWeapons[Index];
-}
-
-void ADeathMatchPlayerState::OnPostLogin()
-{
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnPostLogin => LocalRole: %i, RemoteRole: %i"), GetLocalRole(), GetRemoteRole());
 
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))
@@ -61,12 +46,27 @@ void ADeathMatchPlayerState::OnPostLogin()
 		return;
 	}
 
-	GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
-	if (!ensure(GM != nullptr))
+	// PlayerController Setup
+	PC = Cast<ADeathMatchPlayerController>(UGameplayStatics::GetPlayerController(World, 0));
+	if (!ensure(PC != nullptr))
 	{
 		return;
 	}
-	GM->OnStartMatch.AddDynamic(this, &ADeathMatchPlayerState::Server_OnStartMatch);
+
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
+		if (!ensure(GM != nullptr))
+		{
+			return;
+		}
+		GM->OnStartMatch.AddDynamic(this, &ADeathMatchPlayerState::Server_OnStartMatch);
+	}
+}
+
+void ADeathMatchPlayerState::OnPostLogin()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnPostLogin => LocalRole: %i, RemoteRole: %i"), GetLocalRole(), GetRemoteRole());
 
 	Client_ReadData();
 }
@@ -134,33 +134,14 @@ void ADeathMatchPlayerState::Server_ReceiveData_Implementation(const FPlayerData
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Server_ReceiveData => StartWeapons.Num(): %i"), StartWeapons.Num());
 }
 
-void ADeathMatchPlayerState::BeginPlay()
+AActor* ADeathMatchPlayerState::GetCurrentWeaponWithIndex(const uint8& Index) const
 {
-	Super::BeginPlay();
-
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
+	if (Index >= CurrentWeapons.Num())
 	{
-		return;
+		return nullptr;
 	}
 
-	// PlayerController Setup
-	PC = Cast<ADeathMatchPlayerController>(UGameplayStatics::GetPlayerController(World, 0));
-	if (!ensure(PC != nullptr))
-	{
-		return;
-	}
-
-	//// GameMode Setup
-	//if (GetLocalRole() == ROLE_Authority)
-	//{
-	//	GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
-	//	if (!ensure(GM != nullptr))
-	//	{
-	//		return;
-	//	}
-	//	GM->OnStartMatch.AddDynamic(this, &ADeathMatchPlayerState::Server_OnStartMatch);
-	//}
+	return CurrentWeapons[Index];
 }
 
 // This is bound to ADeathMatchGameMode::OnStartMatch delegate call

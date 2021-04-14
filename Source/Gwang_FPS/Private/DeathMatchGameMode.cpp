@@ -43,14 +43,24 @@ void ADeathMatchGameMode::BeginPlay()
 		return;
 	}
 
-	// TODO: Check for NumPlayers then start the match? Right now, the match starts in 3 seconds
-	float MatchStartCountdown = 3.f;
-	FTimerHandle StartTimer;
-	GetWorld()->GetTimerManager().SetTimer(StartTimer, [&]()
-		{
-			StartMatch();
+	GetWorld()->GetTimerManager().SetTimer(MatchStartTimer, this, &ADeathMatchGameMode::MatchStartCheck, 3.f, true);
+}
 
-		}, MatchStartCountdown, false);
+void ADeathMatchGameMode::MatchStartCheck()
+{
+	UE_LOG(LogTemp, Warning, TEXT("GameMode::MatchStartCheck => GS->PlayerArray.Num(): %i"), GS->PlayerArray.Num());
+
+	StartMatch();
+
+
+	// TODO: check if all player are joined the game?
+	int NumPlayers = 3;
+
+	if (NumPlayers == GS->PlayerArray.Num())
+	{
+		//StartMatch();
+		//GetWorld()->GetTimerManager().ClearTimer(MatchStartTimer);
+	}
 }
 
 // Spawn players and start the game!

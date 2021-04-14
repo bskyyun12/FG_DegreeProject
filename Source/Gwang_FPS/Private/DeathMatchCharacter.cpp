@@ -95,7 +95,6 @@ void ADeathMatchCharacter::BeginPlay()
 		// This is used for crouching
 		CameraRelativeLocation_Default = FP_Camera->GetRelativeLocation();
 	}
-
 }
 
 void ADeathMatchCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
@@ -149,37 +148,31 @@ void ADeathMatchCharacter::UnPossessed()
 
 void ADeathMatchCharacter::EquipMainWeapon()
 {
-	if (PS->GetCurrentMainWeapon() != nullptr)
+	EquipWeapon(PS->GetCurrentMainWeapon());
+
+	if (GetLocalRole() == ROLE_Authority)
 	{
-		EquipWeapon(PS->GetCurrentMainWeapon());
+		Multicast_EquipWeapon(PS->GetCurrentMainWeapon());
+	}
 
-		if (GetLocalRole() == ROLE_Authority)
-		{
-			Multicast_EquipWeapon(PS->GetCurrentMainWeapon());
-		}
-
-		if (GetLocalRole() == ROLE_AutonomousProxy)
-		{
-			Server_EquipWeapon(PS->GetCurrentMainWeapon());
-		}
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		Server_EquipWeapon(PS->GetCurrentMainWeapon());
 	}
 }
 
 void ADeathMatchCharacter::EquipSubWeapon()
 {
-	if (PS->GetCurrentSubWeapon() != nullptr)
+	EquipWeapon(PS->GetCurrentSubWeapon());
+
+	if (GetLocalRole() == ROLE_Authority)
 	{
-		EquipWeapon(PS->GetCurrentSubWeapon());
+		Multicast_EquipWeapon(PS->GetCurrentSubWeapon());
+	}
 
-		if (GetLocalRole() == ROLE_Authority)
-		{
-			Multicast_EquipWeapon(PS->GetCurrentSubWeapon());
-		}
-
-		if (GetLocalRole() == ROLE_AutonomousProxy)
-		{
-			Server_EquipWeapon(PS->GetCurrentSubWeapon());
-		}
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		Server_EquipWeapon(PS->GetCurrentSubWeapon());
 	}
 }
 
@@ -196,25 +189,29 @@ void ADeathMatchCharacter::Multicast_EquipWeapon_Implementation(AActor* WeaponTo
 	}
 }
 
-void ADeathMatchCharacter::EquipWeapon(AActor* const& WeaponToEquip)
+void ADeathMatchCharacter::EquipWeapon(AActor* WeaponToEquip)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::EquipWeapon => Role: (%i)"), GetLocalRole());
+	// Hide All weapons
+	for (AActor* Weapon : PS->GetCurrentWeapons())
+	{
+		if (Weapon != nullptr)
+		{
+			IWeaponInterface::Execute_SetVisibility(Weapon, false);
+		}
+	}
+
+	if (WeaponToEquip == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::EquipWeapon => ( %s ) equipped ( NONE )"), *GetName());
+		CurrentlyHeldWeapon = nullptr;
+	}
 
 	if (WeaponToEquip != nullptr)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::EquipWeapon => ( %s ) equipped ( %s )"), *GetName(), *WeaponToEquip->GetName());
 		CurrentlyHeldWeapon = WeaponToEquip;
 		IWeaponInterface::Execute_OnWeaponEquipped(WeaponToEquip, this);
-
-		// Hide other weapons
-		EWeaponType WeaponToEquipType = IWeaponInterface::Execute_GetWeaponType(WeaponToEquip);
-		for (AActor* Weapon : PS->GetCurrentWeapons())
-		{
-			if (Weapon != nullptr)
-			{
-				EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(Weapon);
-				IWeaponInterface::Execute_SetVisibility(Weapon, WeaponToEquipType == WeaponType);
-			}
-		}
+		IWeaponInterface::Execute_SetVisibility(WeaponToEquip, true);
 	}
 }
 
@@ -222,18 +219,6 @@ void ADeathMatchCharacter::Drop()
 {
 	if (CurrentlyHeldWeapon != nullptr)
 	{
-		UWorld* World = GetWorld();
-		if (World != nullptr)
-		{
-			// Disable Overlap Event for 2 seconds. => Prevents instant pick up after dropping
-			FTimerHandle OverlapDisableTimer;
-			GetCapsuleComponent()->SetGenerateOverlapEvents(false);
-			World->GetTimerManager().SetTimer(OverlapDisableTimer, [&]()
-				{
-					GetCapsuleComponent()->SetGenerateOverlapEvents(true);
-				}, 2.f, false);
-		}
-
 		DropWeapon();
 
 		if (GetLocalRole() == ROLE_Authority)
@@ -263,55 +248,74 @@ void ADeathMatchCharacter::Multicast_DropWeapon_Implementation()
 
 void ADeathMatchCharacter::DropWeapon()
 {
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::DropWeapon => Role: (%i)"), GetLocalRole());
-
 	if (CurrentlyHeldWeapon != nullptr)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::DropWeapon => ( %s ) dropped ( %s )"), *GetName(), *CurrentlyHeldWeapon->GetName());
+
+		UWorld* World = GetWorld();
+		if (World != nullptr)
+		{
+			// Disable Overlap Event for 2 seconds. => Prevents instant pick up after dropping
+			FTimerHandle OverlapDisableTimer;
+			GetCapsuleComponent()->SetGenerateOverlapEvents(false);
+			World->GetTimerManager().SetTimer(OverlapDisableTimer, [&]()
+				{
+					GetCapsuleComponent()->SetGenerateOverlapEvents(true);
+				}, 2.f, false);
+		}
+
+		IWeaponInterface::Execute_OnWeaponDropped(CurrentlyHeldWeapon);
+
 		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(CurrentlyHeldWeapon);
 		uint8 WeaponIndex = (uint8)WeaponType;
 		PS->Server_UpdateCurrentWeapons(WeaponIndex, nullptr);
-
-		IWeaponInterface::Execute_OnWeaponDropped(CurrentlyHeldWeapon);
 		CurrentlyHeldWeapon = nullptr;
 	}
 }
 
 void ADeathMatchCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnBeginOverlap => OtherActor: ( %s )."), *OtherActor->GetName());
 	if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UWeaponInterface::StaticClass()))
 	{
-		//PickupWeapon(OtherActor);
+		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnBeginOverlap => OtherActor: ( %s )."), *OtherActor->GetName());
+		PickupWeapon(OtherActor);
 	}
 }
 
-void ADeathMatchCharacter::PickupWeapon(AActor* const& WeaponToPickup)
+void ADeathMatchCharacter::PickupWeapon(AActor* WeaponToPickup)
 {
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("( ROLE_Authority ) ADeathMatchCharacter::PickupWeapon"));
+	}
+
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("( ROLE_AutonomousProxy ) ADeathMatchCharacter::PickupWeapon"));
+	}
+
+	if (GetLocalRole() == ROLE_SimulatedProxy)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("( ROLE_SimulatedProxy ) ADeathMatchCharacter::PickupWeapon"));
+	}
+
 	if (WeaponToPickup != nullptr)
 	{
-		// This should be in pickup?
-		//EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(Weapon);
-		//uint8 WeaponIndex = (uint8)WeaponType;
-		//CurrentWeapons[WeaponIndex] = Weapon;
-
 		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(WeaponToPickup);
 		uint8 WeaponIndex = (uint8)WeaponType;
 		bool bHasSameTypeWeapon = PS->GetCurrentWeaponWithIndex(WeaponIndex) != nullptr;
 		if (bHasSameTypeWeapon)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Already has the same weapon type"));
+			UE_LOG(LogTemp, Warning, TEXT("( %s ) already has the same weapon type"), *GetName());
 		}
 		else
 		{
+			IWeaponInterface::Execute_SetVisibility(WeaponToPickup, false);
+			PS->Server_UpdateCurrentWeapons(WeaponIndex, WeaponToPickup);
+
 			if (CurrentlyHeldWeapon == nullptr)
 			{
-				IWeaponInterface::Execute_OnWeaponEquipped(WeaponToPickup, this);
-				//Server_EquipWeapon(WeaponToPickup);
-			}
-			else
-			{
-				PS->Server_UpdateCurrentWeapons(WeaponIndex, WeaponToPickup);
-				//WeaponToPickup->SetVisibility(false);
+				EquipWeapon(WeaponToPickup);
 			}
 		}
 	}
@@ -461,6 +465,11 @@ void ADeathMatchCharacter::OnBeginFire()
 
 void ADeathMatchCharacter::Server_OnBeginFire_Implementation()
 {
+	if (CurrentlyHeldWeapon == nullptr)
+	{
+		return;
+	}
+
 	UE_LOG(LogTemp, Warning, TEXT("(Server) OnBeginFire"));
 	BeginFire++;	// OnRep_BeginFire()
 	IWeaponInterface::Execute_BeginFire(CurrentlyHeldWeapon);
@@ -469,6 +478,11 @@ void ADeathMatchCharacter::Server_OnBeginFire_Implementation()
 // All Other Clients ( COND_SimulatedOnly )
 void ADeathMatchCharacter::OnRep_BeginFire()
 {
+	if (CurrentlyHeldWeapon == nullptr)
+	{
+		return;
+	}
+
 	UE_LOG(LogTemp, Warning, TEXT("(Simulated Client) OnBeginFire"));
 	IWeaponInterface::Execute_BeginFire(CurrentlyHeldWeapon);
 }
@@ -479,6 +493,7 @@ void ADeathMatchCharacter::OnEndFire()
 	{
 		return;
 	}
+
 	if (GetLocalRole() == ROLE_AutonomousProxy)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("(ROLE_AutonomousProxy) OnEndFire"));
@@ -489,6 +504,11 @@ void ADeathMatchCharacter::OnEndFire()
 
 void ADeathMatchCharacter::Server_OnEndFire_Implementation()
 {
+	if (CurrentlyHeldWeapon == nullptr)
+	{
+		return;
+	}
+
 	UE_LOG(LogTemp, Warning, TEXT("(Server) OnEndFire"));
 	EndFire++;
 	IWeaponInterface::Execute_EndFire(CurrentlyHeldWeapon);
@@ -497,6 +517,11 @@ void ADeathMatchCharacter::Server_OnEndFire_Implementation()
 // All Other Clients ( COND_SimulatedOnly )
 void ADeathMatchCharacter::OnRep_EndFire()
 {
+	if (CurrentlyHeldWeapon == nullptr)
+	{
+		return;
+	}
+
 	UE_LOG(LogTemp, Warning, TEXT("(Simulated Client) OnEndFire"));
 	IWeaponInterface::Execute_EndFire(CurrentlyHeldWeapon);
 }
