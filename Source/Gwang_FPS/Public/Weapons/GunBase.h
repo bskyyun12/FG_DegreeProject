@@ -130,7 +130,6 @@ public:
 
 	// Getters
 	ADeathMatchCharacter* GetCurrentOwner();
-	bool IsOwnerLocallyControlled();
 	ADeathMatchPlayerController* GetOwnerController();
 	EWeaponType GetWeaponType_Implementation() const override;
 
@@ -153,9 +152,6 @@ public:
 	bool CanReload();
 	void BeginReload_Implementation() override;
 	void OnEndReload();
-
-	// UI
-	void UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo);
 
 protected:
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
@@ -193,21 +189,18 @@ protected:
 	FTimerHandle ReloadTimer;
 	bool bIsReloading;
 
-	ADeathMatchCharacter* CurrentOwner;
-	ADeathMatchPlayerController* CurrentOwnerController;
-
 protected:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void BeginPlay() override;
 
-	void CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor);
-	//bool CanFire() const override;
-
+	// Weapon fire
 	bool FireLineTrace(FHitResult& OutHit);
-
+	void CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor);
 	void FireEffects();
-
 	void Recoil();
+
+	// UI
+	void UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo);
 
 };

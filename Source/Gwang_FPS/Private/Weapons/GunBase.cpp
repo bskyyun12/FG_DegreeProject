@@ -49,16 +49,6 @@ ADeathMatchCharacter* AGunBase::GetCurrentOwner()
 	return Cast<ADeathMatchCharacter>(GetOwner());
 }
 
-bool AGunBase::IsOwnerLocallyControlled()
-{
-	if (GetCurrentOwner() == nullptr)
-	{
-		return false;
-	}
-
-	return GetCurrentOwner()->IsLocallyControlled();
-}
-
 ADeathMatchPlayerController* AGunBase::GetOwnerController()
 {
 	if (GetCurrentOwner() == nullptr)
@@ -129,9 +119,9 @@ void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 	SetOwner(NewOwner);
 	SetInstigator(NewOwner);
 
-	if (IsOwnerLocallyControlled())
+	if (GetCurrentOwner()->IsLocallyControlled())
 	{
-		UpdateAmmoUI(GetOwnerController(), CurrentAmmo, CurrentRemainingAmmo);
+		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 	}
 
 	// skeleton is not yet created in the constructor, so AttachToComponent should be happened after constructor
@@ -156,9 +146,9 @@ void AGunBase::OnWeaponDropped_Implementation()
 		TPWeaponMesh->SetCollisionProfileName(TEXT("Weapon_Dropped"));
 		TPWeaponMesh->SetSimulatePhysics(true);
 
-		if (IsOwnerLocallyControlled())
+		if (GetCurrentOwner()->IsLocallyControlled())
 		{
-			UpdateAmmoUI(GetOwnerController(), 0, 0);
+			UpdateAmmoUI(0, 0);
 		}
 
 		SetOwner(nullptr);
@@ -211,9 +201,9 @@ void AGunBase::Fire()
 	FireEffects();
 
 	CurrentAmmo--;
-	if (IsOwnerLocallyControlled())
+	if (GetCurrentOwner()->IsLocallyControlled())
 	{
-		UpdateAmmoUI(GetOwnerController(), CurrentAmmo, CurrentRemainingAmmo);
+		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 	}
 
 	if (GetCurrentOwner() != nullptr)
@@ -227,7 +217,7 @@ void AGunBase::Fire()
 			{
 				// TODO: Hit effect	(t.e. blood)
 
-				if (IsOwnerLocallyControlled())
+				if (GetCurrentOwner()->IsLocallyControlled())
 				{
 					// TODO: Crosshair UI change
 
@@ -315,7 +305,7 @@ void AGunBase::FireEffects()
 		Recoil();
 
 		// Locally controlled owner
-		if (IsOwnerLocallyControlled())
+		if (GetCurrentOwner()->IsLocallyControlled())
 		{
 			// FP FireAnim
 			UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
@@ -352,13 +342,13 @@ void AGunBase::FireEffects()
 	}
 }
 
-void AGunBase::UpdateAmmoUI(AController* Controller, const int& InCurrentAmmo, const int& InRemainingAmmo)
+void AGunBase::UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo)
 {
-	if (Controller->IsLocalController())
+	if (GetCurrentOwner()->IsLocallyControlled())
 	{
-		if (Controller != nullptr && UKismetSystemLibrary::DoesImplementInterface(Controller, UPlayerControllerInterface::StaticClass()))
+		if (GetOwnerController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwnerController(), UPlayerControllerInterface::StaticClass()))
 		{
-			IPlayerControllerInterface::Execute_UpdateWeaponUI(Controller, WeaponInfo.DisplayName, InCurrentAmmo, InRemainingAmmo);
+			IPlayerControllerInterface::Execute_UpdateWeaponUI(GetOwnerController(), WeaponInfo.DisplayName, InCurrentAmmo, InRemainingAmmo);
 		}
 	}
 }
@@ -389,7 +379,7 @@ void AGunBase::BeginReload_Implementation()
 		bIsReloading = true;
 		World->GetTimerManager().SetTimer(ReloadTimer, this, &AGunBase::OnEndReload, WeaponInfo.ReloadTime, false);
 
-		if (IsOwnerLocallyControlled())
+		if (GetCurrentOwner()->IsLocallyControlled())
 		{
 			// Play FP_ArmsReloadAnim
 			UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
@@ -424,9 +414,9 @@ void AGunBase::OnEndReload()
 	CurrentRemainingAmmo -= AmmoToPool;
 	CurrentAmmo += AmmoToPool;
 
-	if (IsOwnerLocallyControlled())
+	if (GetCurrentOwner()->IsLocallyControlled())
 	{
-		UpdateAmmoUI(GetOwnerController(), CurrentAmmo, CurrentRemainingAmmo);
+		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 	}
 }
 
