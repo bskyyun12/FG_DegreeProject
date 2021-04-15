@@ -135,7 +135,7 @@ void ADeathMatchPlayerController::Client_SetupWidgets_Implementation()
 		}
 
 		// Vignette Widget
-		if (VignetteWidget != nullptr)
+		if (VignetteWidget == nullptr)
 		{
 			if (!ensure(VignetteWidgetClass != nullptr))
 			{
@@ -152,7 +152,7 @@ void ADeathMatchPlayerController::Client_SetupWidgets_Implementation()
 		}
 
 		// Gameover Widget
-		if (GameOverWidget != nullptr)
+		if (GameOverWidget == nullptr)
 		{
 			if (!ensure(GameOverWidgetClass != nullptr))
 			{
@@ -179,12 +179,12 @@ void ADeathMatchPlayerController::UpdateScoreUI(const uint8& MarvelScore, const 
 	HUDWidget->UpdateScoreUI(MarvelScore, DCScore);
 }
 
-void ADeathMatchPlayerController::UpdateCrosshairUIOnHit()
+void ADeathMatchPlayerController::ChangeCrosshairUIOnHit_Implementation()
 {
 	HUDWidget->UpdateCrosshairUIOnHit();
 }
 
-void ADeathMatchPlayerController::VignetteUIOnTakeDamage()
+void ADeathMatchPlayerController::VignetteEffectOnTakeDamage_Implementation()
 {
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr))

@@ -215,12 +215,13 @@ void AGunBase::Fire()
 			ADeathMatchCharacter* HitPlayer = Cast<ADeathMatchCharacter>(Hit.GetActor());
 			if (HitPlayer != nullptr)
 			{
-				// TODO: Hit effect	(t.e. blood)
-
+				// Attacker => Crosshair UI change on hit player
 				if (GetCurrentOwner()->IsLocallyControlled())
 				{
-					// TODO: Crosshair UI change
-
+					if (GetCurrentOwner()->GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetCurrentOwner()->GetController(), UPlayerControllerInterface::StaticClass()))
+					{
+						IPlayerControllerInterface::Execute_ChangeCrosshairUIOnHit(GetCurrentOwner()->GetController());
+					}
 				}
 
 				if (GetCurrentOwner()->GetLocalRole() == ROLE_Authority)
@@ -234,10 +235,14 @@ void AGunBase::Fire()
 			else
 			{
 				// TODO: Move to NetMulticast Unreliable?
-				//if (WeaponInfo.HitEmitterOnEnvironment != nullptr)
-				//{
-				//	UGameplayStatics::SpawnEmitterAtLocation(World, WeaponInfo.HitEmitterOnEnvironment, Hit.ImpactPoint);
-				//}
+				if (WeaponInfo.HitEmitterOnEnvironment != nullptr)
+				{
+					UWorld* World = GetWorld();
+					if (World != nullptr)
+					{
+						UGameplayStatics::SpawnEmitterAtLocation(World, WeaponInfo.HitEmitterOnEnvironment, Hit.ImpactPoint);
+					}
+				}
 			}
 		}
 	}
@@ -293,16 +298,16 @@ bool AGunBase::FireLineTrace(FHitResult& OutHit)
 
 void AGunBase::FireEffects()
 {
-	// Play FireSound
-	if (WeaponInfo.FireSound != nullptr)
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, WeaponInfo.FireSound, GetActorLocation());
-	}
-
 	if (GetCurrentOwner() != nullptr)
 	{
 		// This moves camera's pitch.
 		Recoil();
+
+		// Play FireSound
+		if (WeaponInfo.FireSound != nullptr)
+		{			
+			UGameplayStatics::SpawnSoundAttached(WeaponInfo.FireSound, TPWeaponMesh, WeaponInfo.TP_FireEmitterSocketName);
+		}
 
 		// Locally controlled owner
 		if (GetCurrentOwner()->IsLocallyControlled())

@@ -45,10 +45,10 @@ public:
 	void UpdateScoreUI(const uint8& MarvelScore, const uint8& DCScore);
 
 	// Crosshair
-	void UpdateCrosshairUIOnHit();
+	void ChangeCrosshairUIOnHit_Implementation() override;
 
 	// TakeDamage
-	void VignetteUIOnTakeDamage();
+	void VignetteEffectOnTakeDamage_Implementation() override;
 	void UpdateHealthArmorUI(const uint8& CurrentHealth, const uint8& CurrentArmor);
 
 	// Chat
@@ -98,5 +98,9 @@ protected:
 
 	bool bWidgetLoaded;
 public:
+
+
+
+
 
 };

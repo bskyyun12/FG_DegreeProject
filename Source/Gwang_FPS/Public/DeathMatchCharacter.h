@@ -142,6 +142,10 @@ protected:
 	void Multicast_OnSpawn();
 	void HandleCameraOnSpawn();
 
+	// TakeDamage
+	UFUNCTION(Client, Reliable)
+	void Client_OnTakeDamage();
+
 	// OnDeath
 	UFUNCTION(Server, Reliable)
 	void Server_OnDeath(AActor* DeathCauser);

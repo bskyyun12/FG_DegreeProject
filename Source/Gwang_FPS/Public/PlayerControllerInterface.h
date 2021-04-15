@@ -36,4 +36,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void OnPlayerDeath();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void ChangeCrosshairUIOnHit();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void VignetteEffectOnTakeDamage();
 };

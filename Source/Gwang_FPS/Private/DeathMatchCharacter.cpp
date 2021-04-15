@@ -727,14 +727,29 @@ void ADeathMatchCharacter::Server_TakeDamage_Implementation(const uint8& DamageO
 		{
 			Server_OnDeath(DamageCauser);
 		}
+
+		Client_OnTakeDamage();
 	}
+}
+
+void ADeathMatchCharacter::Client_OnTakeDamage_Implementation()
+{
+	if (IsLocallyControlled())
+	{
+		if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UPlayerControllerInterface::StaticClass()))
+		{
+			IPlayerControllerInterface::Execute_VignetteEffectOnTakeDamage(GetController());
+		}
+	}
+
+	// TODO: TP damage recieving anim
 }
 
 void ADeathMatchCharacter::Server_OnDeath_Implementation(AActor* DeathCauser)
 {
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnDeath => ( %s ) is killed by ( %s )."), *GetName(), *DeathCauser->GetName());
 
-	// Call OnKill() for the killer player
+	// Call "Server_OnKill()" for the killer player
 	ADeathMatchCharacter* KillerPlayer = Cast<ADeathMatchCharacter>(DeathCauser);
 	if (KillerPlayer != nullptr)
 	{

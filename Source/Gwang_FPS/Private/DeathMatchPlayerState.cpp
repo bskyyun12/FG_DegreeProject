@@ -181,10 +181,18 @@ void ADeathMatchPlayerState::Server_SetTeam_Implementation(const ETeam& NewTeam)
 void ADeathMatchPlayerState::Server_OnKillPlayer_Implementation()
 {
 	NumKills++;
+
+	UWorld* World = GetWorld();
+	if (World != nullptr)
+	{
+		ADeathMatchGameState* GS = World->GetGameState<ADeathMatchGameState>();
+		// TODO: update GS team score
+	}
 }
 
 void ADeathMatchPlayerState::Server_OnDeath_Implementation()
 {
+	// TODO: Here I added delay because when player dies, player's current weapon will be dropped and need to wait until it finishes replicating. => could move to on rep?
 	UWorld* World = GetWorld();
 	if (World != nullptr)
 	{
