@@ -109,7 +109,7 @@ void ADeathMatchCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 
 	// "turn" handles devices that provide an absolute delta, such as a mouse.
 	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
-	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis("LookUp", this, &ADeathMatchCharacter::LookUp);
 }
 
 #pragma region Getters & Setters
@@ -161,6 +161,11 @@ AActor* ADeathMatchCharacter::GetCurrentSubWeapon()
 FVector ADeathMatchCharacter::GetCameraLocation() const
 {
 	return FP_Camera->GetComponentLocation();
+}
+
+FVector ADeathMatchCharacter::GetCameraForward() const
+{
+	return FP_Camera->GetForwardVector();
 }
 
 void ADeathMatchCharacter::SetCurrentlyHeldWeapon(AActor* NewWeapon)
@@ -307,6 +312,27 @@ void ADeathMatchCharacter::EquipWeapon(AActor* WeaponToEquip)
 			IWeaponInterface::Execute_OnWeaponEquipped(WeaponToEquip, this);
 			IWeaponInterface::Execute_SetVisibility(WeaponToEquip, true);
 		}
+
+		if (IsLocallyControlled())
+		{
+			// Notify ( ArmMesh )'s Animation that weapon is changed
+			UAnimInstance* ArmsAnimInstance = GetArmMesh()->GetAnimInstance();
+			if (ArmsAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(ArmsAnimInstance, UFPSAnimInterface::StaticClass()))
+			{
+				EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(WeaponToEquip);
+				IFPSAnimInterface::Execute_OnChangeWeapon(ArmsAnimInstance, WeaponType);
+			}
+		}
+		else
+		{
+			// Notify ( CharacterMesh )'s Animation that weapon is changed
+			UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
+			if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
+			{
+				EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(WeaponToEquip);
+				IFPSAnimInterface::Execute_OnChangeWeapon(CharacterAnimInstance, WeaponType);
+			}
+		}
 	}
 }
 
@@ -361,7 +387,7 @@ void ADeathMatchCharacter::DropWeapon()
 				{
 					GetCapsuleComponent()->SetGenerateOverlapEvents(true);
 				}, 2.f, false);
-		}		
+		}
 
 		IWeaponInterface::Execute_OnWeaponDropped(GetCurrentWeapon());
 
@@ -490,26 +516,39 @@ void ADeathMatchCharacter::StartChat()
 
 void ADeathMatchCharacter::LookUp(float Value)
 {
-	AddControllerPitchInput(Value);
-	Server_LookUp(Value);
+	if (Value == 0.f)
+	{
+		return;
+	}
+
+	AddControllerPitchInput(Value);				
+
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		Multicast_LookUp(GetControlRotation());
+	}
+
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		Server_LookUp(GetControlRotation());
+	}
 }
 
-void ADeathMatchCharacter::Server_LookUp_Implementation(const float& Value)
+void ADeathMatchCharacter::Server_LookUp_Implementation(const FRotator& CameraRotation)
 {
-	Multicast_LookUp(Value);
+	Multicast_LookUp(CameraRotation);
 }
 
-void ADeathMatchCharacter::Multicast_LookUp_Implementation(const float& Value)
+void ADeathMatchCharacter::Multicast_LookUp_Implementation(const FRotator& CameraRotation)
 {
 	if (!IsLocallyControlled())
 	{
-		AddControllerPitchInput(Value);
+		FP_Camera->SetWorldRotation(CameraRotation);
 
-		FP_Camera->SetWorldRotation(GetControlRotation());
 		UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
 		if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
 		{
-			IFPSAnimInterface::Execute_UpdateSpineAngle(CharacterAnimInstance, GetControlRotation().Pitch);
+			IFPSAnimInterface::Execute_UpdateSpineAngle(CharacterAnimInstance, CameraRotation.Pitch);
 		}
 	}
 }
@@ -531,9 +570,9 @@ void ADeathMatchCharacter::Server_OnBeginFire_Implementation()
 {
 	if (GetCurrentWeapon() != nullptr)
 	{
-	UE_LOG(LogTemp, Warning, TEXT("(Server) OnBeginFire"));
-	BeginFire++;	// OnRep_BeginFire()
-	IWeaponInterface::Execute_BeginFire(GetCurrentWeapon());
+		UE_LOG(LogTemp, Warning, TEXT("(Server) OnBeginFire"));
+		BeginFire++;	// OnRep_BeginFire()
+		IWeaponInterface::Execute_BeginFire(GetCurrentWeapon());
 	}
 }
 

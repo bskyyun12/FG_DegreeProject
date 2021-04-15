@@ -31,6 +31,7 @@ public:
 	AActor* GetCurrentSubWeapon();
 	USkeletalMeshComponent* GetArmMesh() const { return ArmMesh; }
 	FVector GetCameraLocation() const;
+	FVector GetCameraForward() const;
 
 	// Setters
 	void SetCurrentlyHeldWeapon(AActor* NewWeapon);
@@ -112,9 +113,9 @@ protected:
 	// Look up
 	void LookUp(float Value);
 	UFUNCTION(Server, Reliable)
-	void Server_LookUp(const float& Value);
+	void Server_LookUp(const FRotator& CameraRotation);
 	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_LookUp(const float& Value);
+	void Multicast_LookUp(const FRotator& CameraRotation);
 
 	// Begin Fire
 	void OnBeginFire();

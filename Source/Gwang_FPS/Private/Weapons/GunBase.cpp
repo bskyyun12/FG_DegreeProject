@@ -312,7 +312,7 @@ bool AGunBase::FireLineTrace(FHitResult& OutHit)
 	Params.bReturnPhysicalMaterial = true;
 
 	const FVector Start = GetCurrentOwner()->GetCameraLocation();
-	const FVector End = GetCurrentOwner()->GetCameraLocation() + GetCurrentOwner()->GetActorForwardVector() * WeaponInfo.Range;
+	const FVector End = GetCurrentOwner()->GetCameraLocation() + GetCurrentOwner()->GetCameraForward() * WeaponInfo.Range;
 
 	DrawDebugLine(World, Start, End, GetRoleColor(), false, 1.f);
 
