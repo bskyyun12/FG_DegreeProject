@@ -46,12 +46,7 @@ ADeathMatchCharacter* AGunBase::GetCurrentOwner()
 		return nullptr;
 	}
 
-	if (CurrentOwner == nullptr)
-	{
-		CurrentOwner = Cast<ADeathMatchCharacter>(GetOwner());
-	}
-
-	return CurrentOwner;
+	return Cast<ADeathMatchCharacter>(GetOwner());
 }
 
 bool AGunBase::IsOwnerLocallyControlled()
@@ -76,12 +71,7 @@ ADeathMatchPlayerController* AGunBase::GetOwnerController()
 		return nullptr;
 	}
 
-	if (CurrentOwnerController == nullptr)
-	{
-		CurrentOwnerController = Cast<ADeathMatchPlayerController>(GetCurrentOwner()->GetController());
-	}
-
-	return CurrentOwnerController;
+	return Cast<ADeathMatchPlayerController>(GetCurrentOwner()->GetController());
 }
 
 void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -139,10 +129,9 @@ void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 	SetOwner(NewOwner);
 	SetInstigator(NewOwner);
 
-	//CurrentOwner = NewOwner;
 	if (IsOwnerLocallyControlled())
 	{
-		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
+		UpdateAmmoUI(GetOwnerController(), CurrentAmmo, CurrentRemainingAmmo);
 	}
 
 	// skeleton is not yet created in the constructor, so AttachToComponent should be happened after constructor
@@ -153,38 +142,28 @@ void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 	FPWeaponMesh->AttachToComponent(NewOwner->GetArmMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), WeaponInfo.FP_SocketName);
 
 	InteractCollider->SetCollisionProfileName(TEXT("NoCollision"));
-
-	// TODO: Notify Arm mesh to change animations
-	//UAnimInstance* ArmsAnimInstance = CurrentOwner->GetArmMesh()->GetAnimInstance();
-	//if (ArmsAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(ArmsAnimInstance, UFPSAnimInterface::StaticClass()))
-	//{
-	//	IFPSAnimInterface::Execute_OnChangeWeapon(ArmsAnimInstance, WeaponInfo.WeaponType);
-	//}
 }
 
 void AGunBase::OnWeaponDropped_Implementation()
 {
-	if (!ensure(GetCurrentOwner() != nullptr))
+	if (GetCurrentOwner() != nullptr)
 	{
-		return;
+		InteractCollider->SetCollisionProfileName(TEXT("Weapon_Dropped"));
+
+		FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
+		TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+		TPWeaponMesh->SetCollisionProfileName(TEXT("Weapon_Dropped"));
+		TPWeaponMesh->SetSimulatePhysics(true);
+
+		if (IsOwnerLocallyControlled())
+		{
+			UpdateAmmoUI(GetOwnerController(), 0, 0);
+		}
+
+		SetOwner(nullptr);
+		SetInstigator(nullptr);
 	}
-
-	InteractCollider->SetCollisionProfileName(TEXT("Weapon_Dropped"));
-
-	FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-
-	TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-	TPWeaponMesh->SetCollisionProfileName(TEXT("Weapon_Dropped"));
-	TPWeaponMesh->SetSimulatePhysics(true);
-
-	if (IsOwnerLocallyControlled())
-	{
-		UpdateAmmoUI(0, 0);
-	}
-
-	//CurrentOwner = nullptr;
-	SetOwner(nullptr);
-	SetInstigator(nullptr);
 }
 
 void AGunBase::BeginFire_Implementation()
@@ -234,13 +213,11 @@ void AGunBase::Fire()
 	CurrentAmmo--;
 	if (IsOwnerLocallyControlled())
 	{
-		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
+		UpdateAmmoUI(GetOwnerController(), CurrentAmmo, CurrentRemainingAmmo);
 	}
 
 	if (GetCurrentOwner() != nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("GunBase::Fire => CurrentOwner(%s)'s role: %i. / Weapon's role: %i."), *CurrentOwner->GetName(), CurrentOwner->GetLocalRole(), GetLocalRole());
-
 		FHitResult Hit;
 		if (FireLineTrace(Hit))
 		{
@@ -254,7 +231,6 @@ void AGunBase::Fire()
 				{
 					// TODO: Crosshair UI change
 
-					Recoil();
 				}
 
 				if (GetCurrentOwner()->GetLocalRole() == ROLE_Authority)
@@ -262,7 +238,7 @@ void AGunBase::Fire()
 					float DamageOnHealth = 0.f;
 					float DamageOnArmor = 0.f;
 					CalcDamageToApply(Hit.PhysMaterial.Get(), DamageOnHealth, DamageOnArmor);
-					HitPlayer->Server_TakeDamage((uint8)DamageOnHealth, (uint8)DamageOnArmor, CurrentOwner);
+					HitPlayer->Server_TakeDamage((uint8)DamageOnHealth, (uint8)DamageOnArmor, GetOwner());
 				}
 			}
 			else
@@ -335,6 +311,9 @@ void AGunBase::FireEffects()
 
 	if (GetCurrentOwner() != nullptr)
 	{
+		// This moves camera's pitch.
+		Recoil();
+
 		// Locally controlled owner
 		if (IsOwnerLocallyControlled())
 		{
@@ -351,8 +330,8 @@ void AGunBase::FireEffects()
 				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, FPWeaponMesh, WeaponInfo.FP_FireEmitterSocketName);
 			}
 
-			// Recoil
-			Recoil();
+			// Camera shake
+			GetOwnerController()->ClientStartCameraShake(WeaponInfo.CameraShakeOnFire);
 		}
 		// Not locally controlled
 		else
@@ -373,13 +352,13 @@ void AGunBase::FireEffects()
 	}
 }
 
-void AGunBase::UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo)
+void AGunBase::UpdateAmmoUI(AController* Controller, const int& InCurrentAmmo, const int& InRemainingAmmo)
 {
-	if (IsOwnerLocallyControlled())
+	if (Controller->IsLocalController())
 	{
-		if (GetInstigatorController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetInstigatorController(), UPlayerControllerInterface::StaticClass()))
+		if (Controller != nullptr && UKismetSystemLibrary::DoesImplementInterface(Controller, UPlayerControllerInterface::StaticClass()))
 		{
-			IPlayerControllerInterface::Execute_UpdateWeaponUI(GetInstigatorController(), WeaponInfo.DisplayName, InCurrentAmmo, InRemainingAmmo);
+			IPlayerControllerInterface::Execute_UpdateWeaponUI(Controller, WeaponInfo.DisplayName, InCurrentAmmo, InRemainingAmmo);
 		}
 	}
 }
@@ -447,7 +426,7 @@ void AGunBase::OnEndReload()
 
 	if (IsOwnerLocallyControlled())
 	{
-		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
+		UpdateAmmoUI(GetOwnerController(), CurrentAmmo, CurrentRemainingAmmo);
 	}
 }
 
@@ -461,11 +440,9 @@ void AGunBase::Recoil()
 		{
 			PitchDelta = WeaponInfo.RecoilCurve_Vertical->GetFloatValue(RecoilTimer);
 			RecoilTimer += WeaponInfo.FireRate;
-		}		
+		}
 		GetOwnerController()->SetControlRotation(GetOwnerController()->GetControlRotation() + FRotator(PitchDelta, 0.f, 0.f));
-
-		// Camera shake
-		GetOwnerController()->ClientStartCameraShake(WeaponInfo.CameraShakeOnFire);
+		GetCurrentOwner()->SetCameraWorldRotation(GetOwnerController()->GetControlRotation());
 	}
 }
 

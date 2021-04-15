@@ -43,14 +43,12 @@ void ADeathMatchPlayerController::Client_CheckReadyStatus_Implementation()
 {
 	// TODO: make a getter for PS? like how I did in Character script
 	PS = GetPlayerState<ADeathMatchPlayerState>();
-	if (PS == nullptr)
+	if (PS != nullptr)
 	{
-		return;
-	}
-
-	if (PS->GetIsReadyToJoin() && bWidgetLoaded)
-	{
-		Server_RequestPlayerSpawn();
+		if (PS->GetIsReadyToJoin() && bWidgetLoaded)
+		{
+			Server_RequestPlayerSpawn();
+		}
 	}
 }
 
@@ -67,30 +65,40 @@ void ADeathMatchPlayerController::Server_RequestPlayerSpawn_Implementation()
 }
 
 // Called after ADeathMatchGameMode::SpawnPlayer
-void ADeathMatchPlayerController::Server_OnSpawnPlayer_Implementation(ADeathMatchCharacter* DM_Player)
+void ADeathMatchPlayerController::Server_OnSpawnPlayer_Implementation(ADeathMatchCharacter* SpawnedPlayer)
 {
-	DM_Player->Server_OnSpawnPlayer();
+	SpawnedPlayer->Server_OnSpawnPlayer();
+	Client_OnSpawnPlayer();
 }
 
-void ADeathMatchPlayerController::BeginPlay()
+void ADeathMatchPlayerController::Client_OnSpawnPlayer_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) PlayerController::BeginPlay (%s)"), *GetName());
-	Super::BeginPlay();
+	FInputModeGameOnly InputMode;
+	SetInputMode(InputMode);
+}
 
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
+// Called after ADeathMatchCharacter::Server_OnDeath
+void ADeathMatchPlayerController::OnPlayerDeath_Implementation()
+{
+	Server_OnPlayerDeath();
+}
+
+void ADeathMatchPlayerController::Server_OnPlayerDeath_Implementation()
+{
+	GM->OnPlayerDeath(this);
+	Client_OnPlayerDeath();
+}
+
+void ADeathMatchPlayerController::Client_OnPlayerDeath_Implementation()
+{
+	FInputModeUIOnly InputMode;
+	SetInputMode(InputMode);
 }
 
 #pragma region Widget Related
 void ADeathMatchPlayerController::Client_SetupWidgets_Implementation()
 {
 	bWidgetLoaded = true;
-
-	FInputModeGameOnly InputMode;
-	SetInputMode(InputMode);
 
 	UWorld* World = GetWorld();
 	if (World != nullptr)

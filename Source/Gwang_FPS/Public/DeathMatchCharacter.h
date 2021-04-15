@@ -29,12 +29,14 @@ public:
 	AActor* GetCurrentWeapon();
 	AActor* GetCurrentMainWeapon();
 	AActor* GetCurrentSubWeapon();
+	bool IsDead();
 	USkeletalMeshComponent* GetArmMesh() const { return ArmMesh; }
 	FVector GetCameraLocation() const;
 	FVector GetCameraForward() const;
 
 	// Setters
 	void SetCurrentlyHeldWeapon(AActor* NewWeapon);
+	void SetCameraWorldRotation(const FRotator& Rotation);
 
 	UFUNCTION(Server, Reliable)
 	void Server_OnSpawnPlayer();

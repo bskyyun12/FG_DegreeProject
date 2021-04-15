@@ -27,7 +27,15 @@ public:
 
 	// Called after ADeathMatchGameMode::SpawnPlayer
 	UFUNCTION(Server, Reliable)
-	void Server_OnSpawnPlayer(ADeathMatchCharacter* DM_Player);
+	void Server_OnSpawnPlayer(ADeathMatchCharacter* SpawnedPlayer);
+	UFUNCTION(Client, Reliable)
+	void Client_OnSpawnPlayer();
+
+	void OnPlayerDeath_Implementation() override;
+	UFUNCTION(Server, Reliable)
+	void Server_OnPlayerDeath();
+	UFUNCTION(Client, Reliable)
+	void Client_OnPlayerDeath();
 
 #pragma region Widget Related
 	UFUNCTION(Client, Reliable)
@@ -88,7 +96,7 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestPlayerSpawn();
 
-	void BeginPlay() override;
-
 	bool bWidgetLoaded;
+public:
+
 };

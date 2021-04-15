@@ -8,6 +8,7 @@
 #include "DeathMatchPlayerState.generated.h"
 
 class UFPSGameInstance;
+class ADeathMatchCharacter;
 class ADeathMatchPlayerController;
 
 UCLASS()
@@ -24,6 +25,7 @@ public:
 	AActor* GetCurrentWeaponWithIndex(const uint8& Index) const;
 	AActor* GetCurrentlyHeldWeapon() const { return CurrentlyHeldWeapon; }
 	bool GetIsReadyToJoin() const { return bIsReadyToJoin; }
+	bool GetIsDead() const { return bIsDead; }
 	ADeathMatchPlayerController* GetPlayerController();
 	
 	void SetCurrentlyHeldWeapon(AActor* NewWeapon) { CurrentlyHeldWeapon = NewWeapon; }
@@ -62,7 +64,7 @@ protected:
 	ETeam Team;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
-	TArray<AActor*> StartWeapons;
+	TArray<TSubclassOf<AActor>> StartWeaponClasses;
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	TArray<AActor*> CurrentWeapons;
 	UPROPERTY(Replicated, BlueprintReadOnly)
@@ -73,30 +75,20 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	uint8 CurrentArmor;
 
-	UPROPERTY(ReplicatedUsing = OnRep_NumKills)
+	UPROPERTY(Replicated)
 	uint8 NumKills;
-	UFUNCTION()
-	void OnRep_NumKills();
 
-	UPROPERTY(ReplicatedUsing = OnRep_NumDeaths)
+	UPROPERTY(Replicated)
 	uint8 NumDeaths;
-	UFUNCTION()
-	void OnRep_NumDeaths();
 
-	UPROPERTY(ReplicatedUsing = OnRep_bIsDead)
+	UPROPERTY(Replicated)
 	bool bIsDead;
-	UFUNCTION()
-	void OnRep_bIsDead();
 
-	UPROPERTY(ReplicatedUsing=OnRep_MatchTimeLeft)
+	UPROPERTY(Replicated)
 	float MatchTimeLeft = 0.f;
-	UFUNCTION()
-	void OnRep_MatchTimeLeft();
 	
-	UPROPERTY(ReplicatedUsing=OnRep_LastChat)
+	UPROPERTY(Replicated)
 	FName LastChat;
-	UFUNCTION()
-	void OnRep_LastChat();
 
 protected:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -105,11 +97,15 @@ protected:
 
 	// Called after PostInitializeComponents
 	UFUNCTION(Server, Reliable)
-	void Server_ReceiveData(const FPlayerData& PlayerData);
+	void Server_InitialDataSetup(const FPlayerData& PlayerData);
 
 	UFUNCTION(Client, Reliable)
 	void Client_UpdateHealthUI(const uint8& NewHealth, const uint8& NewArmor);
+	
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnSpawn();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_ResetCurrentWeapons();
 
 };

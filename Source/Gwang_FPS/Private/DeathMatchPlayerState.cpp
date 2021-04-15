@@ -22,7 +22,7 @@ void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(ADeathMatchPlayerState, Team);
 
 	// Weapons
-	DOREPLIFETIME(ADeathMatchPlayerState, StartWeapons);
+	DOREPLIFETIME(ADeathMatchPlayerState, StartWeaponClasses);
 	DOREPLIFETIME(ADeathMatchPlayerState, CurrentWeapons);
 	DOREPLIFETIME(ADeathMatchPlayerState, CurrentlyHeldWeapon);
 
@@ -48,10 +48,10 @@ void ADeathMatchPlayerState::PostInitializeComponents()
 	{
 		return;
 	}
-	Server_ReceiveData(GI->GetPlayerData());
+	Server_InitialDataSetup(GI->GetPlayerData());
 }
 
-void ADeathMatchPlayerState::Server_ReceiveData_Implementation(const FPlayerData& PlayerData)
+void ADeathMatchPlayerState::Server_InitialDataSetup_Implementation(const FPlayerData& PlayerData)
 {
 	PlayerName = PlayerData.PlayerName;
 	Team = PlayerData.Team;
@@ -59,52 +59,50 @@ void ADeathMatchPlayerState::Server_ReceiveData_Implementation(const FPlayerData
 	for (uint8 i = 0; i < (uint8)EWeaponType::EnumSize; i++)
 	{
 		CurrentWeapons.Add(nullptr);
-		StartWeapons.Add(nullptr);
+		StartWeaponClasses.Add(nullptr);
 	}
 
-	// Main weapon setup
+	// Set up Start weapon classes
 	UWorld* World = GetWorld();
 	if (World != nullptr)
 	{
 		ADeathMatchGameMode* GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
-		if (!ensure(GM != nullptr))
+		if (GM != nullptr)
 		{
-			return;
-		}
-		FWeaponClass WeaponClass = GM->GetWeaponClass();
-		switch (PlayerData.StartMainWeapon)
-		{
-		case EMainWeapon::M4A1:
-			if (!ensure(WeaponClass.M4A1Class != nullptr))
+			FWeaponClass WeaponClass = GM->GetWeaponClass();
+			switch (PlayerData.StartMainWeapon)
 			{
-				return;
-			}
-			StartWeapons[1] = World->SpawnActor<AActor>(WeaponClass.M4A1Class);
-			break;
+			case EMainWeapon::M4A1:
+				if (WeaponClass.M4A1Class != nullptr)
+				{
+					StartWeaponClasses[1] = WeaponClass.M4A1Class;
+					CurrentWeapons[1] = World->SpawnActor<AActor>(WeaponClass.M4A1Class);
+				}
+				break;
 
-		case EMainWeapon::AK47:
-			if (!ensure(WeaponClass.AK47Class != nullptr))
-			{
-				return;
+			case EMainWeapon::AK47:
+				if (WeaponClass.AK47Class)
+				{
+					StartWeaponClasses[1] = WeaponClass.AK47Class;
+					CurrentWeapons[1] = World->SpawnActor<AActor>(WeaponClass.AK47Class);
+				}
+				break;
 			}
-			StartWeapons[1] = World->SpawnActor<AActor>(WeaponClass.AK47Class);
-			break;
-		}
 
-		// Sub weapon setup
-		switch (PlayerData.StartSubWeapon)
-		{
-		case ESubWeapon::Pistol:
-			if (!ensure(WeaponClass.PistolClass != nullptr))
+			// Sub weapon setup
+			switch (PlayerData.StartSubWeapon)
 			{
-				return;
+			case ESubWeapon::Pistol:
+				if (WeaponClass.PistolClass)
+				{
+					StartWeaponClasses[2] = WeaponClass.PistolClass;
+					CurrentWeapons[2] = World->SpawnActor<AActor>(WeaponClass.PistolClass);
+				}
+				break;
 			}
-			StartWeapons[2] = World->SpawnActor<AActor>(WeaponClass.PistolClass);
-			break;
 		}
 	}
 
-	CurrentWeapons = StartWeapons;
 	CurrentlyHeldWeapon = CurrentWeapons[1];
 
 	bIsReadyToJoin = true;
@@ -136,9 +134,6 @@ void ADeathMatchPlayerState::Multicast_OnSpawn_Implementation()
 	{
 		GetPlayerController()->UpdateHealthArmorUI(CurrentHealth, CurrentArmor);
 	}
-
-	CurrentWeapons = StartWeapons;
-	CurrentlyHeldWeapon = CurrentWeapons[1];
 }
 
 void ADeathMatchPlayerState::Server_UpdateHealthArmor_Implementation(const uint8& NewHealth, const uint8& NewArmor)
@@ -179,66 +174,70 @@ ADeathMatchPlayerController* ADeathMatchPlayerState::GetPlayerController()
 
 void ADeathMatchPlayerState::Server_SetTeam_Implementation(const ETeam& NewTeam)
 {
-	Team = NewTeam;	// OnRep_PlayerInfo()
+	Team = NewTeam;
 	// TODO: Send PlayerInfo to GameState and then update HUD??
 }
 
 void ADeathMatchPlayerState::Server_OnKillPlayer_Implementation()
 {
-	NumKills++;	// OnRep_NumKills()
-}
-
-void ADeathMatchPlayerState::OnRep_NumKills()
-{
-	if (GetPawn() == nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_NumKills => GetPawn() == nullptr"));
-		return;
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_NumKills => Player ( %s ) NumKills: ( %i )."), *GetPawn()->GetName(), NumKills);
+	NumKills++;
 }
 
 void ADeathMatchPlayerState::Server_OnDeath_Implementation()
 {
-	NumDeaths++;	// OnRep_NumDeaths()
-	bIsDead = true;	// OnRep_bIsDead()
-}
-
-void ADeathMatchPlayerState::OnRep_NumDeaths()
-{
-	if (GetPawn() == nullptr)
+	UWorld* World = GetWorld();
+	if (World != nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_NumDeaths => GetPawn() == nullptr"));
-		return;
+		FTimerHandle WeaponResetTimer;
+		World->GetTimerManager().SetTimer(WeaponResetTimer, [&]()
+		{
+			Server_ResetCurrentWeapons();
+		}, 3.f, false);
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_NumDeaths => Player ( %s ) NumDeaths: ( %i )."), *GetPawn()->GetName(), NumDeaths);
+	NumDeaths++;
+	bIsDead = true;
 }
 
-void ADeathMatchPlayerState::OnRep_bIsDead()
+void ADeathMatchPlayerState::Server_ResetCurrentWeapons_Implementation()
 {
-	if (GetPawn() == nullptr)
+	// Main weapon setup
+	UWorld* World = GetWorld();
+	if (World != nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_bIsDead => GetPawn() == nullptr"));
-		return;
+		for (int i = 0; i < CurrentWeapons.Num(); i++)
+		{
+			if (CurrentWeapons[i] != nullptr)
+			{
+				if (CurrentWeapons[i]->GetClass() != StartWeaponClasses[i])
+				{
+					CurrentWeapons[i] = World->SpawnActor<AActor>(StartWeaponClasses[i]);
+				}
+			}
+			else
+			{
+				if (StartWeaponClasses[i] != nullptr)
+				{
+					CurrentWeapons[i] = World->SpawnActor<AActor>(StartWeaponClasses[i]);
+				}
+			}
+
+			if (CurrentWeapons[i] != nullptr)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("ResetCurrentWeapons => CurrentWeapons[%i]"), i, *CurrentWeapons[i]->GetName());
+			}
+		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_bIsDead => Player ( %s ) bIsDead: ( %i )."), *GetPawn()->GetName(), bIsDead);
+	// set main weapon(1) to currently held weapon
+	CurrentlyHeldWeapon = CurrentWeapons[1];
+	UE_LOG(LogTemp, Warning, TEXT("ResetCurrentWeapons => CurrentWeapons[1]"), *CurrentWeapons[1]->GetName());
 }
 
 void ADeathMatchPlayerState::Server_OnSendChat_Implementation(const FName& ChatContent)
 {
-	LastChat = ChatContent;	// OnRep_LastChat()
+	LastChat = ChatContent;
 
-	if (GetPlayerController() != nullptr && GetPlayerController()->IsLocalController())
-	{
-		GetPlayerController()->UpdateChatUI(PlayerName, LastChat);
-	}
-}
-
-void ADeathMatchPlayerState::OnRep_LastChat()
-{
 	if (GetPlayerController() != nullptr && GetPlayerController()->IsLocalController())
 	{
 		GetPlayerController()->UpdateChatUI(PlayerName, LastChat);
@@ -247,17 +246,7 @@ void ADeathMatchPlayerState::OnRep_LastChat()
 
 void ADeathMatchPlayerState::Server_UpdateMatchTimeLeft_Implementation(const float& TimeLeft)
 {
-	MatchTimeLeft = TimeLeft;	// OnRep_MatchTimeLeft()
-	if (GetPlayerController() != nullptr && GetPlayerController()->IsLocalController())
-	{
-		GetPlayerController()->UpdateMatchTimeUI(MatchTimeLeft);
-	}
-}
-
-void ADeathMatchPlayerState::OnRep_MatchTimeLeft()
-{
-	UE_LOG(LogTemp, Warning, TEXT("(Client) PlayerState => MatchTimeLeft: %f"), MatchTimeLeft);
-
+	MatchTimeLeft = TimeLeft;
 	if (GetPlayerController() != nullptr && GetPlayerController()->IsLocalController())
 	{
 		GetPlayerController()->UpdateMatchTimeUI(MatchTimeLeft);

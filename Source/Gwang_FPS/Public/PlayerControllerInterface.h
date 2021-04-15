@@ -33,4 +33,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void SendChat(const FName& ChatToSend);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void OnPlayerDeath();
 };

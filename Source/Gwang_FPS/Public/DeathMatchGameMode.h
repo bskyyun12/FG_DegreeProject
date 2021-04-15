@@ -53,6 +53,9 @@ public:
 	// Spawn Player
 	void SpawnPlayer(ADeathMatchPlayerController* PC);
 
+	// Handle Player Death
+	void OnPlayerDeath(ADeathMatchPlayerController* PC);
+
 protected:
 	ADeathMatchGameState* GS;
 
@@ -69,6 +72,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly)
 	float MatchTimeInSeconds = 10.f; // TODO: this should be 600.f if the match should last for 10 mins for example
+
+	UPROPERTY(EditDefaultsOnly)
+	float RespawnDelay = 5.f;
 
 	FTimerHandle MatchStartTimer;
 protected:

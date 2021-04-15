@@ -94,7 +94,7 @@ void ADeathMatchGameMode::SpawnPlayer(ADeathMatchPlayerController* PC)
 			ADeathMatchCharacter* SpawnedPlayer = World->SpawnActor<ADeathMatchCharacter>(CharacterClass, PlayerStart->GetActorTransform());
 			PC->Possess(SpawnedPlayer);
 			PC->ClientSetRotation(PlayerStart->GetActorRotation(), true);
-			
+
 			PS->Server_OnSpawn();
 			PC->Server_OnSpawnPlayer(SpawnedPlayer);
 		}
@@ -122,6 +122,22 @@ AActor* ADeathMatchGameMode::GetBestPlayerStart(const FString& PlayerStartTag) c
 	}
 
 	return nullptr;
+}
+
+// Called after ADeathMatchPlayerController::Server_OnPlayerDeath
+void ADeathMatchGameMode::OnPlayerDeath(ADeathMatchPlayerController* PC)
+{
+	UE_LOG(LogTemp, Warning, TEXT("GameMode::OnPlayerDeath => ( %s ) is dead"), *PC->GetPawn()->GetName());
+
+	// Respawn player
+	FTimerHandle RespawnTimer;
+	FTimerDelegate RespawnTimerDel;
+	RespawnTimerDel.BindUObject(this, &ADeathMatchGameMode::SpawnPlayer, PC);
+	UWorld* World = GetWorld();
+	if (World != nullptr)
+	{
+		World->GetTimerManager().SetTimer(RespawnTimer, RespawnTimerDel, RespawnDelay, false);
+	}
 }
 
 // Finish the game and move players to lobby
