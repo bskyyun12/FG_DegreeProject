@@ -18,14 +18,58 @@ void ADeathMatchPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimePro
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 }
 
-void ADeathMatchPlayerController::OnPostLogin()
+void ADeathMatchPlayerController::Server_OnPostLogin_Implementation()
 {
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
+		{
+			return;
+		}
+		GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
+		if (!ensure(GM != nullptr))
+		{
+			return;
+		}
+
+		World->GetTimerManager().SetTimer(ReadyCheckTimer, this, &ADeathMatchPlayerController::Client_CheckReadyStatus, .5f, true);
+	}
+
+	Client_SetupWidgets();
+}
+
+void ADeathMatchPlayerController::Client_CheckReadyStatus_Implementation()
+{
+	// TODO: make a getter for PS? like how I did in Character script
 	PS = GetPlayerState<ADeathMatchPlayerState>();
-	if (!ensure(PS != nullptr))
+	if (PS == nullptr)
 	{
 		return;
 	}
-	PS->OnPostLogin();
+
+	if (PS->GetIsReadyToJoin() && bWidgetLoaded)
+	{
+		Server_RequestPlayerSpawn();
+	}
+}
+
+void ADeathMatchPlayerController::Server_RequestPlayerSpawn_Implementation()
+{
+	GM->SpawnPlayer(this);
+
+	UWorld* World = GetWorld();
+	if (!ensure(World != nullptr))
+	{
+		return;
+	}
+	World->GetTimerManager().ClearTimer(ReadyCheckTimer);
+}
+
+// Called after ADeathMatchGameMode::SpawnPlayer
+void ADeathMatchPlayerController::Server_OnSpawnPlayer_Implementation(ADeathMatchCharacter* DM_Player)
+{
+	DM_Player->Server_OnSpawnPlayer();
 }
 
 void ADeathMatchPlayerController::BeginPlay()
@@ -38,96 +82,83 @@ void ADeathMatchPlayerController::BeginPlay()
 	{
 		return;
 	}
-
-	if (GetLocalRole() == ROLE_Authority)
-	{
-		GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
-		if (!ensure(GM != nullptr))
-		{
-			return;
-		}
-	}
-
-	Client_SetupWidgets();
 }
 
-void ADeathMatchPlayerController::OnPossess(APawn* aPawn)
+#pragma region Widget Related
+void ADeathMatchPlayerController::Client_SetupWidgets_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) PlayerController::OnPossess (%s)"), *GetName());
-	Super::OnPossess(aPawn);
-
-	Client_OnPossess();
-}
-
-void ADeathMatchPlayerController::Client_OnPossess_Implementation()
-{
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerController::Client_OnPossess => Role: ( %i )"), GetLocalRole());
+	bWidgetLoaded = true;
 
 	FInputModeGameOnly InputMode;
 	SetInputMode(InputMode);
-}
 
-#pragma region Widget
-
-void ADeathMatchPlayerController::Client_SetupWidgets_Implementation()
-{
 	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
+	if (World != nullptr)
 	{
-		return;
-	}
+		// HUD widget
+		if (HUDWidget == nullptr)
+		{
+			if (!ensure(HUDWidgetClass != nullptr))
+			{
+				return;
+			}
+			HUDWidget = CreateWidget<UFPSHUDWidget>(World, HUDWidgetClass);
+			if (!ensure(HUDWidget != nullptr))
+			{
+				return;
+			}
+			HUDWidget->AddToViewport();
+		}
 
-	// HUD widget
-	if (!ensure(HUDWidgetClass != nullptr))
-	{
-		return;
-	}
-	HUDWidget = CreateWidget<UFPSHUDWidget>(World, HUDWidgetClass);
-	if (!ensure(HUDWidget != nullptr))
-	{
-		return;
-	}
-	HUDWidget->AddToViewport();
+		// Scoreboard widget
+		if (ScoreboardWidget == nullptr)
+		{
+			if (!ensure(ScoreboardWidgetClass != nullptr))
+			{
+				return;
+			}
+			ScoreboardWidget = CreateWidget<UScoreBoardWidget>(World, ScoreboardWidgetClass);
+			if (!ensure(ScoreboardWidget != nullptr))
+			{
+				return;
+			}
+			ScoreboardWidget->AddToViewport(1);
+			ScoreboardWidget->SetVisibility(ESlateVisibility::Hidden);
+		}
 
-	// Scoreboard widget
-	if (!ensure(ScoreboardWidgetClass != nullptr))
-	{
-		return;
-	}
-	ScoreboardWidget = CreateWidget<UScoreBoardWidget>(World, ScoreboardWidgetClass);
-	if (!ensure(ScoreboardWidget != nullptr))
-	{
-		return;
-	}
-	ScoreboardWidget->AddToViewport(1);
-	ScoreboardWidget->SetVisibility(ESlateVisibility::Hidden);
+		// Vignette Widget
+		if (VignetteWidget != nullptr)
+		{
+			if (!ensure(VignetteWidgetClass != nullptr))
+			{
+				return;
+			}
+			VignetteWidget = CreateWidget<UDamageReceiveWidget>(World, VignetteWidgetClass);
+			if (!ensure(VignetteWidget != nullptr))
+			{
+				return;
+			}
+			VignetteWidget->AddToViewport(2);
+			// TODO: Change to widget animation fade in and out
+			VignetteWidget->SetVisibility(ESlateVisibility::Hidden);
+		}
 
-	// Vignette Widget
-	if (!ensure(VignetteWidgetClass != nullptr))
-	{
-		return;
+		// Gameover Widget
+		if (GameOverWidget != nullptr)
+		{
+			if (!ensure(GameOverWidgetClass != nullptr))
+			{
+				return;
+			}
+			GameOverWidget = CreateWidget<UGameOverWidget>(World, GameOverWidgetClass);
+			if (!ensure(GameOverWidget != nullptr))
+			{
+				return;
+			}
+			GameOverWidget->Setup(EInputMode::GameOnly, false);
+			GameOverWidget->SetVisibility(ESlateVisibility::Hidden);
+		}
 	}
-	VignetteWidget = CreateWidget<UDamageReceiveWidget>(World, VignetteWidgetClass);
-	if (!ensure(VignetteWidget != nullptr))
-	{
-		return;
-	}
-	VignetteWidget->AddToViewport(2);
-	// TODO: Change to widget animation fade in and out
-	VignetteWidget->SetVisibility(ESlateVisibility::Hidden);
-
-	// Gameover Widget
-	if (!ensure(GameOverWidgetClass != nullptr))
-	{
-		return;
-	}
-	GameOverWidget = CreateWidget<UGameOverWidget>(World, GameOverWidgetClass);
-	if (!ensure(GameOverWidget != nullptr))
-	{
-		return;
-	}
-	GameOverWidget->Setup(EInputMode::GameOnly, false);
-	GameOverWidget->SetVisibility(ESlateVisibility::Hidden);
 }
 
 void ADeathMatchPlayerController::UpdateMatchTimeUI(const float& MatchTime)

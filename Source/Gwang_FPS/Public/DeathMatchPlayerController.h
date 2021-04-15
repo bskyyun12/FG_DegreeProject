@@ -21,7 +21,13 @@ class GWANG_FPS_API ADeathMatchPlayerController : public APlayerController, publ
 	GENERATED_BODY()
 
 public:	
-	void OnPostLogin();
+	// Called after ADeathMatchGameMode::PostLogin
+	UFUNCTION(Server, Reliable)
+	void Server_OnPostLogin();
+
+	// Called after ADeathMatchGameMode::SpawnPlayer
+	UFUNCTION(Server, Reliable)
+	void Server_OnSpawnPlayer(ADeathMatchCharacter* DM_Player);
 
 #pragma region Widget Related
 	UFUNCTION(Client, Reliable)
@@ -74,12 +80,15 @@ protected:
 
 #pragma endregion Widget Related
 
+	FTimerHandle ReadyCheckTimer;
 protected:
+	
+	UFUNCTION(Client, Reliable)
+	void Client_CheckReadyStatus();
+	UFUNCTION(Server, Reliable)
+	void Server_RequestPlayerSpawn();
 
 	void BeginPlay() override;
 
-	void OnPossess(APawn* aPawn) override;
-	UFUNCTION(Client, Reliable)
-	void Client_OnPossess();
-
+	bool bWidgetLoaded;
 };

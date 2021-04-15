@@ -7,7 +7,6 @@
 #include "FPSGameInstance.h"
 #include "DeathMatchPlayerState.generated.h"
 
-class ADeathMatchGameMode;
 class UFPSGameInstance;
 class ADeathMatchPlayerController;
 
@@ -22,15 +21,13 @@ public:
 	uint8 GetCurrentHealth() const { return CurrentHealth; }
 	uint8 GetCurrentArmor() const { return CurrentArmor; }
 	TArray<AActor*> GetCurrentWeapons() const { return CurrentWeapons; }
-	AActor* GetStartMainWeapon() const { return StartWeapons[1]; }
-	AActor* GetCurrentMainWeapon() const { return CurrentWeapons[1]; }
-	AActor* GetCurrentSubWeapon() const { return CurrentWeapons[2]; }
 	AActor* GetCurrentWeaponWithIndex(const uint8& Index) const;
-		
-	void OnPostLogin();
-
-	UFUNCTION(Server, Reliable)
-	void Server_UpdateCurrentWeapons(const uint8& Index, AActor* NewWeapon);
+	AActor* GetCurrentlyHeldWeapon() const { return CurrentlyHeldWeapon; }
+	bool GetIsReadyToJoin() const { return bIsReadyToJoin; }
+	ADeathMatchPlayerController* GetPlayerController();
+	
+	void SetCurrentlyHeldWeapon(AActor* NewWeapon) { CurrentlyHeldWeapon = NewWeapon; }
+	void SetCurrentWeaponWithIndex(const uint8& Index, AActor* NewWeapon) { CurrentWeapons[Index] = NewWeapon; }
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetTeam(const ETeam& NewTeam);
@@ -50,11 +47,15 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_UpdateHealthArmor(const uint8& NewHealth, const uint8& NewArmor);
 
+	UFUNCTION(Server, Reliable)
+	void Server_OnSpawn();
 
 protected:
-	ADeathMatchGameMode* GM;
 	ADeathMatchPlayerController* PC;
 	
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	bool bIsReadyToJoin;
+
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FName PlayerName;
 	UPROPERTY(Replicated, BlueprintReadOnly)
@@ -64,6 +65,8 @@ protected:
 	TArray<AActor*> StartWeapons;
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	TArray<AActor*> CurrentWeapons;
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	AActor* CurrentlyHeldWeapon;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	uint8 CurrentHealth;
@@ -100,18 +103,13 @@ protected:
 
 	void PostInitializeComponents() override;
 
-	// Called after PostLogin
-	UFUNCTION(Client, Reliable)
-	void Client_ReadData();
+	// Called after PostInitializeComponents
 	UFUNCTION(Server, Reliable)
 	void Server_ReceiveData(const FPlayerData& PlayerData);
 
-	// bound to ADeathMatchGameMode::OnStartMatch delegate
-	UFUNCTION(Server, Reliable)
-	void Server_OnStartMatch();
 	UFUNCTION(Client, Reliable)
 	void Client_UpdateHealthUI(const uint8& NewHealth, const uint8& NewArmor);
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnStartMatch();
+	void Multicast_OnSpawn();
 
 };

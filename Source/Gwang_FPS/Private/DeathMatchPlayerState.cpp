@@ -16,12 +16,15 @@ void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	DOREPLIFETIME(ADeathMatchPlayerState, bIsReadyToJoin);
+
 	DOREPLIFETIME(ADeathMatchPlayerState, PlayerName);
 	DOREPLIFETIME(ADeathMatchPlayerState, Team);
 
 	// Weapons
 	DOREPLIFETIME(ADeathMatchPlayerState, StartWeapons);
 	DOREPLIFETIME(ADeathMatchPlayerState, CurrentWeapons);
+	DOREPLIFETIME(ADeathMatchPlayerState, CurrentlyHeldWeapon);
 
 	// Health & Armor
 	DOREPLIFETIME(ADeathMatchPlayerState, CurrentHealth);
@@ -40,39 +43,6 @@ void ADeathMatchPlayerState::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-
-	// PlayerController Setup
-	PC = Cast<ADeathMatchPlayerController>(UGameplayStatics::GetPlayerController(World, 0));
-	if (!ensure(PC != nullptr))
-	{
-		return;
-	}
-
-	if (GetLocalRole() == ROLE_Authority)
-	{
-		GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
-		if (!ensure(GM != nullptr))
-		{
-			return;
-		}
-		GM->OnStartMatch.AddDynamic(this, &ADeathMatchPlayerState::Server_OnStartMatch);
-	}
-}
-
-void ADeathMatchPlayerState::OnPostLogin()
-{
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnPostLogin => LocalRole: %i, RemoteRole: %i"), GetLocalRole(), GetRemoteRole());
-
-	Client_ReadData();
-}
-
-void ADeathMatchPlayerState::Client_ReadData_Implementation()
-{
 	UFPSGameInstance* GI = GetGameInstance<UFPSGameInstance>();
 	if (!ensure(GI != nullptr))
 	{
@@ -96,6 +66,11 @@ void ADeathMatchPlayerState::Server_ReceiveData_Implementation(const FPlayerData
 	UWorld* World = GetWorld();
 	if (World != nullptr)
 	{
+		ADeathMatchGameMode* GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
+		if (!ensure(GM != nullptr))
+		{
+			return;
+		}
 		FWeaponClass WeaponClass = GM->GetWeaponClass();
 		switch (PlayerData.StartMainWeapon)
 		{
@@ -130,8 +105,9 @@ void ADeathMatchPlayerState::Server_ReceiveData_Implementation(const FPlayerData
 	}
 
 	CurrentWeapons = StartWeapons;
+	CurrentlyHeldWeapon = CurrentWeapons[1];
 
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Server_ReceiveData => StartWeapons.Num(): %i"), StartWeapons.Num());
+	bIsReadyToJoin = true;
 }
 
 AActor* ADeathMatchPlayerState::GetCurrentWeaponWithIndex(const uint8& Index) const
@@ -144,29 +120,25 @@ AActor* ADeathMatchPlayerState::GetCurrentWeaponWithIndex(const uint8& Index) co
 	return CurrentWeapons[Index];
 }
 
-// This is bound to ADeathMatchGameMode::OnStartMatch delegate call
-void ADeathMatchPlayerState::Server_OnStartMatch_Implementation()
+// Called after ADeathMatchGameMode::SpawnPlayer
+void ADeathMatchPlayerState::Server_OnSpawn_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Server_OnStartMatch"));
-	Multicast_OnStartMatch();
+	Multicast_OnSpawn();
 }
 
-void ADeathMatchPlayerState::Multicast_OnStartMatch_Implementation()
+void ADeathMatchPlayerState::Multicast_OnSpawn_Implementation()
 {
-	CurrentHealth = 100;	// OnRep_CurrentHealth()
-	CurrentArmor = 100;	// OnRep_CurrentArmor()
+	CurrentHealth = 100;
+	CurrentArmor = 100;
 
-	if (!ensure(PC != nullptr))
+	if (GetPlayerController() != nullptr && GetPlayerController()->IsLocalController())
 	{
-		return;
-	}
-	if (PC->IsLocalController())
-	{
-		PC->UpdateHealthArmorUI(CurrentHealth, CurrentArmor);
+		GetPlayerController()->UpdateHealthArmorUI(CurrentHealth, CurrentArmor);
 	}
 
-	// Current weapon setup
 	CurrentWeapons = StartWeapons;
+	CurrentlyHeldWeapon = CurrentWeapons[1];
 }
 
 void ADeathMatchPlayerState::Server_UpdateHealthArmor_Implementation(const uint8& NewHealth, const uint8& NewArmor)
@@ -180,12 +152,29 @@ void ADeathMatchPlayerState::Server_UpdateHealthArmor_Implementation(const uint8
 void ADeathMatchPlayerState::Client_UpdateHealthUI_Implementation(const uint8& NewHealth, const uint8& NewArmor)
 {
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Client_UpdateHealthUI => Player ( %s ), Role: %i, CurrentHealth: ( %i )."), *GetPawn()->GetName(), GetLocalRole(), CurrentHealth);
-	PC->UpdateHealthArmorUI(NewHealth, NewArmor);
+
+	if (GetPlayerController() != nullptr && GetPlayerController()->IsLocalController())
+	{
+		GetPlayerController()->UpdateHealthArmorUI(NewHealth, NewArmor);
+	}
 }
 
-void ADeathMatchPlayerState::Server_UpdateCurrentWeapons_Implementation(const uint8& Index, AActor* NewWeapon)
+ADeathMatchPlayerController* ADeathMatchPlayerState::GetPlayerController()
 {
-	CurrentWeapons[Index] = NewWeapon;
+	if (PC == nullptr)
+	{
+		UWorld* World = GetWorld();
+		if (World != nullptr)
+		{
+			PC = Cast<ADeathMatchPlayerController>(UGameplayStatics::GetPlayerController(World, 0));
+			if (!ensure(PC != nullptr))
+			{
+				return nullptr;
+			}
+		}
+	}
+
+	return PC;
 }
 
 void ADeathMatchPlayerState::Server_SetTeam_Implementation(const ETeam& NewTeam)
@@ -203,11 +192,11 @@ void ADeathMatchPlayerState::OnRep_NumKills()
 {
 	if (GetPawn() == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => GetPawn() == nullptr"));
+		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_NumKills => GetPawn() == nullptr"));
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => Player ( %s ) NumKills: ( %i )."), *GetPawn()->GetName(), NumKills);
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_NumKills => Player ( %s ) NumKills: ( %i )."), *GetPawn()->GetName(), NumKills);
 }
 
 void ADeathMatchPlayerState::Server_OnDeath_Implementation()
@@ -220,50 +209,57 @@ void ADeathMatchPlayerState::OnRep_NumDeaths()
 {
 	if (GetPawn() == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => GetPawn() == nullptr"));
+		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_NumDeaths => GetPawn() == nullptr"));
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => Player ( %s ) NumDeaths: ( %i )."), *GetPawn()->GetName(), NumDeaths);
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_NumDeaths => Player ( %s ) NumDeaths: ( %i )."), *GetPawn()->GetName(), NumDeaths);
 }
 
 void ADeathMatchPlayerState::OnRep_bIsDead()
 {
 	if (GetPawn() == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => GetPawn() == nullptr"));
+		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_bIsDead => GetPawn() == nullptr"));
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_CurrentHealth => Player ( %s ) bIsDead: ( %i )."), *GetPawn()->GetName(), bIsDead);
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::OnRep_bIsDead => Player ( %s ) bIsDead: ( %i )."), *GetPawn()->GetName(), bIsDead);
 }
 
 void ADeathMatchPlayerState::Server_OnSendChat_Implementation(const FName& ChatContent)
 {
 	LastChat = ChatContent;	// OnRep_LastChat()
 
-	if (PC->IsLocalController())
+	if (GetPlayerController() != nullptr && GetPlayerController()->IsLocalController())
 	{
-		PC->UpdateChatUI(PlayerName, LastChat);
+		GetPlayerController()->UpdateChatUI(PlayerName, LastChat);
 	}
 }
 
 void ADeathMatchPlayerState::OnRep_LastChat()
 {
-	if (PC->IsLocalController())
+	if (GetPlayerController() != nullptr && GetPlayerController()->IsLocalController())
 	{
-		PC->UpdateChatUI(PlayerName, LastChat);
+		GetPlayerController()->UpdateChatUI(PlayerName, LastChat);
 	}
 }
 
 void ADeathMatchPlayerState::Server_UpdateMatchTimeLeft_Implementation(const float& TimeLeft)
 {
 	MatchTimeLeft = TimeLeft;	// OnRep_MatchTimeLeft()
-	PC->UpdateMatchTimeUI(MatchTimeLeft);
+	if (GetPlayerController() != nullptr && GetPlayerController()->IsLocalController())
+	{
+		GetPlayerController()->UpdateMatchTimeUI(MatchTimeLeft);
+	}
 }
 
 void ADeathMatchPlayerState::OnRep_MatchTimeLeft()
 {
 	UE_LOG(LogTemp, Warning, TEXT("(Client) PlayerState => MatchTimeLeft: %f"), MatchTimeLeft);
-	PC->UpdateMatchTimeUI(MatchTimeLeft);
+
+	if (GetPlayerController() != nullptr && GetPlayerController()->IsLocalController())
+	{
+		GetPlayerController()->UpdateMatchTimeUI(MatchTimeLeft);
+	}
 }

@@ -125,6 +125,10 @@ public:
 	// Temp
 	FColor GetRoleColor();
 
+	// Getters
+	ADeathMatchCharacter* GetCurrentOwner();
+	bool IsOwnerLocallyControlled();
+
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	AGunBase();
@@ -144,7 +148,7 @@ public:
 	// Fire
 	void BeginFire_Implementation() override;
 	void EndFire_Implementation() override;
-	bool CanFire() const;
+	bool CanFire();
 	void Fire();
 
 	// Reload

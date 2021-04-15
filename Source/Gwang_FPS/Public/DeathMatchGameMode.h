@@ -50,9 +50,8 @@ public:
 
 	FWeaponClass GetWeaponClass() const { return WeaponClass; }
 
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FMatchDelegate);
-	FMatchDelegate OnStartMatch;
-	FMatchDelegate OnEndMatch;
+	// Spawn Player
+	void SpawnPlayer(ADeathMatchPlayerController* PC);
 
 protected:
 	ADeathMatchGameState* GS;
@@ -73,23 +72,20 @@ protected:
 
 	FTimerHandle MatchStartTimer;
 protected:
+
+	void InitGameState() override;
+
 	// Called after a successful login
 	void PostLogin(APlayerController* NewPlayer) override;
 
 	// Called when a player leaves the game or is destroyed.
 	void Logout(AController* Exiting) override;
 
-	void BeginPlay() override;
-
-	UFUNCTION()
-	void MatchStartCheck();
-
 	// Spawn players and start the game!
 	UFUNCTION(Exec)
-	void StartMatch();
+	void RestartMatch();
 		
 	// Spawn Player
-	void SpawnPlayer(ADeathMatchPlayerController* PC);
 	ETeam GetTeamWithLessPeople();
 	AActor* GetBestPlayerStart(const FString& PlayerStartTag) const;
 };

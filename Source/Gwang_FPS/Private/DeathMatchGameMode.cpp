@@ -11,6 +11,17 @@
 #include <DrawDebugHelpers.h>
 #include <EngineUtils.h>
 
+void ADeathMatchGameMode::InitGameState()
+{
+	Super::InitGameState();
+
+	GS = GetGameState<ADeathMatchGameState>();
+	if (!ensure(GS != nullptr))
+	{
+		return;
+	}
+}
+
 // Called after a successful login
 void ADeathMatchGameMode::PostLogin(APlayerController* NewPlayer)
 {
@@ -19,9 +30,10 @@ void ADeathMatchGameMode::PostLogin(APlayerController* NewPlayer)
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::PostLogin => ( %s ) successfully Logged in"), *NewPlayer->GetName());
 
 	ADeathMatchPlayerController* PC = Cast<ADeathMatchPlayerController>(NewPlayer);
-	PC->OnPostLogin();
 
 	PlayerControllers.Add(PC);
+
+	PC->Server_OnPostLogin();
 }
 
 // Called when a player leaves the game or is destroyed.
@@ -32,39 +44,8 @@ void ADeathMatchGameMode::Logout(AController* Exiting)
 	PlayerControllers.Remove(Cast<ADeathMatchPlayerController>(Exiting));
 }
 
-void ADeathMatchGameMode::BeginPlay()
-{
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::BeginPlay"));
-	Super::BeginPlay();
-
-	GS = GetGameState<ADeathMatchGameState>();
-	if (!ensure(GS != nullptr))
-	{
-		return;
-	}
-
-	GetWorld()->GetTimerManager().SetTimer(MatchStartTimer, this, &ADeathMatchGameMode::MatchStartCheck, 3.f, true);
-}
-
-void ADeathMatchGameMode::MatchStartCheck()
-{
-	UE_LOG(LogTemp, Warning, TEXT("GameMode::MatchStartCheck => GS->PlayerArray.Num(): %i"), GS->PlayerArray.Num());
-
-	StartMatch();
-
-
-	// TODO: check if all player are joined the game?
-	int NumPlayers = 3;
-
-	if (NumPlayers == GS->PlayerArray.Num())
-	{
-		//StartMatch();
-		//GetWorld()->GetTimerManager().ClearTimer(MatchStartTimer);
-	}
-}
-
 // Spawn players and start the game!
-void ADeathMatchGameMode::StartMatch()
+void ADeathMatchGameMode::RestartMatch()
 {
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::StartMatch"));
 
@@ -72,8 +53,6 @@ void ADeathMatchGameMode::StartMatch()
 	{
 		SpawnPlayer(PC);
 	}
-
-	OnStartMatch.Broadcast();
 }
 
 void ADeathMatchGameMode::SpawnPlayer(ADeathMatchPlayerController* PC)
@@ -91,7 +70,7 @@ void ADeathMatchGameMode::SpawnPlayer(ADeathMatchPlayerController* PC)
 		{
 			ETeam Team = PS->GetTeam();
 
-			// Team is None if the player did not choose a team from lobby
+			// Team is None if the player did not choose a team from a lobby
 			if (Team == ETeam::None)
 			{
 				// Assign a team with less players
@@ -107,18 +86,17 @@ void ADeathMatchGameMode::SpawnPlayer(ADeathMatchPlayerController* PC)
 				PlayerStart = FindPlayerStart(PC, PlayerStartTag);
 			}
 
-			if (PC->GetPawn() == nullptr)
+			if (PC->GetPawn() != nullptr)
 			{
-				ADeathMatchCharacter* SpawnedCharacter = World->SpawnActor<ADeathMatchCharacter>(CharacterClass, PlayerStart->GetActorTransform());
-				PC->Possess(SpawnedCharacter);
-			}
-			else
-			{
-				PC->GetPawn()->SetActorLocation(PlayerStart->GetActorLocation());
-				PC->ClientSetRotation(PlayerStart->GetActorRotation(), true);
+				PC->GetPawn()->Destroy();
 			}
 
-			//UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::SpawnPlayers => ( %s ) Spawned! Team: %i"), *PC->GetPawn()->GetName(), Team);
+			ADeathMatchCharacter* SpawnedPlayer = World->SpawnActor<ADeathMatchCharacter>(CharacterClass, PlayerStart->GetActorTransform());
+			PC->Possess(SpawnedPlayer);
+			PC->ClientSetRotation(PlayerStart->GetActorRotation(), true);
+			
+			PS->Server_OnSpawn();
+			PC->Server_OnSpawnPlayer(SpawnedPlayer);
 		}
 	}
 }
@@ -151,8 +129,6 @@ void ADeathMatchGameMode::EndMatch()
 {
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::EndMatch"));
 	// TODO: Server travel to lobby
-
-	OnEndMatch.Broadcast();
 }
 
 ETeam ADeathMatchGameMode::GetTeamWithLessPeople()

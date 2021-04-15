@@ -14,31 +14,33 @@ class UCameraComponent;
 class AGunBase;
 class ADeathMatchPlayerState;
 class UFPSGameInstance;
-class ADeathMatchGameMode;
 
 UCLASS()
 class GWANG_FPS_API ADeathMatchCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-	DECLARE_DELEGATE_OneParam(FOneBooleanDelegate, bool)
 
-public:
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
+public:	
 	ADeathMatchCharacter();
 
+	// Getters
+	ADeathMatchPlayerState* GetPlayerState();
+	AActor* GetCurrentWeapon();
+	AActor* GetCurrentMainWeapon();
+	AActor* GetCurrentSubWeapon();
 	USkeletalMeshComponent* GetArmMesh() const { return ArmMesh; }
 	FVector GetCameraLocation() const;
 
-	bool IsServerPlayer() const { return GetLocalRole() == ROLE_Authority && IsLocallyControlled(); }
+	// Setters
+	void SetCurrentlyHeldWeapon(AActor* NewWeapon);
+
+	UFUNCTION(Server, Reliable)
+	void Server_OnSpawnPlayer();
 
 	// TakeDamage
 	UFUNCTION(Server, Reliable)
 	void Server_TakeDamage(const uint8& DamageOnHealth, const uint8& DamageOnArmor, AActor* DamageCauser);
-
-	// Weapon
-	void EquipWeapon(AActor* WeaponToEquip);
 
 protected:
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
@@ -53,25 +55,19 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UCameraComponent* DeathCamera;
 
-	// Weapons
-	UPROPERTY(Replicated)
-	AActor* CurrentlyHeldWeapon;
-
 	// Cache
-	ADeathMatchGameMode* GM;
 	UFPSGameInstance* GI;
 	ADeathMatchPlayerState* PS;
 
 protected:
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	virtual void BeginPlay();
 
+	DECLARE_DELEGATE_OneParam(FOneBooleanDelegate, bool)
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	void MoveForward(float Val);
 	void MoveRight(float Val);
-
-	// Possession
-	void PossessedBy(AController* NewController) override;
-	void UnPossessed() override;
 
 	// Weapon Equip & Swap
 	void EquipMainWeapon();
@@ -80,6 +76,7 @@ protected:
 	void Server_EquipWeapon(AActor* WeaponToEquip);
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_EquipWeapon(AActor* WeaponToEquip);
+	void EquipWeapon(AActor* WeaponToEquip);
 
 	// Weapon drop
 	void Drop();
@@ -93,6 +90,10 @@ protected:
 	UFUNCTION()
 	void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 	void PickupWeapon(AActor* WeaponToPickup);
+	UFUNCTION(Server, Reliable)
+	void Server_PickupWeapon(AActor* Weapon);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PickupWeapon(AActor* Weapon);
 
 	// Weapon Reload
 	void Reload();
@@ -132,15 +133,9 @@ protected:
 	UFUNCTION()
 	void OnRep_EndFire();
 
-	// UI
-	UFUNCTION(Client, Reliable)
-	void Client_UpdateHealthArmorUI(const uint8& Health, const uint8& Armor);
-
 	// OnSpawn
-	UFUNCTION(Server, Reliable)
-	void Server_OnStartMatch(); // This is bound to ADeathMatchGameMode::OnStartMatch delegate call
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_WeaponSetupOnSpawn();
+	void Multicast_OnSpawn();
 	void HandleCameraOnSpawn();
 
 	// OnDeath

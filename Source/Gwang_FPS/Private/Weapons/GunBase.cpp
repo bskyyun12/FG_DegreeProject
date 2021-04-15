@@ -17,25 +17,50 @@
 // Temp
 FColor AGunBase::GetRoleColor()
 {
-	if (CurrentOwner->GetLocalRole() == ROLE_Authority)
+	if (GetCurrentOwner()->GetLocalRole() == ROLE_Authority)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ROLE_Authority"));
 		return FColor::Red;
 	}
 
-	if (CurrentOwner->GetLocalRole() == ROLE_AutonomousProxy)
+	if (GetCurrentOwner()->GetLocalRole() == ROLE_AutonomousProxy)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ROLE_AutonomousProxy"));
 		return FColor::Green;
 	}
 
-	if (CurrentOwner->GetLocalRole() == ROLE_SimulatedProxy)
+	if (GetCurrentOwner()->GetLocalRole() == ROLE_SimulatedProxy)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ROLE_SimulatedProxy"));
 		return FColor::Blue;
 	}
 
 	return FColor::Cyan;
+}
+
+ADeathMatchCharacter* AGunBase::GetCurrentOwner()
+{
+	if (GetOwner() == nullptr)
+	{
+		return nullptr;
+	}
+
+	if (CurrentOwner == nullptr)
+	{
+		CurrentOwner = Cast<ADeathMatchCharacter>(GetOwner());
+	}
+
+	return CurrentOwner;
+}
+
+bool AGunBase::IsOwnerLocallyControlled()
+{
+	if (GetCurrentOwner() == nullptr)
+	{
+		return false;
+	}
+
+	return GetCurrentOwner()->IsLocallyControlled();
 }
 
 void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -90,14 +115,11 @@ void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 		return;
 	}
 
-	if (NewOwner->IsLocallyControlled())
-	{
-		SetOwner(NewOwner);	// OnRep_Owner()
-		SetInstigator(NewOwner);
-	}
+	SetOwner(NewOwner);
+	SetInstigator(NewOwner);
 
-	CurrentOwner = NewOwner;
-	if (CurrentOwner->IsLocallyControlled())
+	//CurrentOwner = NewOwner;
+	if (IsOwnerLocallyControlled())
 	{
 		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 	}
@@ -121,7 +143,7 @@ void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 
 void AGunBase::OnWeaponDropped_Implementation()
 {
-	if (!ensure(CurrentOwner != nullptr))
+	if (!ensure(GetCurrentOwner() != nullptr))
 	{
 		return;
 	}
@@ -134,12 +156,12 @@ void AGunBase::OnWeaponDropped_Implementation()
 	TPWeaponMesh->SetCollisionProfileName(TEXT("Weapon_Dropped"));
 	TPWeaponMesh->SetSimulatePhysics(true);
 
-	if (CurrentOwner->IsLocallyControlled())
+	if (IsOwnerLocallyControlled())
 	{
 		UpdateAmmoUI(0, 0);
 	}
 
-	CurrentOwner = nullptr;
+	//CurrentOwner = nullptr;
 	SetOwner(nullptr);
 	SetInstigator(nullptr);
 }
@@ -189,12 +211,12 @@ void AGunBase::Fire()
 	FireEffects();
 
 	CurrentAmmo--;
-	if (CurrentOwner->IsLocallyControlled())
+	if (IsOwnerLocallyControlled())
 	{
 		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 	}
 
-	if (CurrentOwner != nullptr)
+	if (GetCurrentOwner() != nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("GunBase::Fire => CurrentOwner(%s)'s role: %i. / Weapon's role: %i."), *CurrentOwner->GetName(), CurrentOwner->GetLocalRole(), GetLocalRole());
 
@@ -207,14 +229,14 @@ void AGunBase::Fire()
 			{
 				// TODO: Hit effect	(t.e. blood)
 
-				if (CurrentOwner->IsLocallyControlled())
+				if (IsOwnerLocallyControlled())
 				{
 					// TODO: Crosshair UI change
 
 					Recoil();
 				}
 
-				if (CurrentOwner->GetLocalRole() == ROLE_Authority)
+				if (GetCurrentOwner()->GetLocalRole() == ROLE_Authority)
 				{
 					float DamageOnHealth = 0.f;
 					float DamageOnArmor = 0.f;
@@ -250,9 +272,9 @@ void AGunBase::EndFire_Implementation()
 	RecoilTimer = 0.f;
 }
 
-bool AGunBase::CanFire() const
+bool AGunBase::CanFire()
 {
-	return CurrentOwner != nullptr && CurrentAmmo > 0 && !bIsReloading;
+	return GetCurrentOwner() != nullptr && CurrentAmmo > 0 && !bIsReloading;
 }
 
 bool AGunBase::FireLineTrace(FHitResult& OutHit)
@@ -265,11 +287,11 @@ bool AGunBase::FireLineTrace(FHitResult& OutHit)
 
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
-	Params.AddIgnoredActor(CurrentOwner);
+	Params.AddIgnoredActor(GetCurrentOwner());
 	Params.bReturnPhysicalMaterial = true;
 
-	const FVector Start = CurrentOwner->GetCameraLocation();
-	const FVector End = CurrentOwner->GetCameraLocation() + CurrentOwner->GetActorForwardVector() * WeaponInfo.Range;
+	const FVector Start = GetCurrentOwner()->GetCameraLocation();
+	const FVector End = GetCurrentOwner()->GetCameraLocation() + GetCurrentOwner()->GetActorForwardVector() * WeaponInfo.Range;
 
 	DrawDebugLine(World, Start, End, GetRoleColor(), false, 1.f);
 
@@ -290,13 +312,13 @@ void AGunBase::FireEffects()
 		UGameplayStatics::PlaySoundAtLocation(this, WeaponInfo.FireSound, GetActorLocation());
 	}
 
-	if (CurrentOwner != nullptr)
+	if (GetCurrentOwner() != nullptr)
 	{
 		// Locally controlled owner
-		if (CurrentOwner->IsLocallyControlled())
+		if (IsOwnerLocallyControlled())
 		{
 			// FP FireAnim
-			UAnimInstance* AnimInstance = CurrentOwner->GetArmMesh()->GetAnimInstance();
+			UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
 			if (AnimInstance != nullptr && WeaponInfo.FP_FireAnimation != nullptr)
 			{
 				AnimInstance->Montage_Play(WeaponInfo.FP_FireAnimation);
@@ -312,7 +334,7 @@ void AGunBase::FireEffects()
 		else
 		{
 			// TP FireAnim
-			UAnimInstance* AnimInstance = CurrentOwner->GetMesh()->GetAnimInstance();
+			UAnimInstance* AnimInstance = GetCurrentOwner()->GetMesh()->GetAnimInstance();
 			if (AnimInstance != nullptr && WeaponInfo.TP_FireAnimation != nullptr)
 			{
 				AnimInstance->Montage_Play(WeaponInfo.TP_FireAnimation);
@@ -329,7 +351,7 @@ void AGunBase::FireEffects()
 
 void AGunBase::UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo)
 {
-	if (CurrentOwner && CurrentOwner->IsLocallyControlled())
+	if (IsOwnerLocallyControlled())
 	{
 		if (GetInstigatorController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetInstigatorController(), UPlayerControllerInterface::StaticClass()))
 		{
@@ -346,7 +368,7 @@ void AGunBase::SetVisibility_Implementation(bool NewVisibility)
 
 bool AGunBase::CanReload()
 {
-	return CurrentOwner != nullptr && !bIsReloading;
+	return GetCurrentOwner() != nullptr && !bIsReloading;
 }
 
 void AGunBase::OnBeginReload()
@@ -365,10 +387,10 @@ void AGunBase::OnBeginReload()
 	bIsReloading = true;
 	World->GetTimerManager().SetTimer(ReloadTimer, this, &AGunBase::OnEndReload, WeaponInfo.ReloadTime, false);
 
-	if (CurrentOwner->IsLocallyControlled())
+	if (IsOwnerLocallyControlled())
 	{
 		// Play FP_ArmsReloadAnim
-		UAnimInstance* AnimInstance = CurrentOwner->GetArmMesh()->GetAnimInstance();
+		UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
 		if (AnimInstance != nullptr && WeaponInfo.FP_ArmsReloadAnim != nullptr)
 		{
 			AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
@@ -383,7 +405,7 @@ void AGunBase::OnBeginReload()
 	else
 	{
 		// Play TP_ReloadAnim
-		UAnimInstance* AnimInstance = CurrentOwner->GetMesh()->GetAnimInstance();
+		UAnimInstance* AnimInstance = GetCurrentOwner()->GetMesh()->GetAnimInstance();
 		if (AnimInstance != nullptr && WeaponInfo.TP_ReloadAnim != nullptr)
 		{
 			AnimInstance->Montage_Play(WeaponInfo.TP_ReloadAnim);
@@ -400,7 +422,7 @@ void AGunBase::OnEndReload()
 	CurrentRemainingAmmo -= AmmoToPool;
 	CurrentAmmo += AmmoToPool;
 
-	if (CurrentOwner->IsLocallyControlled())
+	if (IsOwnerLocallyControlled())
 	{
 		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 	}
