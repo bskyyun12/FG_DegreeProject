@@ -96,11 +96,12 @@ protected:
 	void Multicast_PickupWeapon(AActor* Weapon);
 
 	// Weapon Reload
-	void Reload();
+	void BeginReload();
 	UFUNCTION(Server, Reliable)
-	void Server_Reload();
+	void Server_BeginReload();
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_Reload();
+	void Multicast_BeginReload();
+	void Reload();
 
 	// Toggle ScoreBoard
 	void ToggleScoreBoardWidget(bool bDisplay);
@@ -112,7 +113,7 @@ protected:
 	void LookUp(float Value);
 	UFUNCTION(Server, Reliable)
 	void Server_LookUp(const float& Value);
-	UFUNCTION(NetMulticast, Reliable)
+	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_LookUp(const float& Value);
 
 	// Begin Fire

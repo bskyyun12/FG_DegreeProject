@@ -8,6 +8,7 @@
 #include "DeathMatchGameMode.h"
 #include "GunBase.generated.h"
 
+class ADeathMatchPlayerController;
 class UAnimMontage;
 class UBoxComponent;
 class USoundBase;
@@ -122,43 +123,39 @@ class GWANG_FPS_API AGunBase : public AActor, public IWeaponInterface
 	GENERATED_BODY()
 	
 public:
+	AGunBase();
+
 	// Temp
 	FColor GetRoleColor();
 
 	// Getters
 	ADeathMatchCharacter* GetCurrentOwner();
 	bool IsOwnerLocallyControlled();
-
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	AGunBase();
-
-	// Getters
+	ADeathMatchPlayerController* GetOwnerController();
 	EWeaponType GetWeaponType_Implementation() const override;
 
 	// Weapon Equip
 	void OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner) override;
 
-	// Visibility change for weapon swapping
+	// Weapon Visibility change
 	void SetVisibility_Implementation(bool NewVisibility) override;
 
 	// Weapon Drop
 	void OnWeaponDropped_Implementation() override;
 	
 	// Fire
-	void BeginFire_Implementation() override;
-	void EndFire_Implementation() override;
 	bool CanFire();
+	void BeginFire_Implementation() override;
 	void Fire();
+	void EndFire_Implementation() override;
 
 	// Reload
 	bool CanReload();
-	void OnBeginReload();
+	void BeginReload_Implementation() override;
 	void OnEndReload();
 
 	// UI
 	void UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo);
-
 
 protected:
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
@@ -196,11 +193,12 @@ protected:
 	FTimerHandle ReloadTimer;
 	bool bIsReloading;
 
-	UPROPERTY(Replicated)
 	ADeathMatchCharacter* CurrentOwner;
-
+	ADeathMatchPlayerController* CurrentOwnerController;
 
 protected:
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	void BeginPlay() override;
 
 	void CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor);

@@ -9,10 +9,11 @@
 
 #include "DeathMatchCharacter.h"
 #include "PlayerControllerInterface.h"
+#include "Animation/FPSAnimInterface.h"
+#include "DeathMatchPlayerController.h"
 
 // Temp
 #include "DrawDebugHelpers.h"
-#include "Animation/FPSAnimInterface.h"
 
 // Temp
 FColor AGunBase::GetRoleColor()
@@ -61,6 +62,26 @@ bool AGunBase::IsOwnerLocallyControlled()
 	}
 
 	return GetCurrentOwner()->IsLocallyControlled();
+}
+
+ADeathMatchPlayerController* AGunBase::GetOwnerController()
+{
+	if (GetCurrentOwner() == nullptr)
+	{
+		return nullptr;
+	}
+
+	if (GetCurrentOwner()->GetController() == nullptr)
+	{
+		return nullptr;
+	}
+
+	if (CurrentOwnerController == nullptr)
+	{
+		CurrentOwnerController = Cast<ADeathMatchPlayerController>(GetCurrentOwner()->GetController());
+	}
+
+	return CurrentOwnerController;
 }
 
 void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -329,6 +350,9 @@ void AGunBase::FireEffects()
 			{
 				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, FPWeaponMesh, WeaponInfo.FP_FireEmitterSocketName);
 			}
+
+			// Recoil
+			Recoil();
 		}
 		// Not locally controlled
 		else
@@ -368,50 +392,49 @@ void AGunBase::SetVisibility_Implementation(bool NewVisibility)
 
 bool AGunBase::CanReload()
 {
-	return GetCurrentOwner() != nullptr && !bIsReloading;
+	return GetCurrentOwner() != nullptr && !bIsReloading && CurrentRemainingAmmo > 0 && CurrentAmmo != WeaponInfo.MagazineCapacity;
 }
 
-void AGunBase::OnBeginReload()
+void AGunBase::BeginReload_Implementation()
 {
-	if (!CanReload())
+	if (CanReload())
 	{
-		return;
-	}
+		Execute_EndFire(this);
 
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-
-	bIsReloading = true;
-	World->GetTimerManager().SetTimer(ReloadTimer, this, &AGunBase::OnEndReload, WeaponInfo.ReloadTime, false);
-
-	if (IsOwnerLocallyControlled())
-	{
-		// Play FP_ArmsReloadAnim
-		UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
-		if (AnimInstance != nullptr && WeaponInfo.FP_ArmsReloadAnim != nullptr)
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
 		{
-			AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
+			return;
 		}
 
-		// Play FP_WeaponReloadAnim
-		if (WeaponInfo.FP_WeaponReloadAnim != nullptr)
-		{
-			FPWeaponMesh->PlayAnimation(WeaponInfo.FP_WeaponReloadAnim, false);
-		}
-	}
-	else
-	{
-		// Play TP_ReloadAnim
-		UAnimInstance* AnimInstance = GetCurrentOwner()->GetMesh()->GetAnimInstance();
-		if (AnimInstance != nullptr && WeaponInfo.TP_ReloadAnim != nullptr)
-		{
-			AnimInstance->Montage_Play(WeaponInfo.TP_ReloadAnim);
-		}
-	}
+		bIsReloading = true;
+		World->GetTimerManager().SetTimer(ReloadTimer, this, &AGunBase::OnEndReload, WeaponInfo.ReloadTime, false);
 
+		if (IsOwnerLocallyControlled())
+		{
+			// Play FP_ArmsReloadAnim
+			UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
+			if (AnimInstance != nullptr && WeaponInfo.FP_ArmsReloadAnim != nullptr)
+			{
+				AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
+			}
+
+			// Play FP_WeaponReloadAnim
+			if (WeaponInfo.FP_WeaponReloadAnim != nullptr)
+			{
+				FPWeaponMesh->PlayAnimation(WeaponInfo.FP_WeaponReloadAnim, false);
+			}
+		}
+		else
+		{
+			// Play TP_ReloadAnim
+			UAnimInstance* AnimInstance = GetCurrentOwner()->GetMesh()->GetAnimInstance();
+			if (AnimInstance != nullptr && WeaponInfo.TP_ReloadAnim != nullptr)
+			{
+				AnimInstance->Montage_Play(WeaponInfo.TP_ReloadAnim);
+			}
+		}
+	}
 }
 
 void AGunBase::OnEndReload()
@@ -430,17 +453,20 @@ void AGunBase::OnEndReload()
 
 void AGunBase::Recoil()
 {
-	// TODO: Implement Recoil
-	float PitchDelta = 0.f;
-	if (WeaponInfo.RecoilCurve_Vertical != nullptr)
+	if (GetOwnerController() != nullptr)
 	{
-		PitchDelta = WeaponInfo.RecoilCurve_Vertical->GetFloatValue(RecoilTimer);
-		RecoilTimer += WeaponInfo.FireRate;
-	}
-	// PlayerController => SetControlRotation(GetControlRotation() + FRotator(PitchDelta, 0.f, 0.f));
+		// Camera pitch movement
+		float PitchDelta = 0.f;
+		if (WeaponInfo.RecoilCurve_Vertical != nullptr)
+		{
+			PitchDelta = WeaponInfo.RecoilCurve_Vertical->GetFloatValue(RecoilTimer);
+			RecoilTimer += WeaponInfo.FireRate;
+		}		
+		GetOwnerController()->SetControlRotation(GetOwnerController()->GetControlRotation() + FRotator(PitchDelta, 0.f, 0.f));
 
-	// TODO: Shake Camera?
-	// PlayerController => ClientStartCameraShake(WeaponInfo.CameraShakeOnFire);
+		// Camera shake
+		GetOwnerController()->ClientStartCameraShake(WeaponInfo.CameraShakeOnFire);
+	}
 }
 
 void AGunBase::CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor)

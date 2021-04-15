@@ -41,5 +41,5 @@ public:
 	void EndFire();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void Reload();
+	void BeginReload();
 };

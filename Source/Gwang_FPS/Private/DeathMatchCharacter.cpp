@@ -94,7 +94,7 @@ void ADeathMatchCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 	PlayerInputComponent->BindAction("SubWeapon", IE_Pressed, this, &ADeathMatchCharacter::EquipSubWeapon);
 
 	PlayerInputComponent->BindAction("Drop", IE_Pressed, this, &ADeathMatchCharacter::Drop);
-	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &ADeathMatchCharacter::Reload);
+	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &ADeathMatchCharacter::BeginReload);
 	PlayerInputComponent->BindAction("Chat", IE_Pressed, this, &ADeathMatchCharacter::StartChat);
 
 	PlayerInputComponent->BindAction<FOneBooleanDelegate>("ScoreBoard", IE_Pressed, this, &ADeathMatchCharacter::ToggleScoreBoardWidget, true);
@@ -373,37 +373,39 @@ void ADeathMatchCharacter::DropWeapon()
 }
 #pragma endregion Weapon Pickup & Equip & Drop
 
-void ADeathMatchCharacter::Reload()
+void ADeathMatchCharacter::BeginReload()
 {
-	if (GetCurrentWeapon() != nullptr)
-	{
-		IWeaponInterface::Execute_Reload(GetCurrentWeapon());
-	}
+	Reload();
 
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		Multicast_Reload();
+		Multicast_BeginReload();
 	}
 
 	if (GetLocalRole() == ROLE_AutonomousProxy)
 	{
-		Server_Reload();
+		Server_BeginReload();
 	}
 }
 
-void ADeathMatchCharacter::Server_Reload_Implementation()
+void ADeathMatchCharacter::Server_BeginReload_Implementation()
 {
-	Multicast_Reload();
+	Multicast_BeginReload();
 }
 
-void ADeathMatchCharacter::Multicast_Reload_Implementation()
+void ADeathMatchCharacter::Multicast_BeginReload_Implementation()
 {
 	if (!IsLocallyControlled())
 	{
-		if (GetCurrentWeapon() != nullptr)
-		{
-			IWeaponInterface::Execute_Reload(GetCurrentWeapon());
-		}
+		Reload();
+	}
+}
+
+void ADeathMatchCharacter::Reload()
+{
+	if (GetCurrentWeapon() != nullptr)
+	{
+		IWeaponInterface::Execute_BeginReload(GetCurrentWeapon());
 	}
 }
 
