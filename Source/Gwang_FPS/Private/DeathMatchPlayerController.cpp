@@ -6,12 +6,12 @@
 
 #include "FPSGameInstance.h"
 #include "DeathMatchGameMode.h"
+#include "DeathMatchCharacter.h"
 #include "Widgets/FPSHUDWidget.h"
 #include "DeathMatchPlayerState.h"
-#include "Widgets/DamageReceiveWidget.h"
 #include "Widgets/ScoreBoardWidget.h"
 #include "Widgets/GameOverWidget.h"
-#include "DeathMatchCharacter.h"
+#include "Widgets/VignetteWidget.h"
 
 void ADeathMatchPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -141,14 +141,12 @@ void ADeathMatchPlayerController::Client_SetupWidgets_Implementation()
 			{
 				return;
 			}
-			VignetteWidget = CreateWidget<UDamageReceiveWidget>(World, VignetteWidgetClass);
+			VignetteWidget = CreateWidget<UVignetteWidget>(World, VignetteWidgetClass);
 			if (!ensure(VignetteWidget != nullptr))
 			{
 				return;
 			}
 			VignetteWidget->AddToViewport(2);
-			// TODO: Change to widget animation fade in and out
-			VignetteWidget->SetVisibility(ESlateVisibility::Hidden);
 		}
 
 		// Gameover Widget
@@ -186,18 +184,7 @@ void ADeathMatchPlayerController::ChangeCrosshairUIOnHit_Implementation()
 
 void ADeathMatchPlayerController::VignetteEffectOnTakeDamage_Implementation()
 {
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
-	{
-		return;
-	}
-
-	// TODO: Change to widget animation fade in and out
-	VignetteWidget->SetVisibility(ESlateVisibility::Visible);
-	World->GetTimerManager().SetTimer(VignetteTimer, [&]()
-		{
-			VignetteWidget->SetVisibility(ESlateVisibility::Hidden);
-		}, 2.f, false);
+	VignetteWidget->OnTakeDamage();
 }
 
 void ADeathMatchPlayerController::SendChat(const FName& ChatContent)

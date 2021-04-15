@@ -11,7 +11,7 @@ class ADeathMatchGameMode;
 class ADeathMatchCharacter;
 class ADeathMatchPlayerState;
 class UFPSHUDWidget;
-class UDamageReceiveWidget;
+class UVignetteWidget;
 class UScoreBoardWidget;
 class UGameOverWidget;
 
@@ -75,8 +75,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUserWidget> VignetteWidgetClass;
-	UDamageReceiveWidget* VignetteWidget;
-	FTimerHandle VignetteTimer;
+	UVignetteWidget* VignetteWidget;
 
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUserWidget> ScoreboardWidgetClass;
