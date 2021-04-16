@@ -27,7 +27,7 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 	NewUserData.Team = GetTeamToJoin();
 	NewUserData.StartMainWeapon = EMainWeapon::M4A1;
 	NewUserData.StartSubWeapon = ESubWeapon::Pistol;
-	NewUserData.StartKnife = EKnife::Knife;
+	NewUserData.StartMeleeWeapon = EMeleeWeapon::Knife;
 	NewUserData.StartGrenade = EGrenade::Grenade;
 	UserData.Add(NewUserData);
 

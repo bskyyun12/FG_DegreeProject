@@ -5,16 +5,29 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "WeaponInterface.h"
-#include "DeathMatchGameMode.h"
-#include "GunBase.generated.h"
+#include "FPSGameInstance.h"
+#include "GrenadeBase.generated.h"
 
-class ADeathMatchPlayerController;
-class UAnimMontage;
 class UBoxComponent;
-class USoundBase;
+class ADeathMatchPlayerController;
 
 USTRUCT(BlueprintType)
-struct FGunInfo
+struct FTrajectory
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FVector LaunchLocation;
+	UPROPERTY()
+	FVector LaunchForward;
+	UPROPERTY()
+	float LaunchAngleInRad;
+	UPROPERTY()
+	float LaunchSpeed;
+};
+
+USTRUCT(BlueprintType)
+struct FGrenadeInfo
 {
 	GENERATED_BODY()
 
@@ -24,27 +37,17 @@ struct FGunInfo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EWeaponType WeaponType;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bIsAutomatic;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float Damage;
+	float ExplosionDamage;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float ArmorPenetration;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float Range;
+	float ExplosionRadius;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float FireRate;
+	float ExplodeInSeconds;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float ReloadTime;
+	float ThrowingPower;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int MagazineCapacity = 20;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int RemainingAmmo = 100;
-
-	// Recoil
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UCameraShakeBase> CameraShakeOnFire;
-	UPROPERTY(EditDefaultsOnly)
-	UCurveFloat* RecoilCurve_Vertical;
+	float Bounceness;
 
 	// SocketNames to Equip Weapon
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -52,82 +55,54 @@ struct FGunInfo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName TP_SocketName;
 
-	// Fire Effects
+	// Explosion Effects
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UParticleSystem* FireEmitter;
+	UParticleSystem* ExplosionEmitter;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	USoundBase* FireSound;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName FP_FireEmitterSocketName;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName TP_FireEmitterSocketName;
-
-	// Hit Effects
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UParticleSystem* HitEmitterOnEnvironment;
+	USoundBase* ExplosionSound;
 
 	// AnimMontages
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* FP_FireAnimation;
+	UAnimMontage* FP_ThrowingAnimation;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* TP_FireAnimation;
+	UAnimMontage* TP_ThrowingAnimation;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UAnimMontage* FP_EquipAnim;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* FP_ArmsReloadAnim;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* FP_WeaponReloadAnim;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* TP_ReloadAnim;
 
-	FGunInfo()
+	FGrenadeInfo()
 	{
 		// Stats
 		DisplayName = TEXT("Gweapon");
 		WeaponType = EWeaponType::None;
-		bIsAutomatic = false;
-		Damage = 10.f;
+		ExplosionDamage = 200.f;
 		ArmorPenetration = 0.5f;
-		Range = 10000.f;
-		FireRate = 0.2f;
-		ReloadTime = 3.f;
-		MagazineCapacity = 20;
-		RemainingAmmo = 60;
+		ExplosionRadius = 500.f;
+		ExplodeInSeconds = 3.f;
+		ThrowingPower = 3000.f;
+		Bounceness = 0.5f;
 
 		FP_SocketName = "Weapon_Rifle";
 		TP_SocketName = "Weapon_Rifle";
 
-		// Recoil
-		CameraShakeOnFire = nullptr;
-		RecoilCurve_Vertical = nullptr;
-
-		// Fire Effect
-		FireEmitter = nullptr;
-		FireSound = nullptr;
-		FP_FireEmitterSocketName = "MuzzleFlash";
-		TP_FireEmitterSocketName = "MuzzleFlash";
-
-		// Hit Effects
-		HitEmitterOnEnvironment = nullptr;
+		// Explosion Effect
+		ExplosionEmitter = nullptr;
+		ExplosionSound = nullptr;
 
 		// AnimMontages
-		FP_FireAnimation = nullptr;
-		TP_FireAnimation = nullptr;
+		FP_ThrowingAnimation = nullptr;
+		TP_ThrowingAnimation = nullptr;
 		FP_EquipAnim = nullptr;
-		FP_ArmsReloadAnim = nullptr;
-		FP_WeaponReloadAnim = nullptr;
-		TP_ReloadAnim = nullptr;
 	}
 };
 
 UCLASS()
-class GWANG_FPS_API AGunBase : public AActor, public IWeaponInterface
+class GWANG_FPS_API AGrenadeBase : public AActor, public IWeaponInterface
 {
 	GENERATED_BODY()
 	
 public:
-	AGunBase();
+	AGrenadeBase();
 
 	// Temp
 	FColor GetRoleColor();
@@ -143,17 +118,14 @@ public:
 	// Weapon Equip & Drop
 	void OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner) override;
 	void OnWeaponDropped_Implementation() override;
-	
+
 	// Fire
-	bool CanFire();
 	void BeginFire_Implementation() override;
-	void Fire();
 	void EndFire_Implementation() override;
 
-	// Reload
-	bool CanReload();
-	void BeginReload_Implementation() override;
-	void OnEndReload();
+
+
+
 
 protected:
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
@@ -166,42 +138,51 @@ protected:
 	/** Weapon mesh: 3rd person view (seen only by others) */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* TPWeaponMesh;
-	
+
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	UBoxComponent* InteractCollider;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
-	FGunInfo WeaponInfo;
+	float PathDrawingFrequency = .05f;
 
-	// Ammo
-	UPROPERTY(Replicated)
-	int CurrentAmmo = 0;
-	UPROPERTY(Replicated)
-	int CurrentRemainingAmmo = 0;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	FGrenadeInfo WeaponInfo;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	FTrajectory Trajectory;
 
-	// Recoil
-	float RecoilTimer = 0.f;
+	float Gravity = 981.f;
+	float DisplacementX;
+	float DisplacementZ;
+	FVector NewLocation;
+	FVector PrevLocation;
 
-	// Fire
-	FTimerHandle FireTimer;
-	FTimerHandle CooldownTimer;
-	bool bFireCooldown;
+	FTimerHandle PathDrawingtimer;
 
-	// Reload
-	FTimerHandle ReloadTimer;
-	bool bIsReloading;
+	float FlightTime;
+
+	UPROPERTY(ReplicatedUsing=OnRep_ServerExplosionTime)
+	float ServerExplosionTime;
+	UFUNCTION()
+	void OnRep_ServerExplosionTime();
+	float ClientExplosionTime;
+
+
 
 protected:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	void BeginPlay() override;
+	void Tick(float DeltaSeconds) override;
 
-	// Weapon fire
-	bool FireLineTrace(FHitResult& OutHit);
-	void CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor);
+	// Trajectory
+	void InitTrajectory();
+	void DrawGrenadePath();
+	void SimulateTrajectory(const float& DeltaSeconds, bool bMoveMesh);
+
+	// OnExplosion
 	void FireEffects();
-	void Recoil();
 
 	// UI
-	void UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo);
+	void UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo);		
+
 };

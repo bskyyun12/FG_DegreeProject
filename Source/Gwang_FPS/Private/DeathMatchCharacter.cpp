@@ -92,8 +92,9 @@ void ADeathMatchCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 
 	// Bind weapon equip events
 	PlayerInputComponent->BindAction("MainWeapon", IE_Pressed, this, &ADeathMatchCharacter::EquipMainWeapon);
-
 	PlayerInputComponent->BindAction("SubWeapon", IE_Pressed, this, &ADeathMatchCharacter::EquipSubWeapon);
+	PlayerInputComponent->BindAction("MeleeWeapon", IE_Pressed, this, &ADeathMatchCharacter::EquipMeleeWeapon);
+	PlayerInputComponent->BindAction("Grenade", IE_Pressed, this, &ADeathMatchCharacter::EquipGrenade);
 
 	PlayerInputComponent->BindAction("Drop", IE_Pressed, this, &ADeathMatchCharacter::Drop);
 	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &ADeathMatchCharacter::BeginReload);
@@ -156,6 +157,26 @@ AActor* ADeathMatchCharacter::GetCurrentSubWeapon()
 	return GetPlayerState()->GetCurrentWeaponWithIndex(2);
 }
 
+AActor* ADeathMatchCharacter::GetCurrentMeleeWeapon()
+{
+	if (GetPlayerState() == nullptr)
+	{
+		return nullptr;
+	}
+
+	return GetPlayerState()->GetCurrentWeaponWithIndex(3);
+}
+
+AActor* ADeathMatchCharacter::GetCurrentGrenade()
+{
+	if (GetPlayerState() == nullptr)
+	{
+		return nullptr;
+	}
+
+	return GetPlayerState()->GetCurrentWeaponWithIndex(4);
+}
+
 bool ADeathMatchCharacter::IsDead()
 {
 	if (GetPlayerState() == nullptr)
@@ -174,6 +195,11 @@ FVector ADeathMatchCharacter::GetCameraLocation() const
 FVector ADeathMatchCharacter::GetCameraForward() const
 {
 	return FP_Camera->GetForwardVector();
+}
+
+float ADeathMatchCharacter::GetCameraPitch() const
+{
+	return FP_Camera->GetComponentRotation().Pitch;
 }
 
 void ADeathMatchCharacter::SetCurrentlyHeldWeapon(AActor* NewWeapon)
@@ -296,6 +322,52 @@ void ADeathMatchCharacter::EquipSubWeapon()
 		if (GetLocalRole() == ROLE_AutonomousProxy)
 		{
 			Server_EquipWeapon(GetCurrentSubWeapon());
+		}
+	}
+}
+
+void ADeathMatchCharacter::EquipMeleeWeapon()
+{
+	if (GetCurrentMeleeWeapon() != nullptr)
+	{
+		if (GetCurrentWeapon() == GetCurrentMeleeWeapon())
+		{
+			return;
+		}
+
+		EquipWeapon(GetCurrentMeleeWeapon());
+
+		if (GetLocalRole() == ROLE_Authority)
+		{
+			Multicast_EquipWeapon(GetCurrentMeleeWeapon());
+		}
+
+		if (GetLocalRole() == ROLE_AutonomousProxy)
+		{
+			Server_EquipWeapon(GetCurrentMeleeWeapon());
+		}
+	}
+}
+
+void ADeathMatchCharacter::EquipGrenade()
+{
+	if (GetCurrentGrenade() != nullptr)
+	{
+		if (GetCurrentWeapon() == GetCurrentGrenade())
+		{
+			return;
+		}
+
+		EquipWeapon(GetCurrentGrenade());
+
+		if (GetLocalRole() == ROLE_Authority)
+		{
+			Multicast_EquipWeapon(GetCurrentGrenade());
+		}
+
+		if (GetLocalRole() == ROLE_AutonomousProxy)
+		{
+			Server_EquipWeapon(GetCurrentGrenade());
 		}
 	}
 }

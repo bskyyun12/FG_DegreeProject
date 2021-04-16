@@ -69,6 +69,7 @@ void ADeathMatchPlayerState::Server_InitialDataSetup_Implementation(const FPlaye
 		ADeathMatchGameMode* GM = Cast<ADeathMatchGameMode>(World->GetAuthGameMode());
 		if (GM != nullptr)
 		{
+			// Main weapon setup
 			FWeaponClass WeaponClass = GM->GetWeaponClass();
 			switch (PlayerData.StartMainWeapon)
 			{
@@ -97,6 +98,30 @@ void ADeathMatchPlayerState::Server_InitialDataSetup_Implementation(const FPlaye
 				{
 					StartWeaponClasses[2] = WeaponClass.PistolClass;
 					CurrentWeapons[2] = World->SpawnActor<AActor>(WeaponClass.PistolClass);
+				}
+				break;
+			}
+
+			// Melee weapon setup
+			switch (PlayerData.StartMeleeWeapon)
+			{
+			case EMeleeWeapon::Knife:
+				if (WeaponClass.KnifeClass)
+				{
+					StartWeaponClasses[3] = WeaponClass.KnifeClass;
+					CurrentWeapons[3] = World->SpawnActor<AActor>(WeaponClass.KnifeClass);
+				}
+				break;
+			}
+
+			// Grenade weapon setup
+			switch (PlayerData.StartGrenade)
+			{
+			case EGrenade::Grenade:
+				if (WeaponClass.GrenadeClass)
+				{
+					StartWeaponClasses[4] = WeaponClass.GrenadeClass;
+					CurrentWeapons[4] = World->SpawnActor<AActor>(WeaponClass.GrenadeClass);
 				}
 				break;
 			}
@@ -198,9 +223,9 @@ void ADeathMatchPlayerState::Server_OnDeath_Implementation()
 	{
 		FTimerHandle WeaponResetTimer;
 		World->GetTimerManager().SetTimer(WeaponResetTimer, [&]()
-		{
-			Server_ResetCurrentWeapons();
-		}, 3.f, false);
+			{
+				Server_ResetCurrentWeapons();
+			}, 3.f, false);
 	}
 
 	NumDeaths++;

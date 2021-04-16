@@ -39,38 +39,6 @@ FColor AGunBase::GetRoleColor()
 	return FColor::Cyan;
 }
 
-ADeathMatchCharacter* AGunBase::GetCurrentOwner()
-{
-	if (GetOwner() == nullptr)
-	{
-		return nullptr;
-	}
-
-	return Cast<ADeathMatchCharacter>(GetOwner());
-}
-
-ADeathMatchPlayerController* AGunBase::GetOwnerController()
-{
-	if (GetCurrentOwner() == nullptr)
-	{
-		return nullptr;
-	}
-
-	if (GetCurrentOwner()->GetController() == nullptr)
-	{
-		return nullptr;
-	}
-
-	return Cast<ADeathMatchPlayerController>(GetCurrentOwner()->GetController());
-}
-
-void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AGunBase, CurrentAmmo);
-	DOREPLIFETIME(AGunBase, CurrentRemainingAmmo);
-}
-
 AGunBase::AGunBase()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -100,6 +68,13 @@ AGunBase::AGunBase()
 	InteractCollider->SetupAttachment(TPWeaponMesh);
 }
 
+void AGunBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AGunBase, CurrentAmmo);
+	DOREPLIFETIME(AGunBase, CurrentRemainingAmmo);
+}
+
 void AGunBase::BeginPlay()
 {
 	Super::BeginPlay();
@@ -108,6 +83,45 @@ void AGunBase::BeginPlay()
 	CurrentRemainingAmmo = WeaponInfo.RemainingAmmo;
 }
 
+#pragma region Getters & Setters
+ADeathMatchCharacter* AGunBase::GetCurrentOwner()
+{
+	if (GetOwner() == nullptr)
+	{
+		return nullptr;
+	}
+
+	return Cast<ADeathMatchCharacter>(GetOwner());
+}
+
+ADeathMatchPlayerController* AGunBase::GetOwnerController()
+{
+	if (GetCurrentOwner() == nullptr)
+	{
+		return nullptr;
+	}
+
+	if (GetCurrentOwner()->GetController() == nullptr)
+	{
+		return nullptr;
+	}
+
+	return Cast<ADeathMatchPlayerController>(GetCurrentOwner()->GetController());
+}
+
+EWeaponType AGunBase::GetWeaponType_Implementation() const
+{
+	return WeaponInfo.WeaponType;
+}
+
+void AGunBase::SetVisibility_Implementation(bool NewVisibility)
+{
+	FPWeaponMesh->SetVisibility(NewVisibility);
+	TPWeaponMesh->SetVisibility(NewVisibility);
+}
+#pragma endregion Getters & Setters
+
+#pragma region Weapon Equip & Drop
 void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 {
 	UE_LOG(LogTemp, Warning, TEXT("GunBase::OnWeaponEquipped => NewOwner(%s)'s role: %i. / Weapon(%s)'s role: %i."), *NewOwner->GetName(), NewOwner->GetLocalRole(), *GetName(), GetLocalRole());
@@ -132,6 +146,20 @@ void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 	FPWeaponMesh->AttachToComponent(NewOwner->GetArmMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), WeaponInfo.FP_SocketName);
 
 	InteractCollider->SetCollisionProfileName(TEXT("NoCollision"));
+
+	if (GetCurrentOwner()->IsLocallyControlled())
+	{
+		// Play FP_EquipAnim
+		UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
+		if (AnimInstance != nullptr && WeaponInfo.FP_EquipAnim != nullptr)
+		{
+			AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
+		}
+	}
+	else
+	{
+		// TODO: Play TP_EquipAnim
+	}
 }
 
 void AGunBase::OnWeaponDropped_Implementation()
@@ -155,7 +183,9 @@ void AGunBase::OnWeaponDropped_Implementation()
 		SetInstigator(nullptr);
 	}
 }
+#pragma endregion Weapon Equip & Drop
 
+#pragma region Weapon Fire
 void AGunBase::BeginFire_Implementation()
 {
 	if (CanFire() == false)
@@ -347,6 +377,52 @@ void AGunBase::FireEffects()
 	}
 }
 
+void AGunBase::Recoil()
+{
+	if (GetOwnerController() != nullptr)
+	{
+		// Camera pitch movement
+		float PitchDelta = 0.f;
+		if (WeaponInfo.RecoilCurve_Vertical != nullptr)
+		{
+			PitchDelta = WeaponInfo.RecoilCurve_Vertical->GetFloatValue(RecoilTimer);
+			RecoilTimer += WeaponInfo.FireRate;
+		}
+		GetOwnerController()->SetControlRotation(GetOwnerController()->GetControlRotation() + FRotator(PitchDelta, 0.f, 0.f));
+		GetCurrentOwner()->SetCameraWorldRotation(GetOwnerController()->GetControlRotation());
+	}
+}
+
+void AGunBase::CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor)
+{
+	float DamageMultiplier = 1.f;
+
+	EPhysicalSurface SurfaceType = UPhysicalMaterial::DetermineSurfaceType(PhysMat);
+	switch (SurfaceType)
+	{
+	case SurfaceType_Default:
+		break;
+	case SurfaceType1:	// Head
+		DamageMultiplier = 3.5f;
+		break;
+	case SurfaceType2:	// Torso
+		DamageMultiplier = 1.f;
+		break;
+	case SurfaceType3:	// Arms
+		DamageMultiplier = 0.5f;
+		break;
+	case SurfaceType4:	// Legs
+		DamageMultiplier = 0.5f;
+		break;
+	case SurfaceType5:	// Pelvis
+		DamageMultiplier = 1.f;
+		break;
+	}
+
+	DamageOnHealth = WeaponInfo.Damage * DamageMultiplier * WeaponInfo.ArmorPenetration;
+	DamageOnArmor = WeaponInfo.Damage * DamageMultiplier * (1 - WeaponInfo.ArmorPenetration);
+}
+
 void AGunBase::UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo)
 {
 	if (GetCurrentOwner()->IsLocallyControlled())
@@ -357,12 +433,9 @@ void AGunBase::UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo
 		}
 	}
 }
+#pragma endregion Weapon Fire
 
-void AGunBase::SetVisibility_Implementation(bool NewVisibility)
-{
-	FPWeaponMesh->SetVisibility(NewVisibility);
-	TPWeaponMesh->SetVisibility(NewVisibility);
-}
+#pragma region Weapon Reload
 
 bool AGunBase::CanReload()
 {
@@ -424,54 +497,4 @@ void AGunBase::OnEndReload()
 		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 	}
 }
-
-void AGunBase::Recoil()
-{
-	if (GetOwnerController() != nullptr)
-	{
-		// Camera pitch movement
-		float PitchDelta = 0.f;
-		if (WeaponInfo.RecoilCurve_Vertical != nullptr)
-		{
-			PitchDelta = WeaponInfo.RecoilCurve_Vertical->GetFloatValue(RecoilTimer);
-			RecoilTimer += WeaponInfo.FireRate;
-		}
-		GetOwnerController()->SetControlRotation(GetOwnerController()->GetControlRotation() + FRotator(PitchDelta, 0.f, 0.f));
-		GetCurrentOwner()->SetCameraWorldRotation(GetOwnerController()->GetControlRotation());
-	}
-}
-
-void AGunBase::CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor)
-{
-	float DamageMultiplier = 1.f;
-
-	EPhysicalSurface SurfaceType = UPhysicalMaterial::DetermineSurfaceType(PhysMat);
-	switch (SurfaceType)
-	{
-	case SurfaceType_Default:
-		break;
-	case SurfaceType1:	// Head
-		DamageMultiplier = 3.5f;
-		break;
-	case SurfaceType2:	// Torso
-		DamageMultiplier = 1.f;
-		break;
-	case SurfaceType3:	// Arms
-		DamageMultiplier = 0.5f;
-		break;
-	case SurfaceType4:	// Legs
-		DamageMultiplier = 0.5f;
-		break;
-	case SurfaceType5:	// Pelvis
-		DamageMultiplier = 1.f;
-		break;
-	}
-
-	DamageOnHealth = WeaponInfo.Damage * DamageMultiplier * WeaponInfo.ArmorPenetration;
-	DamageOnArmor = WeaponInfo.Damage * DamageMultiplier * (1 - WeaponInfo.ArmorPenetration);
-}
-
-EWeaponType AGunBase::GetWeaponType_Implementation() const
-{
-	return WeaponInfo.WeaponType;
-}
+#pragma endregion Weapon Reload

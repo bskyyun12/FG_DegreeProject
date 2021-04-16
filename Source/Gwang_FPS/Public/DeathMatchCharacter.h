@@ -29,10 +29,13 @@ public:
 	AActor* GetCurrentWeapon();
 	AActor* GetCurrentMainWeapon();
 	AActor* GetCurrentSubWeapon();
+	AActor* GetCurrentMeleeWeapon();
+	AActor* GetCurrentGrenade();
 	bool IsDead();
 	USkeletalMeshComponent* GetArmMesh() const { return ArmMesh; }
 	FVector GetCameraLocation() const;
 	FVector GetCameraForward() const;
+	float GetCameraPitch() const;
 
 	// Setters
 	void SetCurrentlyHeldWeapon(AActor* NewWeapon);
@@ -75,6 +78,8 @@ protected:
 	// Weapon Equip & Swap
 	void EquipMainWeapon();
 	void EquipSubWeapon();
+	void EquipMeleeWeapon();
+	void EquipGrenade();
 	UFUNCTION(Server, Reliable)
 	void Server_EquipWeapon(AActor* WeaponToEquip);
 	UFUNCTION(NetMulticast, Reliable)

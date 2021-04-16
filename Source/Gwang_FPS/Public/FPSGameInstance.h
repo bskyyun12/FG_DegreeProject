@@ -44,7 +44,7 @@ enum class ESubWeapon : uint8	// NAME CHANGE? Make sure to change the name in UL
 };
 
 UENUM(BlueprintType)
-enum class EKnife : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
+enum class EMeleeWeapon : uint8	// NAME CHANGE? Make sure to change the name in ULobbyInventory::Initialize!
 {
 	Knife,
 	EnumSize
@@ -89,7 +89,7 @@ struct FPlayerData
 	ESubWeapon StartSubWeapon;
 
 	UPROPERTY()
-	EKnife StartKnife;
+	EMeleeWeapon StartMeleeWeapon;
 
 	UPROPERTY()
 	EGrenade StartGrenade;
@@ -103,7 +103,7 @@ struct FPlayerData
 
 		StartMainWeapon = EMainWeapon::M4A1;
 		StartSubWeapon = ESubWeapon::Pistol;
-		StartKnife = EKnife::Knife;
+		StartMeleeWeapon = EMeleeWeapon::Knife;
 		StartGrenade = EGrenade::Grenade;
 	}
 

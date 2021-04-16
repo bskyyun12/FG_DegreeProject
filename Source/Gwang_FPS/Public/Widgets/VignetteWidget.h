@@ -14,12 +14,11 @@ class GWANG_FPS_API UVignetteWidget : public UUserWidget
 	GENERATED_BODY()
 	
 public:
+	bool Initialize() override;
+
 	void OnTakeDamage();
 
 	void SimulateVignetteEffect();
-
-
-	bool Initialize() override;
 
 private:
 	UPROPERTY(meta = (BindWidget))

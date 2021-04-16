@@ -32,7 +32,7 @@ bool ULobbyInventory::Initialize()
 		FPlayerData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
 		MainWeaponIndex = (int)UserData.StartMainWeapon;
 		SubWeaponIndex = (int)UserData.StartSubWeapon;
-		KnifeIndex = (int)UserData.StartKnife;
+		KnifeIndex = (int)UserData.StartMeleeWeapon;
 		GrenadeIndex = (int)UserData.StartGrenade;
 	}
 
@@ -120,7 +120,7 @@ void ULobbyInventory::OnClicked_Button_Apply()
 		FPlayerData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
 		UserData.StartMainWeapon = (EMainWeapon)MainWeaponIndex;
 		UserData.StartSubWeapon = (ESubWeapon)SubWeaponIndex;
-		UserData.StartKnife = (EKnife)KnifeIndex;
+		UserData.StartMeleeWeapon = (EMeleeWeapon)KnifeIndex;
 		UserData.StartGrenade = (EGrenade)GrenadeIndex;
 		ILobbyInterface::Execute_UpdateUserData(GetOwningPlayer(), UserData);
 	}
