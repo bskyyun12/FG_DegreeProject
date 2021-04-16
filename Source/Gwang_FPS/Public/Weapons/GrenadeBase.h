@@ -123,10 +123,6 @@ public:
 	void BeginFire_Implementation() override;
 	void EndFire_Implementation() override;
 
-
-
-
-
 protected:
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USceneComponent* Root;
@@ -167,12 +163,17 @@ protected:
 	void OnRep_ServerExplosionTime();
 	float ClientExplosionTime;
 
-
-
 protected:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void Tick(float DeltaSeconds) override;
+
+	// Fire
+	void Fire();
+	UFUNCTION(Server, Reliable)
+	void Server_Fire();
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_Fire();
 
 	// Trajectory
 	void InitTrajectory();
@@ -180,7 +181,7 @@ protected:
 	void SimulateTrajectory(const float& DeltaSeconds, bool bMoveMesh);
 
 	// OnExplosion
-	void FireEffects();
+	void Explode();
 
 	// UI
 	void UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo);		

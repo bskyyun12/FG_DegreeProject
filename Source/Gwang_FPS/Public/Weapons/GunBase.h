@@ -132,28 +132,24 @@ public:
 	// Temp
 	FColor GetRoleColor();
 
-	// Getters
+	#pragma region Getters & Setters
 	ADeathMatchCharacter* GetCurrentOwner();
 	ADeathMatchPlayerController* GetOwnerController();
 	EWeaponType GetWeaponType_Implementation() const override;
 
-	// Setters
 	void SetVisibility_Implementation(bool NewVisibility) override;
+	#pragma endregion Getters & Setters
 
 	// Weapon Equip & Drop
 	void OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner) override;
 	void OnWeaponDropped_Implementation() override;
 	
 	// Fire
-	bool CanFire();
 	void BeginFire_Implementation() override;
-	void Fire();
 	void EndFire_Implementation() override;
 
 	// Reload
-	bool CanReload();
 	void BeginReload_Implementation() override;
-	void OnEndReload();
 
 protected:
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
@@ -197,9 +193,36 @@ protected:
 	void BeginPlay() override;
 
 	// Weapon fire
+	bool CanFire();
+	void Fire();
 	bool FireLineTrace(FHitResult& OutHit);
 	void CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor);
+
+	// Fire Effects
 	void FireEffects();
+	UFUNCTION(Server, Unreliable)
+	void Server_FireEffects();
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_FireEffects();
+
+	// Impact Effect
+	void ImpactEffect(const FVector& ImpactPoint);
+	UFUNCTION(Server, Unreliable)
+	void Server_ImpactEffect(const FVector& ImpactPoint);
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_ImpactEffect(const FVector& ImpactPoint);
+
+	// Reload
+	bool CanReload();
+
+	void Reload();
+	UFUNCTION(Server, Reliable)
+	void Server_Reload();
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_Reload();
+	void OnEndReload();
+
+	// Recoil
 	void Recoil();
 
 	// UI

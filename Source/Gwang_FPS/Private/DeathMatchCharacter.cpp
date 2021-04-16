@@ -3,27 +3,16 @@
 #include "DeathMatchCharacter.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/InputSettings.h"
-#include "Kismet/GameplayStatics.h"
-#include "Net/UnrealNetwork.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 #include "DeathMatchPlayerState.h"
 #include "Weapons/WeaponInterface.h"
-#include "Weapons/GunBase.h"
 #include "PlayerControllerInterface.h"
 #include "Animation/FPSAnimInterface.h"
-#include "DeathMatchGameMode.h"
-#include "DeathMatchPlayerController.h"
-
-void ADeathMatchCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, BeginFire, COND_SimulatedOnly);
-	DOREPLIFETIME_CONDITION(ADeathMatchCharacter, EndFire, COND_SimulatedOnly);
-}
 
 ADeathMatchCharacter::ADeathMatchCharacter()
 {
@@ -60,15 +49,6 @@ ADeathMatchCharacter::ADeathMatchCharacter()
 void ADeathMatchCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (IsLocallyControlled())
-	{
-		GI = GetGameInstance<UFPSGameInstance>();
-		if (!ensure(GI != nullptr))
-		{
-			return;
-		}
-	}
 
 	if (FP_Camera != nullptr)
 	{
@@ -218,6 +198,236 @@ void ADeathMatchCharacter::SetCameraWorldRotation(const FRotator& Rotation)
 }
 
 #pragma endregion Getters & Setters
+
+#pragma region Move & Turn
+void ADeathMatchCharacter::MoveForward(float Value)
+{
+	if (Value != 0.0f)
+	{
+		// add movement in that direction
+		AddMovementInput(GetActorForwardVector(), Value);
+	}
+}
+
+void ADeathMatchCharacter::MoveRight(float Value)
+{
+	if (Value != 0.0f)
+	{
+		// add movement in that direction
+		AddMovementInput(GetActorRightVector(), Value);
+	}
+}
+
+void ADeathMatchCharacter::LookUp(float Value)
+{
+	if (Value == 0.f)
+	{
+		return;
+	}
+
+	AddControllerPitchInput(Value);
+
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		Multicast_LookUp(GetControlRotation());
+	}
+
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		Server_LookUp(GetControlRotation());
+	}
+}
+
+void ADeathMatchCharacter::Server_LookUp_Implementation(const FRotator& CameraRotation)
+{
+	Multicast_LookUp(CameraRotation);
+}
+
+void ADeathMatchCharacter::Multicast_LookUp_Implementation(const FRotator& CameraRotation)
+{
+	if (!IsLocallyControlled())
+	{
+		FP_Camera->SetWorldRotation(CameraRotation);
+
+		// Notify ( CharacterMesh )'s Animation that this player's camera pitch is changed
+		UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
+		if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
+		{
+			IFPSAnimInterface::Execute_UpdateSpineAngle(CharacterAnimInstance, CameraRotation.Pitch);
+		}
+	}
+}
+#pragma endregion Move & Turn
+
+#pragma region Spawn and Death
+// Called after ADeathMatchPlayerState::Server_OnSpawn
+void ADeathMatchCharacter::Server_OnSpawnPlayer_Implementation()
+{
+	Multicast_OnSpawn();
+}
+
+void ADeathMatchCharacter::Multicast_OnSpawn_Implementation()
+{
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Capsule_Alive"));
+	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh_Alive"));
+	GetCapsuleComponent()->SetGenerateOverlapEvents(true);
+
+	if (IsLocallyControlled())
+	{
+		HandleCameraOnSpawn();
+	}
+
+	EquipWeapon(GetCurrentMainWeapon());
+}
+
+void ADeathMatchCharacter::HandleCameraOnSpawn()
+{
+	FP_Camera->SetActive(true);
+	DeathCamera->SetActive(false);
+
+	ArmMesh->SetOwnerNoSee(false);
+	GetMesh()->SetOwnerNoSee(true);
+}
+
+void ADeathMatchCharacter::Server_TakeDamage_Implementation(const uint8& DamageOnHealth, const uint8& DamageOnArmor, AActor* DamageCauser)
+{
+	if (GetPlayerState() != nullptr)
+	{
+		uint8 CurrentHealth = GetPlayerState()->GetCurrentHealth();
+		uint8 CurrentArmor = GetPlayerState()->GetCurrentArmor();
+
+		uint8 TotalDamageOnHealth = DamageOnHealth;
+		uint8 TotalDamageOnArmor = DamageOnArmor;
+
+		// Take damage on health when incoming armor damage is greater than current armor
+		if (DamageOnArmor > CurrentArmor)
+		{
+			TotalDamageOnHealth += DamageOnArmor - CurrentArmor;
+		}
+
+		// Make sure total damage doesn't go below 0
+		TotalDamageOnHealth = (TotalDamageOnHealth > CurrentHealth) ? CurrentHealth : TotalDamageOnHealth;
+		TotalDamageOnArmor = (TotalDamageOnArmor > CurrentArmor) ? CurrentArmor : TotalDamageOnArmor;
+
+		CurrentHealth -= TotalDamageOnHealth;
+		CurrentArmor -= TotalDamageOnArmor;
+
+		GetPlayerState()->Server_UpdateHealthArmor(CurrentHealth, CurrentArmor);
+
+		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::TakeDamage => ( %s ) Took ( %i ) Damage By ( %s ). CurrentHealth: %i"), *GetName(), DamageOnHealth, *DamageCauser->GetName(), CurrentHealth);
+
+		if (CurrentHealth <= 0.f)
+		{
+			Server_OnDeath(DamageCauser);
+		}
+
+		Client_OnTakeDamage();
+	}
+}
+
+void ADeathMatchCharacter::Client_OnTakeDamage_Implementation()
+{
+	if (IsLocallyControlled())
+	{
+		if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UPlayerControllerInterface::StaticClass()))
+		{
+			IPlayerControllerInterface::Execute_VignetteEffectOnTakeDamage(GetController());
+		}
+	}
+
+	// TODO: TP damage recieving anim
+}
+
+void ADeathMatchCharacter::Server_OnDeath_Implementation(AActor* DeathCauser)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnDeath => ( %s ) is killed by ( %s )."), *GetName(), *DeathCauser->GetName());
+
+	// Call "Server_OnKill()" for the killer player
+	ADeathMatchCharacter* KillerPlayer = Cast<ADeathMatchCharacter>(DeathCauser);
+	if (KillerPlayer != nullptr)
+	{
+		KillerPlayer->Server_OnKill(this);
+	}
+
+	// Update PlayerState
+	if (GetPlayerState() != nullptr)
+	{
+		GetPlayerState()->Server_OnDeath();
+	}
+
+	// Notify PlayerController that this player is dead
+	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UPlayerControllerInterface::StaticClass()))
+	{
+		IPlayerControllerInterface::Execute_OnPlayerDeath(GetController());
+	}
+
+	Multicast_OnDeath();
+}
+
+void ADeathMatchCharacter::Multicast_OnDeath_Implementation()
+{
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Capsule_Dead"));
+	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh_Dead"));
+	GetCapsuleComponent()->SetGenerateOverlapEvents(false);
+
+	// Drop Weapon
+	DropWeapon();
+
+	if (IsLocallyControlled())
+	{
+		// Activate DeathCamera
+		HandleCameraOnDeath();
+	}
+
+	// Notify ( CharacterMesh )'s Animation that this player is dead => Play Death Anim
+	UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
+	if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
+	{
+		IFPSAnimInterface::Execute_OnDeath(CharacterAnimInstance);
+	}
+}
+
+void ADeathMatchCharacter::HandleCameraOnDeath()
+{
+	FP_Camera->SetActive(false);
+	DeathCamera->SetActive(true);
+
+	UWorld* World = GetWorld();
+	if (World != nullptr)
+	{
+		FHitResult Hit;
+		FVector Start = GetActorLocation();
+		FVector End = Start + DeathCamera->GetForwardVector() * -500.f;
+
+		if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility))
+		{
+			DeathCamera->SetWorldLocation(Hit.ImpactPoint);
+		}
+		else
+		{
+			DeathCamera->SetWorldLocation(End);
+		}
+	}
+
+	ArmMesh->SetOwnerNoSee(true);
+	GetMesh()->SetOwnerNoSee(false);
+}
+
+void ADeathMatchCharacter::Server_OnKill_Implementation(ADeathMatchCharacter* DeadPlayer)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnKill => ( %s ) killed ( %s )."), *GetName(), *DeadPlayer->GetName());
+
+	if (GetPlayerState() != nullptr)
+	{
+		GetPlayerState()->Server_OnKillPlayer();
+	}
+
+	if (DeadPlayer != nullptr)
+	{
+		// TODO: DeadPlayer is probably not needed here. Maybe remove?
+	}
+}
+#pragma endregion Spawn and Death
 
 #pragma region Weapon Pickup & Equip & Drop
 void ADeathMatchCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -498,6 +708,65 @@ void ADeathMatchCharacter::DropWeapon()
 }
 #pragma endregion Weapon Pickup & Equip & Drop
 
+#pragma region Weapon Fire
+void ADeathMatchCharacter::OnBeginFire()
+{
+	if (GetCurrentWeapon() != nullptr)
+	{
+		if (GetLocalRole() == ROLE_Authority)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("(ROLE_Authority) OnBeginFire"));
+			IWeaponInterface::Execute_BeginFire(GetCurrentWeapon());
+		}
+
+		if (GetLocalRole() == ROLE_AutonomousProxy)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("(ROLE_AutonomousProxy) OnBeginFire"));
+			IWeaponInterface::Execute_BeginFire(GetCurrentWeapon());
+			Server_OnBeginFire();
+		}
+	}
+}
+
+void ADeathMatchCharacter::Server_OnBeginFire_Implementation()
+{
+	if (GetCurrentWeapon() != nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("(ROLE_Authority) OnBeginFire"));
+		IWeaponInterface::Execute_BeginFire(GetCurrentWeapon());
+	}
+}
+
+void ADeathMatchCharacter::OnEndFire()
+{
+	if (GetCurrentWeapon() != nullptr)
+	{
+		if (GetLocalRole() == ROLE_Authority)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("(ROLE_Authority) OnEndFire"));
+			IWeaponInterface::Execute_EndFire(GetCurrentWeapon());
+		}
+
+		if (GetLocalRole() == ROLE_AutonomousProxy)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("(ROLE_AutonomousProxy) OnEndFire"));
+			IWeaponInterface::Execute_EndFire(GetCurrentWeapon());
+		}
+		Server_OnEndFire();
+	}
+}
+
+void ADeathMatchCharacter::Server_OnEndFire_Implementation()
+{
+	if (GetCurrentWeapon() != nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("(Server) OnEndFire"));
+		IWeaponInterface::Execute_EndFire(GetCurrentWeapon());
+	}
+}
+#pragma endregion Weapon Fire
+
+#pragma region Weapon Repload
 void ADeathMatchCharacter::BeginReload()
 {
 	Reload();
@@ -533,15 +802,9 @@ void ADeathMatchCharacter::Reload()
 		IWeaponInterface::Execute_BeginReload(GetCurrentWeapon());
 	}
 }
+#pragma endregion Weapon Repload
 
-void ADeathMatchCharacter::ToggleScoreBoardWidget(bool bDisplay)
-{
-	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UPlayerControllerInterface::StaticClass()))
-	{
-		IPlayerControllerInterface::Execute_SetScoreBoardUIVisibility(GetController(), bDisplay);
-	}
-}
-
+#pragma region Crouch
 void ADeathMatchCharacter::HandleCrouch(bool bCrouchButtonDown)
 {
 	UWorld* World = GetWorld();
@@ -605,6 +868,15 @@ void ADeathMatchCharacter::Multicast_HandleCrouch_Implementation(bool bCrouchBut
 		GetCharacterMovement()->MaxWalkSpeed *= bCrouchButtonDown ? 0.5f : 2.0f;
 	}
 }
+#pragma endregion Crouch
+
+void ADeathMatchCharacter::ToggleScoreBoardWidget(bool bDisplay)
+{
+	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UPlayerControllerInterface::StaticClass()))
+	{
+		IPlayerControllerInterface::Execute_SetScoreBoardUIVisibility(GetController(), bDisplay);
+	}
+}
 
 void ADeathMatchCharacter::StartChat()
 {
@@ -613,297 +885,3 @@ void ADeathMatchCharacter::StartChat()
 		IPlayerControllerInterface::Execute_StartChat(GetController());
 	}
 }
-
-void ADeathMatchCharacter::LookUp(float Value)
-{
-	if (Value == 0.f)
-	{
-		return;
-	}
-
-	AddControllerPitchInput(Value);
-
-	if (GetLocalRole() == ROLE_Authority)
-	{
-		Multicast_LookUp(GetControlRotation());
-	}
-
-	if (GetLocalRole() == ROLE_AutonomousProxy)
-	{
-		Server_LookUp(GetControlRotation());
-	}
-}
-
-void ADeathMatchCharacter::Server_LookUp_Implementation(const FRotator& CameraRotation)
-{
-	Multicast_LookUp(CameraRotation);
-}
-
-void ADeathMatchCharacter::Multicast_LookUp_Implementation(const FRotator& CameraRotation)
-{
-	if (!IsLocallyControlled())
-	{
-		FP_Camera->SetWorldRotation(CameraRotation);
-
-		// Notify ( CharacterMesh )'s Animation that this player's camera pitch is changed
-		UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
-		if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
-		{
-			IFPSAnimInterface::Execute_UpdateSpineAngle(CharacterAnimInstance, CameraRotation.Pitch);
-		}
-	}
-}
-
-void ADeathMatchCharacter::OnBeginFire()
-{
-	if (GetCurrentWeapon() != nullptr)
-	{
-		if (GetLocalRole() == ROLE_AutonomousProxy)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("(ROLE_AutonomousProxy) OnBeginFire"));
-			IWeaponInterface::Execute_BeginFire(GetCurrentWeapon());
-		}
-		Server_OnBeginFire();
-	}
-}
-
-void ADeathMatchCharacter::Server_OnBeginFire_Implementation()
-{
-	if (GetCurrentWeapon() != nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("(Server) OnBeginFire"));
-		BeginFire++;	// OnRep_BeginFire()
-		IWeaponInterface::Execute_BeginFire(GetCurrentWeapon());
-	}
-}
-
-// All Other Clients ( COND_SimulatedOnly )
-void ADeathMatchCharacter::OnRep_BeginFire()
-{
-	if (GetCurrentWeapon() != nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("(Simulated Client) OnBeginFire"));
-		IWeaponInterface::Execute_BeginFire(GetCurrentWeapon());
-	}
-}
-
-void ADeathMatchCharacter::OnEndFire()
-{
-	if (GetCurrentWeapon() != nullptr)
-	{
-		if (GetLocalRole() == ROLE_AutonomousProxy)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("(ROLE_AutonomousProxy) OnEndFire"));
-			IWeaponInterface::Execute_EndFire(GetCurrentWeapon());
-		}
-		Server_OnEndFire();
-	}
-}
-
-void ADeathMatchCharacter::Server_OnEndFire_Implementation()
-{
-	if (GetCurrentWeapon() != nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("(Server) OnEndFire"));
-		EndFire++;
-		IWeaponInterface::Execute_EndFire(GetCurrentWeapon());
-	}
-}
-
-// All Other Clients ( COND_SimulatedOnly )
-void ADeathMatchCharacter::OnRep_EndFire()
-{
-	if (GetCurrentWeapon() != nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("(Simulated Client) OnEndFire"));
-		IWeaponInterface::Execute_EndFire(GetCurrentWeapon());
-	}
-}
-
-void ADeathMatchCharacter::MoveForward(float Value)
-{
-	if (Value != 0.0f)
-	{
-		// add movement in that direction
-		AddMovementInput(GetActorForwardVector(), Value);
-	}
-}
-
-void ADeathMatchCharacter::MoveRight(float Value)
-{
-	if (Value != 0.0f)
-	{
-		// add movement in that direction
-		AddMovementInput(GetActorRightVector(), Value);
-	}
-}
-
-#pragma region Spawn and Death
-// Called after ADeathMatchPlayerState::Server_OnSpawn
-void ADeathMatchCharacter::Server_OnSpawnPlayer_Implementation()
-{
-	Multicast_OnSpawn();
-}
-
-void ADeathMatchCharacter::Multicast_OnSpawn_Implementation()
-{
-	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Capsule_Alive"));
-	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh_Alive"));
-	GetCapsuleComponent()->SetGenerateOverlapEvents(true);
-
-	if (IsLocallyControlled())
-	{
-		HandleCameraOnSpawn();
-	}
-
-	EquipWeapon(GetCurrentMainWeapon());
-}
-
-void ADeathMatchCharacter::HandleCameraOnSpawn()
-{
-	FP_Camera->SetActive(true);
-	DeathCamera->SetActive(false);
-
-	ArmMesh->SetOwnerNoSee(false);
-	GetMesh()->SetOwnerNoSee(true);
-}
-
-void ADeathMatchCharacter::Server_TakeDamage_Implementation(const uint8& DamageOnHealth, const uint8& DamageOnArmor, AActor* DamageCauser)
-{
-	if (GetPlayerState() != nullptr)
-	{
-		uint8 CurrentHealth = GetPlayerState()->GetCurrentHealth();
-		uint8 CurrentArmor = GetPlayerState()->GetCurrentArmor();
-
-		uint8 TotalDamageOnHealth = DamageOnHealth;
-		uint8 TotalDamageOnArmor = DamageOnArmor;
-
-		// Take damage on health when incoming armor damage is greater than current armor
-		if (DamageOnArmor > CurrentArmor)
-		{
-			TotalDamageOnHealth += DamageOnArmor - CurrentArmor;
-		}
-
-		// Make sure total damage doesn't go below 0
-		TotalDamageOnHealth = (TotalDamageOnHealth > CurrentHealth) ? CurrentHealth : TotalDamageOnHealth;
-		TotalDamageOnArmor = (TotalDamageOnArmor > CurrentArmor) ? CurrentArmor : TotalDamageOnArmor;
-
-		CurrentHealth -= TotalDamageOnHealth;
-		CurrentArmor -= TotalDamageOnArmor;
-
-		GetPlayerState()->Server_UpdateHealthArmor(CurrentHealth, CurrentArmor);
-
-		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::TakeDamage => ( %s ) Took ( %i ) Damage By ( %s ). CurrentHealth: %i"), *GetName(), DamageOnHealth, *DamageCauser->GetName(), CurrentHealth);
-
-		if (CurrentHealth <= 0.f)
-		{
-			Server_OnDeath(DamageCauser);
-		}
-
-		Client_OnTakeDamage();
-	}
-}
-
-void ADeathMatchCharacter::Client_OnTakeDamage_Implementation()
-{
-	if (IsLocallyControlled())
-	{
-		if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UPlayerControllerInterface::StaticClass()))
-		{
-			IPlayerControllerInterface::Execute_VignetteEffectOnTakeDamage(GetController());
-		}
-	}
-
-	// TODO: TP damage recieving anim
-}
-
-void ADeathMatchCharacter::Server_OnDeath_Implementation(AActor* DeathCauser)
-{
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnDeath => ( %s ) is killed by ( %s )."), *GetName(), *DeathCauser->GetName());
-
-	// Call "Server_OnKill()" for the killer player
-	ADeathMatchCharacter* KillerPlayer = Cast<ADeathMatchCharacter>(DeathCauser);
-	if (KillerPlayer != nullptr)
-	{
-		KillerPlayer->Server_OnKill(this);
-	}
-
-	// Update PlayerState
-	if (GetPlayerState() != nullptr)
-	{
-		GetPlayerState()->Server_OnDeath();
-	}
-
-	// Notify PlayerController that this player is dead
-	if (GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetController(), UPlayerControllerInterface::StaticClass()))
-	{
-		IPlayerControllerInterface::Execute_OnPlayerDeath(GetController());
-	}
-
-	Multicast_OnDeath();
-}
-
-void ADeathMatchCharacter::Multicast_OnDeath_Implementation()
-{
-	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Capsule_Dead"));
-	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh_Dead"));
-	GetCapsuleComponent()->SetGenerateOverlapEvents(false);
-
-	// Drop Weapon
-	DropWeapon();
-
-	if (IsLocallyControlled())
-	{
-		// Activate DeathCamera
-		HandleCameraOnDeath();
-	}
-
-	// Notify ( CharacterMesh )'s Animation that this player is dead => Play Death Anim
-	UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
-	if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
-	{
-		IFPSAnimInterface::Execute_OnDeath(CharacterAnimInstance);
-	}
-}
-
-void ADeathMatchCharacter::HandleCameraOnDeath()
-{
-	FP_Camera->SetActive(false);
-	DeathCamera->SetActive(true);
-
-	UWorld* World = GetWorld();
-	if (World != nullptr)
-	{
-		FHitResult Hit;
-		FVector Start = GetActorLocation();
-		FVector End = Start + DeathCamera->GetForwardVector() * -500.f;
-
-		if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility))
-		{
-			DeathCamera->SetWorldLocation(Hit.ImpactPoint);
-		}
-		else
-		{
-			DeathCamera->SetWorldLocation(End);
-		}
-	}
-
-	ArmMesh->SetOwnerNoSee(true);
-	GetMesh()->SetOwnerNoSee(false);
-}
-
-void ADeathMatchCharacter::Server_OnKill_Implementation(ADeathMatchCharacter* DeadPlayer)
-{
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnKill => ( %s ) killed ( %s )."), *GetName(), *DeadPlayer->GetName());
-
-	if (GetPlayerState() != nullptr)
-	{
-		GetPlayerState()->Server_OnKillPlayer();
-	}
-
-	if (DeadPlayer != nullptr)
-	{
-		// TODO: DeadPlayer is probably not needed here. Maybe remove?
-	}
-}
-#pragma endregion

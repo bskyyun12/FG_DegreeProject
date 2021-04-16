@@ -4,14 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "FPSGameInstance.h"
-#include "DeathMatchGameMode.h"
 #include "DeathMatchCharacter.generated.h"
 
 class UInputComponent;
 class USkeletalMeshComponent;
 class UCameraComponent;
-class AGunBase;
 class ADeathMatchPlayerState;
 class UFPSGameInstance;
 
@@ -20,10 +17,10 @@ class GWANG_FPS_API ADeathMatchCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-
 public:	
 	ADeathMatchCharacter();
 
+	#pragma region Getter & Setters
 	// Getters
 	ADeathMatchPlayerState* GetPlayerState();
 	AActor* GetCurrentWeapon();
@@ -40,13 +37,17 @@ public:
 	// Setters
 	void SetCurrentlyHeldWeapon(AActor* NewWeapon);
 	void SetCameraWorldRotation(const FRotator& Rotation);
+	#pragma endregion Getter & Setters
 
+	// Called after ADeathMatchPlayerController::Server_OnSpawnPlayer
 	UFUNCTION(Server, Reliable)
 	void Server_OnSpawnPlayer();
 
 	// TakeDamage
 	UFUNCTION(Server, Reliable)
 	void Server_TakeDamage(const uint8& DamageOnHealth, const uint8& DamageOnArmor, AActor* DamageCauser);
+	UFUNCTION(Client, Reliable)
+	void Client_OnTakeDamage();
 
 protected:
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
@@ -62,20 +63,26 @@ protected:
 	UCameraComponent* DeathCamera;
 
 	// Cache
-	UFPSGameInstance* GI;
 	ADeathMatchPlayerState* PS;
 
 protected:
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 	virtual void BeginPlay();
 
 	DECLARE_DELEGATE_OneParam(FOneBooleanDelegate, bool)
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
+
+	#pragma region Move & LookUp
 	void MoveForward(float Val);
 	void MoveRight(float Val);
 
-	// Weapon Equip & Swap
+	void LookUp(float Value);
+	UFUNCTION(Server, Reliable)
+	void Server_LookUp(const FRotator& CameraRotation);
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_LookUp(const FRotator& CameraRotation);
+	#pragma endregion Move & LookUp
+
+	#pragma region Weapon Equip & Swap
 	void EquipMainWeapon();
 	void EquipSubWeapon();
 	void EquipMeleeWeapon();
@@ -85,16 +92,9 @@ protected:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_EquipWeapon(AActor* WeaponToEquip);
 	void EquipWeapon(AActor* WeaponToEquip);
+	#pragma endregion Weapon Equip & Swap
 
-	// Weapon drop
-	void Drop();
-	UFUNCTION(Server, Reliable)
-	void Server_DropWeapon();
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_DropWeapon();
-	void DropWeapon();
-
-	// Weapon pickup
+	#pragma region Weapon Pickup & Drop
 	UFUNCTION()
 	void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 	void PickupWeapon(AActor* WeaponToPickup);
@@ -103,66 +103,49 @@ protected:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PickupWeapon(AActor* Weapon);
 
-	// Weapon Reload
+	void Drop();
+	UFUNCTION(Server, Reliable)
+	void Server_DropWeapon();
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_DropWeapon();
+	void DropWeapon();
+	#pragma endregion Weapon Pickup & Drop
+
+	#pragma region Weapon Fire
+	void OnBeginFire();
+	UFUNCTION(Server, Reliable)
+	void Server_OnBeginFire();
+
+	void OnEndFire();
+	UFUNCTION(Server, Reliable)
+	void Server_OnEndFire();
+	#pragma endregion Weapon Fire
+
+	#pragma region Weapon Reload
 	void BeginReload();
 	UFUNCTION(Server, Reliable)
 	void Server_BeginReload();
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_BeginReload();
 	void Reload();
+	#pragma endregion Weapon Reload
 
-	// Toggle ScoreBoard
-	void ToggleScoreBoardWidget(bool bDisplay);
-
-	// Chat
-	void StartChat();
-
-	// Look up
-	void LookUp(float Value);
-	UFUNCTION(Server, Reliable)
-	void Server_LookUp(const FRotator& CameraRotation);
-	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_LookUp(const FRotator& CameraRotation);
-
-	// Begin Fire
-	void OnBeginFire();
-	UFUNCTION(Server, Reliable)
-	void Server_OnBeginFire();
-	UPROPERTY(ReplicatedUsing=OnRep_BeginFire)
-	uint8 BeginFire;
-	UFUNCTION()
-	void OnRep_BeginFire();
-
-	// End Fire
-	void OnEndFire();
-	UFUNCTION(Server, Reliable)
-	void Server_OnEndFire();
-	UPROPERTY(ReplicatedUsing = OnRep_EndFire)
-	uint8 EndFire;
-	UFUNCTION()
-	void OnRep_EndFire();
-
-	// OnSpawn
+	#pragma region Spawn & Death
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnSpawn();
 	void HandleCameraOnSpawn();
 
-	// TakeDamage
-	UFUNCTION(Client, Reliable)
-	void Client_OnTakeDamage();
-
-	// OnDeath
 	UFUNCTION(Server, Reliable)
 	void Server_OnDeath(AActor* DeathCauser);
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnDeath();
 	void HandleCameraOnDeath();
 
-	// OnKill
 	UFUNCTION(Server, Reliable)
 	void Server_OnKill(ADeathMatchCharacter* DeadPlayer);
+	#pragma endregion Spawn & Death
 
-	// Crouch
+	#pragma region Crouch
 	void HandleCrouch(bool bCrouchButtonDown);
 	FTimerHandle CrouchTimerHandle;
 	FVector CameraRelativeLocation_Default;
@@ -175,4 +158,11 @@ protected:
 	void Server_HandleCrouch(bool bCrouchButtonDown);
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_HandleCrouch(bool bCrouchButtonDown);
+	#pragma endregion Crouch
+
+	// Toggle ScoreBoard
+	void ToggleScoreBoardWidget(bool bDisplay);
+
+	// Chat
+	void StartChat();
 };

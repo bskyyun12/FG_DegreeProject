@@ -20,19 +20,16 @@ FColor AGunBase::GetRoleColor()
 {
 	if (GetCurrentOwner()->GetLocalRole() == ROLE_Authority)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ROLE_Authority"));
 		return FColor::Red;
 	}
 
 	if (GetCurrentOwner()->GetLocalRole() == ROLE_AutonomousProxy)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ROLE_AutonomousProxy"));
 		return FColor::Green;
 	}
 
 	if (GetCurrentOwner()->GetLocalRole() == ROLE_SimulatedProxy)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ROLE_SimulatedProxy"));
 		return FColor::Blue;
 	}
 
@@ -228,51 +225,69 @@ void AGunBase::Fire()
 		return;
 	}
 
-	FireEffects();
+	// Fire Effects
+	if (GetCurrentOwner()->IsLocallyControlled())
+	{
+		FireEffects();
+	}
 
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		Multicast_FireEffects();
+	}
+
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		Server_FireEffects();
+	}
+
+	// Ammo
 	CurrentAmmo--;
 	if (GetCurrentOwner()->IsLocallyControlled())
 	{
 		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 	}
 
-	if (GetCurrentOwner() != nullptr)
+	FHitResult Hit;
+	if (FireLineTrace(Hit))
 	{
-		FHitResult Hit;
-		if (FireLineTrace(Hit))
+		// TODO: Change to interface approach
+		ADeathMatchCharacter* HitPlayer = Cast<ADeathMatchCharacter>(Hit.GetActor());
+		if (HitPlayer != nullptr)
 		{
-			// TODO: Change to interface approach
-			ADeathMatchCharacter* HitPlayer = Cast<ADeathMatchCharacter>(Hit.GetActor());
-			if (HitPlayer != nullptr)
+			// Attacker => Crosshair UI change on hit player
+			if (GetCurrentOwner()->IsLocallyControlled())
 			{
-				// Attacker => Crosshair UI change on hit player
-				if (GetCurrentOwner()->IsLocallyControlled())
+				if (GetCurrentOwner()->GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetCurrentOwner()->GetController(), UPlayerControllerInterface::StaticClass()))
 				{
-					if (GetCurrentOwner()->GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetCurrentOwner()->GetController(), UPlayerControllerInterface::StaticClass()))
-					{
-						IPlayerControllerInterface::Execute_ChangeCrosshairUIOnHit(GetCurrentOwner()->GetController());
-					}
-				}
-
-				if (GetCurrentOwner()->GetLocalRole() == ROLE_Authority)
-				{
-					float DamageOnHealth = 0.f;
-					float DamageOnArmor = 0.f;
-					CalcDamageToApply(Hit.PhysMaterial.Get(), DamageOnHealth, DamageOnArmor);
-					HitPlayer->Server_TakeDamage((uint8)DamageOnHealth, (uint8)DamageOnArmor, GetOwner());
+					IPlayerControllerInterface::Execute_ChangeCrosshairUIOnHit(GetCurrentOwner()->GetController());
 				}
 			}
-			else
+
+			// Apply damage ( ROLE_Authority )
+			if (GetCurrentOwner()->GetLocalRole() == ROLE_Authority)
 			{
-				// TODO: Move to NetMulticast Unreliable?
-				if (WeaponInfo.HitEmitterOnEnvironment != nullptr)
-				{
-					UWorld* World = GetWorld();
-					if (World != nullptr)
-					{
-						UGameplayStatics::SpawnEmitterAtLocation(World, WeaponInfo.HitEmitterOnEnvironment, Hit.ImpactPoint);
-					}
-				}
+				float DamageOnHealth = 0.f;
+				float DamageOnArmor = 0.f;
+				CalcDamageToApply(Hit.PhysMaterial.Get(), DamageOnHealth, DamageOnArmor);
+				HitPlayer->Server_TakeDamage((uint8)DamageOnHealth, (uint8)DamageOnArmor, GetOwner());
+			}
+		}
+		else
+		{
+			if (GetCurrentOwner()->IsLocallyControlled())
+			{
+				ImpactEffect(Hit.ImpactPoint);
+			}
+
+			if (GetLocalRole() == ROLE_Authority)
+			{
+				Multicast_ImpactEffect(Hit.ImpactPoint);
+			}
+
+			if (GetLocalRole() == ROLE_AutonomousProxy)
+			{
+				Server_ImpactEffect(Hit.ImpactPoint);
 			}
 		}
 	}
@@ -326,73 +341,6 @@ bool AGunBase::FireLineTrace(FHitResult& OutHit)
 	return false;
 }
 
-void AGunBase::FireEffects()
-{
-	if (GetCurrentOwner() != nullptr)
-	{
-		// This moves camera's pitch.
-		Recoil();
-
-		// Play FireSound
-		if (WeaponInfo.FireSound != nullptr)
-		{			
-			UGameplayStatics::SpawnSoundAttached(WeaponInfo.FireSound, TPWeaponMesh, WeaponInfo.TP_FireEmitterSocketName);
-		}
-
-		// Locally controlled owner
-		if (GetCurrentOwner()->IsLocallyControlled())
-		{
-			// FP FireAnim
-			UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
-			if (AnimInstance != nullptr && WeaponInfo.FP_FireAnimation != nullptr)
-			{
-				AnimInstance->Montage_Play(WeaponInfo.FP_FireAnimation);
-			}
-
-			// FP FireEmitter
-			if (WeaponInfo.FireEmitter != nullptr)
-			{
-				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, FPWeaponMesh, WeaponInfo.FP_FireEmitterSocketName);
-			}
-
-			// Camera shake
-			GetOwnerController()->ClientStartCameraShake(WeaponInfo.CameraShakeOnFire);
-		}
-		// Not locally controlled
-		else
-		{
-			// TP FireAnim
-			UAnimInstance* AnimInstance = GetCurrentOwner()->GetMesh()->GetAnimInstance();
-			if (AnimInstance != nullptr && WeaponInfo.TP_FireAnimation != nullptr)
-			{
-				AnimInstance->Montage_Play(WeaponInfo.TP_FireAnimation);
-			}
-
-			// TP FireEmitter
-			if (WeaponInfo.FireEmitter != nullptr)
-			{
-				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, TPWeaponMesh, WeaponInfo.TP_FireEmitterSocketName);
-			}
-		}
-	}
-}
-
-void AGunBase::Recoil()
-{
-	if (GetOwnerController() != nullptr)
-	{
-		// Camera pitch movement
-		float PitchDelta = 0.f;
-		if (WeaponInfo.RecoilCurve_Vertical != nullptr)
-		{
-			PitchDelta = WeaponInfo.RecoilCurve_Vertical->GetFloatValue(RecoilTimer);
-			RecoilTimer += WeaponInfo.FireRate;
-		}
-		GetOwnerController()->SetControlRotation(GetOwnerController()->GetControlRotation() + FRotator(PitchDelta, 0.f, 0.f));
-		GetCurrentOwner()->SetCameraWorldRotation(GetOwnerController()->GetControlRotation());
-	}
-}
-
 void AGunBase::CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor)
 {
 	float DamageMultiplier = 1.f;
@@ -435,14 +383,155 @@ void AGunBase::UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo
 }
 #pragma endregion Weapon Fire
 
-#pragma region Weapon Reload
+#pragma region Impact Effect
+void AGunBase::ImpactEffect(const FVector& ImpactPoint)
+{
+	if (WeaponInfo.HitEmitterOnEnvironment != nullptr)
+	{
+		UWorld* World = GetWorld();
+		if (World != nullptr)
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(World, WeaponInfo.HitEmitterOnEnvironment, ImpactPoint);
+		}
+	}
+}
 
+void AGunBase::Server_ImpactEffect_Implementation(const FVector& ImpactPoint)
+{
+	Multicast_ImpactEffect(ImpactPoint);
+}
+
+void AGunBase::Multicast_ImpactEffect_Implementation(const FVector& ImpactPoint)
+{
+	if (GetCurrentOwner() != nullptr && !GetCurrentOwner()->IsLocallyControlled())
+	{
+		ImpactEffect(ImpactPoint);
+	}
+}
+#pragma endregion Impact Effect
+
+#pragma region Fire Effects (FireSound, MuzzleFlash, Recoil, FireAnim ...)
+void AGunBase::Server_FireEffects_Implementation()
+{
+	Multicast_FireEffects();
+}
+
+void AGunBase::Multicast_FireEffects_Implementation()
+{
+	if (GetCurrentOwner() != nullptr && !GetCurrentOwner()->IsLocallyControlled())
+	{
+		FireEffects();
+	}
+}
+
+void AGunBase::FireEffects()
+{
+	if (GetCurrentOwner() != nullptr)
+	{
+		// This moves camera's pitch. 
+		Recoil();
+
+		// Play FireSound
+		if (WeaponInfo.FireSound != nullptr)
+		{
+			UGameplayStatics::SpawnSoundAttached(WeaponInfo.FireSound, TPWeaponMesh, WeaponInfo.TP_FireEmitterSocketName);
+			UE_LOG(LogTemp, Warning, TEXT("FireEffects => PlaySound ( %i )"), GetLocalRole());
+		}
+
+		// Locally controlled owner
+		if (GetCurrentOwner()->IsLocallyControlled())
+		{
+			// FP FireAnim
+			UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
+			if (AnimInstance != nullptr && WeaponInfo.FP_FireAnimation != nullptr)
+			{
+				AnimInstance->Montage_Play(WeaponInfo.FP_FireAnimation);
+			}
+
+			// FP FireEmitter
+			if (WeaponInfo.FireEmitter != nullptr)
+			{
+				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, FPWeaponMesh, WeaponInfo.FP_FireEmitterSocketName);
+				UE_LOG(LogTemp, Warning, TEXT("FireEffects => FP_FireEmitter ( %i )"), GetLocalRole());
+			}
+
+			// Camera shake
+			GetOwnerController()->ClientStartCameraShake(WeaponInfo.CameraShakeOnFire);
+		}
+		else
+		{
+			// TP FireAnim
+			UAnimInstance* AnimInstance = GetCurrentOwner()->GetMesh()->GetAnimInstance();
+			if (AnimInstance != nullptr && WeaponInfo.TP_FireAnimation != nullptr)
+			{
+				AnimInstance->Montage_Play(WeaponInfo.TP_FireAnimation);
+			}
+
+			// TP FireEmitter
+			if (WeaponInfo.FireEmitter != nullptr)
+			{
+				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, TPWeaponMesh, WeaponInfo.TP_FireEmitterSocketName);
+				UE_LOG(LogTemp, Warning, TEXT("FireEffects => TP_FireEmitter ( %i )"), GetLocalRole());
+			}
+		}
+	}
+}
+
+void AGunBase::Recoil()
+{
+	if (GetOwnerController() != nullptr)
+	{
+		// Camera pitch movement
+		float PitchDelta = 0.f;
+		if (WeaponInfo.RecoilCurve_Vertical != nullptr)
+		{
+			PitchDelta = WeaponInfo.RecoilCurve_Vertical->GetFloatValue(RecoilTimer);
+			RecoilTimer += WeaponInfo.FireRate;
+		}
+		GetOwnerController()->SetControlRotation(GetOwnerController()->GetControlRotation() + FRotator(PitchDelta, 0.f, 0.f));
+		GetCurrentOwner()->SetCameraWorldRotation(GetOwnerController()->GetControlRotation());
+	}
+}
+#pragma endregion Fire Effects (FireSound, MuzzleFlash, Recoil, FireAnim ...)
+
+#pragma region Weapon Reload
 bool AGunBase::CanReload()
 {
 	return GetCurrentOwner() != nullptr && !bIsReloading && CurrentRemainingAmmo > 0 && CurrentAmmo != WeaponInfo.MagazineCapacity;
 }
 
 void AGunBase::BeginReload_Implementation()
+{
+	if (GetCurrentOwner() != nullptr && GetCurrentOwner()->IsLocallyControlled())
+	{
+		Reload();
+	}
+
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		Multicast_Reload();
+	}
+
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		Server_Reload();
+	}
+}
+
+void AGunBase::Server_Reload_Implementation()
+{
+	Multicast_Reload();
+}
+
+void AGunBase::Multicast_Reload_Implementation()
+{
+	if (GetCurrentOwner() != nullptr && !GetCurrentOwner()->IsLocallyControlled())
+	{
+		Reload();
+	}
+}
+
+void AGunBase::Reload()
 {
 	if (CanReload())
 	{
@@ -464,6 +553,7 @@ void AGunBase::BeginReload_Implementation()
 			if (AnimInstance != nullptr && WeaponInfo.FP_ArmsReloadAnim != nullptr)
 			{
 				AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
+				UE_LOG(LogTemp, Warning, TEXT("Reload => FP_ArmsReloadAnim ( %i )"), GetLocalRole());
 			}
 
 			// Play FP_WeaponReloadAnim
@@ -479,6 +569,7 @@ void AGunBase::BeginReload_Implementation()
 			if (AnimInstance != nullptr && WeaponInfo.TP_ReloadAnim != nullptr)
 			{
 				AnimInstance->Montage_Play(WeaponInfo.TP_ReloadAnim);
+				UE_LOG(LogTemp, Warning, TEXT("Reload => TP_ReloadAnim ( %i )"), GetLocalRole());
 			}
 		}
 	}
@@ -486,6 +577,8 @@ void AGunBase::BeginReload_Implementation()
 
 void AGunBase::OnEndReload()
 {
+	UE_LOG(LogTemp, Warning, TEXT("Reload => OnEndReload ( %i )"), GetLocalRole());
+
 	bIsReloading = false;
 	int AmmoToPool = WeaponInfo.MagazineCapacity - CurrentAmmo;
 	AmmoToPool = (CurrentRemainingAmmo < AmmoToPool) ? CurrentRemainingAmmo : AmmoToPool;
