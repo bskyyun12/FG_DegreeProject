@@ -67,7 +67,7 @@ AGrenadeBase::AGrenadeBase()
 	ExplosionCollider = CreateDefaultSubobject<USphereComponent>(TEXT("ExplosionCollider"));
 	ExplosionCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ExplosionCollider->InitSphereRadius(GrenadeInfo.ExplosionRadius);
-	ExplosionCollider->SetupAttachment(TPWeaponMesh);
+	ExplosionCollider->SetupAttachment(RootComponent);
 
 	// Replicate frequency
 	NetUpdateFrequency = 1.f;
@@ -87,6 +87,7 @@ void AGrenadeBase::Tick(float DeltaSeconds)
 	SimulateTrajectory(DeltaSeconds, true);
 	FPWeaponMesh->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 	TPWeaponMesh->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	ExplosionCollider->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 
 	if (GetLocalRole() == ROLE_Authority)
 	{
