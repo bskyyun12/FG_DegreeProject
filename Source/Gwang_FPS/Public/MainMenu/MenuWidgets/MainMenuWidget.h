@@ -60,7 +60,7 @@ public:
 
 	void SetSelectIndex(int Index);
 
-	void ShowErrorWidget(const FString& Title, const FString& ErrorMsg, bool bEnableCloseButton = true);
+	void ShowErrorWidget(const FString& Title, const FString& ErrorMsg, bool bEnableCloseButton = true, const float& Duration = -1.f);
 
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSessionListDelegate, int, SelectedIndex);
 	FSessionListDelegate OnUpdateUI;

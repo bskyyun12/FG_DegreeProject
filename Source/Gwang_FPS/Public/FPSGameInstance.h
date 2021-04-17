@@ -145,5 +145,4 @@ private:
 
 	// Called on NetworkFailure
 	void OnNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type Type, const FString& ErrorMsg);
-public:
 };

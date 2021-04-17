@@ -17,7 +17,7 @@ class GWANG_FPS_API UMenuError : public UFPSWidgetBase
 public:
 	bool Initialize() override;
 
-	void UpdateUI(const FString& Title, const FString& ErrorMsg, bool bEnableCloseButton = true);
+	void UpdateUI(const FString& Title, const FString& ErrorMsg, bool bEnableCloseButton = true, const float& Duration = -1.f);
 
 private:
 	UPROPERTY(meta = (BindWidget))

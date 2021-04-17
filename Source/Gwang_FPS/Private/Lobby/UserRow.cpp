@@ -3,7 +3,9 @@
 #include "Lobby/UserRow.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
+#include "GameFramework/PlayerState.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Kismet/KismetTextLibrary.h"
 
 #include "Lobby/LobbyPlayerController.h"
 #include "Lobby/LobbyPlayerControllerInterface.h"
@@ -24,10 +26,15 @@ bool UUserRow::Initialize()
 void UUserRow::UpdateRow(const FLobbyPlayerData& Data)
 {
 	Text_UserName->SetText(FText::FromName(Data.PlayerName));
+	Text_ID->SetText(UKismetTextLibrary::Conv_IntToText(Data.Id));
 
-	if (Data.PlayerController == GetOwningPlayer())
+	APlayerState* PlayerState = GetOwningPlayer()->GetPlayerState<APlayerState>();
+	if (PlayerState != nullptr)
 	{
-		Button_Ready->SetVisibility(ESlateVisibility::Visible);
+		if (Data.Id == PlayerState->GetPlayerId())
+		{
+			Button_Ready->SetVisibility(ESlateVisibility::Visible);
+		}
 	}
 
 	bIsReady = Data.bIsReady;

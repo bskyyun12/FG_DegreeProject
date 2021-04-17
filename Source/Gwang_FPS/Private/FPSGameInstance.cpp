@@ -177,7 +177,7 @@ void UFPSGameInstance::OnFindSessionComplete(bool bSuccess)
 		if (MainMenu != nullptr)
 		{
 			MainMenu->UpdateSessionList(ServerData);
-			MainMenu->ShowErrorWidget("", "Finished Finding sessions");
+			MainMenu->ShowErrorWidget("", "Finished Finding sessions", true, 1.f);
 		}
 	}
 }
@@ -286,6 +286,4 @@ FPlayerData UFPSGameInstance::GetPlayerData() const
 void UFPSGameInstance::SetPlayerData(const FPlayerData& Data)
 {
 	PlayerData = Data;
-
-	UE_LOG(LogTemp, Warning, TEXT(">>>>>>>>>>>>>>UFPSGameInstance::SetUserData => PlayerName: %s, Team: %i, StartMain: %i"), *Data.PlayerName.ToString(), Data.Team, Data.StartMainWeapon);
 }

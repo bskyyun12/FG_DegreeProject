@@ -68,9 +68,9 @@ void UMainMenuWidget::SetSelectIndex(int Index)
 	OnUpdateUI.Broadcast(SelectedIndex);
 }
 
-void UMainMenuWidget::ShowErrorWidget(const FString& Title, const FString& ErrorMsg, bool bEnableCloseButton)
+void UMainMenuWidget::ShowErrorWidget(const FString& Title, const FString& ErrorMsg, bool bEnableCloseButton, const float& Duration)
 {
-	ErrorWidget->UpdateUI(Title, ErrorMsg, bEnableCloseButton);
+	ErrorWidget->UpdateUI(Title, ErrorMsg, bEnableCloseButton, Duration);
 }
 
 void UMainMenuWidget::OnClicked_Button_Create()

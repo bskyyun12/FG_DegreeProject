@@ -14,34 +14,57 @@
 void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
+	UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::PostLogin => ( %s ) logged in!"), *NewPlayer->GetName());
 
-	// TODO: Make Logout and remove the UserData
 	FLobbyPlayerData Data;
-	Data.PlayerName = GetUserName(NewPlayer);
+	Data.Id = GetPlayerId(NewPlayer);
+	Data.PlayerName = GetPlayerName(NewPlayer);
 	Data.Team = GetTeamToJoin();
 	Data.bIsReady = false;
 	Data.StartMainWeapon = EMainWeapon::M4A1;
 	Data.StartSubWeapon = ESubWeapon::Pistol;
 	Data.StartMeleeWeapon = EMeleeWeapon::Knife;
 	Data.StartGrenade = EGrenade::Grenade;
-	Data.PlayerController = NewPlayer;
 	LobbyPlayerData.Add(Data);
 
 	PlayerControllers.Add(NewPlayer);
+
+	UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::PostLogin => NumPlayers: %i"), PlayerControllers.Num());
 }
 
 void ALobbyGameMode::Logout(AController* Exiting)
 {
-	Super::Logout(Exiting);
+	UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::Logout"));
+	APlayerController* PlayerController = Cast<APlayerController>(Exiting);
+	if (!ensure(PlayerController != nullptr))
+	{
+		return;
+	}
 
-	PlayerControllers.Remove(Cast<APlayerController>(Exiting));
+	uint8 Index = 0;
+	for (uint8 i = 0; i < LobbyPlayerData.Num(); i++)
+	{
+		if (LobbyPlayerData[i].Id == GetPlayerId(PlayerController))
+		{
+			Index = i;
+			break;
+		}
+	}
+	if (Index != 0)	// not server player
+	{
+		LobbyPlayerData.RemoveAt(Index);
+	}
+	PlayerControllers.Remove(PlayerController);
+
+	UpdateLobbyUI();
+	Super::Logout(Exiting);
 }
 
 FLobbyPlayerData ALobbyGameMode::GetLobbyPlayerData(APlayerController* PlayerController) const
 {
 	for (const FLobbyPlayerData& Data : LobbyPlayerData)
 	{
-		if (Data.PlayerController == PlayerController)
+		if (Data.Id == GetPlayerId(PlayerController))
 		{
 			return Data;
 		}
@@ -55,10 +78,10 @@ void ALobbyGameMode::UpdateLobbyPlayerData(const FLobbyPlayerData& UpdatedData)
 {
 	for (FLobbyPlayerData& Data : LobbyPlayerData)
 	{
-		if (Data.PlayerController == UpdatedData.PlayerController)
+		if (Data.Id == UpdatedData.Id)
 		{
 			Data = UpdatedData;
-			UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::UpdateLobbyData => ( %s ) Data Updated!"), *Data.PlayerController->GetName());
+			UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::UpdateLobbyData => ( %s ) Data Updated!"), *Data.PlayerName.ToString());
 			break;
 		}
 	}
@@ -101,12 +124,12 @@ void ALobbyGameMode::StartGame()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::StartGame"));
 
-	// Call OnStartGame on all players, then players will 
-	for (const FLobbyPlayerData& Data : LobbyPlayerData)
+	// Call OnStartGame on all players, then players will save data in their GameInstance
+	for (APlayerController* PC : PlayerControllers)
 	{
-		if (Data.PlayerController != nullptr && UKismetSystemLibrary::DoesImplementInterface(Data.PlayerController, ULobbyPlayerControllerInterface::StaticClass()))
+		if (PC != nullptr && UKismetSystemLibrary::DoesImplementInterface(PC, ULobbyPlayerControllerInterface::StaticClass()))
 		{
-			ILobbyPlayerControllerInterface::Execute_OnStartGame(Data.PlayerController, Data);
+			ILobbyPlayerControllerInterface::Execute_UpdateLobbyUI(PC, LobbyPlayerData);
 		}
 	}
 
@@ -123,7 +146,7 @@ void ALobbyGameMode::GameStartCheck()
 	{
 		if (Data.bFinishedSavingData == false)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::GameStartCheck => ( %s ) is not ready to travel yet"), *Data.PlayerController->GetName());
+			UE_LOG(LogTemp, Warning, TEXT("ALobbyGameMode::GameStartCheck => ( %s ) is not ready to travel yet"), *Data.PlayerName.ToString());
 			return;
 		}
 	}
@@ -149,20 +172,6 @@ void ALobbyGameMode::GameStartCheck()
 	}
 }
 
-void ALobbyGameMode::RemoveLobbyPlayerData(APlayerController* PlayerController)
-{
-	int Index = 0;
-	for (const FLobbyPlayerData& Data : LobbyPlayerData)
-	{
-		if (Data.PlayerController == PlayerController)
-		{
-			break;
-		}
-		Index++;
-	}
-	LobbyPlayerData.RemoveAt(Index);
-}
-
 ETeam ALobbyGameMode::GetTeamToJoin()
 {
 	int MarvelTeamCounter = 0;
@@ -181,7 +190,7 @@ ETeam ALobbyGameMode::GetTeamToJoin()
 	return MarvelTeamCounter <= DCTeamCounter ? ETeam::Marvel : ETeam::DC;
 }
 
-FName ALobbyGameMode::GetUserName(APlayerController* NewPlayer) const
+FName ALobbyGameMode::GetPlayerName(APlayerController* NewPlayer) const
 {
 	APlayerState* PlayerState = NewPlayer->GetPlayerState<APlayerState>();
 	FName UserName = "Gwang";
@@ -190,4 +199,14 @@ FName ALobbyGameMode::GetUserName(APlayerController* NewPlayer) const
 		UserName = *PlayerState->GetPlayerName();
 	}
 	return UserName;
+}
+
+int32 ALobbyGameMode::GetPlayerId(APlayerController* NewPlayer) const
+{
+	APlayerState* PlayerState = NewPlayer->GetPlayerState<APlayerState>();
+	if (PlayerState != nullptr)
+	{
+		return PlayerState->GetPlayerId();
+	}
+	return -1;
 }

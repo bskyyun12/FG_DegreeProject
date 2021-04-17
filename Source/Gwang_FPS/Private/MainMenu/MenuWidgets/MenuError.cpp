@@ -10,7 +10,7 @@ bool UMenuError::Initialize()
 	if (!Super::Initialize())
 	{
 		return false;
-	}	
+	}
 
 	Button_Error->OnClicked.AddDynamic(this, &UMenuError::OnClick_Button_Error);
 
@@ -19,12 +19,26 @@ bool UMenuError::Initialize()
 	return true;
 }
 
-void UMenuError::UpdateUI(const FString& Title, const FString& ErrorMsg, bool bEnableCloseButton)
+void UMenuError::UpdateUI(const FString& Title, const FString& ErrorMsg, bool bEnableCloseButton, const float& Duration)
 {
 	SetVisibility(ESlateVisibility::Visible);
 	Text_Title->SetText(FText::FromString(Title));
 	Text_ErrorMsg->SetText(FText::FromString(ErrorMsg));
 	Button_Error->SetIsEnabled(bEnableCloseButton);
+
+	if (Duration != -1.f)
+	{
+		UWorld* World = GetWorld();
+		if (World != nullptr)
+		{
+			FTimerHandle Closetimer;
+			World->GetTimerManager().SetTimer(Closetimer, [&]()
+				{
+					SetVisibility(ESlateVisibility::Hidden);
+
+				}, Duration, false);
+		}
+	}
 }
 
 void UMenuError::OnClick_Button_Error()

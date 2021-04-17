@@ -110,17 +110,18 @@ void ALobbyPlayerController::LobbyToMainMenu_Implementation()
 	UFPSGameInstance* GI = Cast<UFPSGameInstance>(GetGameInstance());
 	if (!ensure(GI != nullptr))
 	{
-		GI->DestroySession();
-		UGameplayStatics::OpenLevel(GetWorld(), TEXT("Menu"));
-		Server_LobbyToMainMenu();
+		return;
 	}
+	UGameplayStatics::OpenLevel(GetWorld(), TEXT("Menu"));
+	GI->DestroySession();
+	Server_LobbyToMainMenu();
 }
 
 void ALobbyPlayerController::Server_LobbyToMainMenu_Implementation()
 {
 	if (GM != nullptr)
 	{
-		GM->RemoveLobbyPlayerData(this);
+		GM->Logout(this);
 	}
 }
 
@@ -149,9 +150,6 @@ void ALobbyPlayerController::Client_OnStartGame_Implementation(const FLobbyPlaye
 	//PlayerData.StartGrenade = LobbyPlayerData.StartGrenade;
 
 	GI->SetPlayerData(PlayerData);
-
-	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::Client_OnStartGame ( %i ) => ( %s ) team: %i, StartMain: %i"), GetLocalRole(), *GetName(), GI->GetPlayerData().Team, GI->GetPlayerData().StartMainWeapon);
-
 	Server_OnStartGame();
 }
 

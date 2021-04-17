@@ -15,6 +15,9 @@ struct FLobbyPlayerData
 	GENERATED_BODY()
 
 	UPROPERTY()
+	int32 Id;
+
+	UPROPERTY()
 	FName PlayerName;
 
 	UPROPERTY()
@@ -36,13 +39,11 @@ struct FLobbyPlayerData
 	EGrenade StartGrenade;
 
 	UPROPERTY()
-	APlayerController* PlayerController;
-
-	UPROPERTY()
 	bool bFinishedSavingData;
 
 	FLobbyPlayerData()
 	{
+		Id = -1;
 		PlayerName = "Gwang";
 		Team = ETeam::None;
 		bIsReady = false;
@@ -52,7 +53,6 @@ struct FLobbyPlayerData
 		StartMeleeWeapon = EMeleeWeapon::Knife;
 		StartGrenade = EGrenade::Grenade;
 
-		PlayerController = nullptr;
 
 		bFinishedSavingData = false;
 	}
@@ -66,6 +66,8 @@ class GWANG_FPS_API ALobbyGameMode : public AGameModeBase
 public:
 	// Getters
 	FLobbyPlayerData GetLobbyPlayerData(APlayerController* PlayerController) const;
+
+	void Logout(AController* Exiting) override;
 
 	void UpdateLobbyPlayerData(const FLobbyPlayerData& UpdatedData);
 
@@ -83,10 +85,10 @@ protected:
 protected:
 	// Getters
 	ETeam GetTeamToJoin();
-	FName GetUserName(APlayerController* NewPlayer) const;
+	FName GetPlayerName(APlayerController* NewPlayer) const;
+	int32 GetPlayerId(APlayerController* NewPlayer) const;
 
 	void PostLogin(APlayerController* NewPlayer) override;
-	void Logout(AController* Exiting) override;
 
 	bool IsReadyToStartGame();
 
