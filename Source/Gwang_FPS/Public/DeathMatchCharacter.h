@@ -23,7 +23,7 @@ public:
 	#pragma region Getter & Setters
 	// Getters
 	ADeathMatchPlayerState* GetPlayerState();
-	AActor* GetCurrentWeapon();
+	AActor* GetCurrentlyHeldWeapon();
 	AActor* GetCurrentMainWeapon();
 	AActor* GetCurrentSubWeapon();
 	AActor* GetCurrentMeleeWeapon();
@@ -37,6 +37,7 @@ public:
 	// Setters
 	void SetCurrentlyHeldWeapon(AActor* NewWeapon);
 	void SetCameraWorldRotation(const FRotator& Rotation);
+	void SetCurrentWeaponWithIndex(const uint8& Index, AActor* NewWeapon);
 	#pragma endregion Getter & Setters
 
 	// Called after ADeathMatchPlayerController::Server_OnSpawnPlayer

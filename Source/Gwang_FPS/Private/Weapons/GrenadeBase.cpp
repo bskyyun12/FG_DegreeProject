@@ -2,7 +2,8 @@
 
 
 #include "Weapons/GrenadeBase.h"
-#include "Components/BoxComponent.h"
+#include "Components/SphereComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
@@ -16,19 +17,22 @@
 // Temp
 FColor AGrenadeBase::GetRoleColor()
 {
-	if (GetCurrentOwner()->GetLocalRole() == ROLE_Authority)
+	if (LatestOwner != nullptr)
 	{
-		return FColor::Red;
-	}
+		if (LatestOwner->GetLocalRole() == ROLE_Authority)
+		{
+			return FColor::Red;
+		}
 
-	if (GetCurrentOwner()->GetLocalRole() == ROLE_AutonomousProxy)
-	{
-		return FColor::Green;
-	}
+		if (LatestOwner->GetLocalRole() == ROLE_AutonomousProxy)
+		{
+			return FColor::Green;
+		}
 
-	if (GetCurrentOwner()->GetLocalRole() == ROLE_SimulatedProxy)
-	{
-		return FColor::Blue;
+		if (LatestOwner->GetLocalRole() == ROLE_SimulatedProxy)
+		{
+			return FColor::Blue;
+		}
 	}
 
 	return FColor::Cyan;
@@ -59,10 +63,11 @@ AGrenadeBase::AGrenadeBase()
 	TPWeaponMesh->SetCollisionProfileName(TEXT("NoCollision"));
 	TPWeaponMesh->SetupAttachment(RootComponent);
 
-	// Create a collider for players to interact with
-	InteractCollider = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractCollider"));
-	InteractCollider->SetCollisionProfileName(TEXT("NoCollision"));
-	InteractCollider->SetupAttachment(TPWeaponMesh);
+	// Create a collider for explosion
+	ExplosionCollider = CreateDefaultSubobject<USphereComponent>(TEXT("ExplosionCollider"));
+	ExplosionCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ExplosionCollider->InitSphereRadius(GrenadeInfo.ExplosionRadius);
+	ExplosionCollider->SetupAttachment(TPWeaponMesh);
 
 	// Replicate frequency
 	NetUpdateFrequency = 1.f;
@@ -72,6 +77,7 @@ void AGrenadeBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AGrenadeBase, ServerExplosionTime);
+	DOREPLIFETIME(AGrenadeBase, LatestOwner);
 }
 
 void AGrenadeBase::Tick(float DeltaSeconds)
@@ -79,65 +85,83 @@ void AGrenadeBase::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 
 	SimulateTrajectory(DeltaSeconds, true);
+	FPWeaponMesh->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	TPWeaponMesh->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 
 	if (GetLocalRole() == ROLE_Authority)
 	{
 		ServerExplosionTime += DeltaSeconds;
-		if (ServerExplosionTime > WeaponInfo.ExplodeInSeconds)
+		if (ServerExplosionTime > GrenadeInfo.ExplodeInSeconds)
 		{
 			Explode();
-			SetActorTickEnabled(false);
 		}
 	}
 	else
 	{
 		ClientExplosionTime += DeltaSeconds;
-		if (ClientExplosionTime > WeaponInfo.ExplodeInSeconds)
+		if (ClientExplosionTime > GrenadeInfo.ExplodeInSeconds)
 		{
 			Explode();
-			SetActorTickEnabled(false);
 		}
 	}
 }
 
 void AGrenadeBase::Explode()
 {
+	ExplosionEffects();
+
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		ExplosionCollider->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+		TArray<AActor*> ActorsWithinRange;
+		ExplosionCollider->GetOverlappingActors(ActorsWithinRange);
+
+		for (AActor* Actor : ActorsWithinRange)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("GunBase::Explode => OverlappingActor ( %s )"), *Actor->GetName());
+
+			ADeathMatchCharacter* Player = Cast<ADeathMatchCharacter>(Actor);
+			if (Player != nullptr)
+			{
+				float DamageOnHealth = GrenadeInfo.ExplosionDamage * GrenadeInfo.ArmorPenetration;
+				float DamageOnArmor = GrenadeInfo.ExplosionDamage * (1 - GrenadeInfo.ArmorPenetration);
+				Player->Server_TakeDamage(DamageOnHealth, DamageOnArmor, LatestOwner);
+			}
+		}
+
+		ExplosionCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	SetActorTickEnabled(false);
+	Destroy();
+}
+
+void AGrenadeBase::ExplosionEffects()
+{
 	UWorld* World = GetWorld();
 	if (World != nullptr)
 	{
-		DrawDebugSphere(World, NewLocation, WeaponInfo.ExplosionRadius, 15, FColor::Red, false, 5.f);
+		DrawDebugSphere(World, NewLocation, GrenadeInfo.ExplosionRadius, 10, GetRoleColor(), false, 5.f, 0, 5.f);
+
+		// Sound
+		if (GrenadeInfo.ExplosionSound != nullptr)
+		{
+			UGameplayStatics::SpawnSoundAtLocation(World, GrenadeInfo.ExplosionSound, NewLocation);
+		}
+
+		// Emitter
+		if (GrenadeInfo.ExplosionEmitter != nullptr)
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(World, GrenadeInfo.ExplosionEmitter, NewLocation);
+		}
 	}
 }
 
 #pragma region Getters & Setters
-ADeathMatchCharacter* AGrenadeBase::GetCurrentOwner()
-{
-	if (GetOwner() == nullptr)
-	{
-		return nullptr;
-	}
-
-	return Cast<ADeathMatchCharacter>(GetOwner());
-}
-
-ADeathMatchPlayerController* AGrenadeBase::GetOwnerController()
-{
-	if (GetCurrentOwner() == nullptr)
-	{
-		return nullptr;
-	}
-
-	if (GetCurrentOwner()->GetController() == nullptr)
-	{
-		return nullptr;
-	}
-
-	return Cast<ADeathMatchPlayerController>(GetCurrentOwner()->GetController());
-}
-
 EWeaponType AGrenadeBase::GetWeaponType_Implementation() const
 {
-	return WeaponInfo.WeaponType;
+	return GrenadeInfo.WeaponType;
 }
 
 void AGrenadeBase::SetVisibility_Implementation(bool NewVisibility)
@@ -147,7 +171,7 @@ void AGrenadeBase::SetVisibility_Implementation(bool NewVisibility)
 }
 #pragma endregion Getters & Setters
 
-#pragma region Weapon Equip & Drop
+#pragma region Weapon Equip
 void AGrenadeBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 {
 	UE_LOG(LogTemp, Warning, TEXT("GunBase::OnWeaponEquipped => NewOwner(%s)'s role: %i. / Weapon(%s)'s role: %i."), *NewOwner->GetName(), NewOwner->GetLocalRole(), *GetName(), GetLocalRole());
@@ -155,31 +179,28 @@ void AGrenadeBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwne
 	{
 		return;
 	}
-
+	LatestOwner = NewOwner;
 	SetOwner(NewOwner);
-	SetInstigator(NewOwner);
-
-	if (GetCurrentOwner()->IsLocallyControlled())
-	{
-		UpdateAmmoUI(1, 0);
-	}
 
 	// skeleton is not yet created in the constructor, so AttachToComponent should be happened after constructor
 	TPWeaponMesh->SetSimulatePhysics(false);
 	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	TPWeaponMesh->AttachToComponent(NewOwner->GetMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), WeaponInfo.TP_SocketName);
+	TPWeaponMesh->AttachToComponent(NewOwner->GetMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), GrenadeInfo.TP_SocketName);
+	FPWeaponMesh->AttachToComponent(NewOwner->GetArmMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), GrenadeInfo.FP_SocketName);
 
-	FPWeaponMesh->AttachToComponent(NewOwner->GetArmMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), WeaponInfo.FP_SocketName);
-
-	InteractCollider->SetCollisionProfileName(TEXT("NoCollision"));
-
-	if (GetCurrentOwner()->IsLocallyControlled())
+	if (NewOwner->IsLocallyControlled())
 	{
-		// Play FP_EquipAnim
-		UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
-		if (AnimInstance != nullptr && WeaponInfo.FP_EquipAnim != nullptr)
+		// Update Weapon UI
+		if (NewOwner->GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(NewOwner->GetController(), UPlayerControllerInterface::StaticClass()))
 		{
-			AnimInstance->Montage_Play(WeaponInfo.FP_EquipAnim);
+			IPlayerControllerInterface::Execute_UpdateWeaponUI(NewOwner->GetController(), GrenadeInfo.DisplayName, 1, 0);
+		}
+
+		// Play FP_EquipAnim
+		UAnimInstance* AnimInstance = NewOwner->GetArmMesh()->GetAnimInstance();
+		if (AnimInstance != nullptr && GrenadeInfo.FP_EquipAnim != nullptr)
+		{
+			AnimInstance->Montage_Play(GrenadeInfo.FP_EquipAnim);
 		}
 	}
 	else
@@ -187,57 +208,35 @@ void AGrenadeBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwne
 		// TODO: Play TP_EquipAnim
 	}
 }
-
-void AGrenadeBase::OnWeaponDropped_Implementation()
-{
-	if (GetCurrentOwner() != nullptr)
-	{
-		InteractCollider->SetCollisionProfileName(TEXT("Weapon_Dropped"));
-
-		FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-
-		TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-		TPWeaponMesh->SetCollisionProfileName(TEXT("Weapon_Dropped"));
-		TPWeaponMesh->SetSimulatePhysics(true);
-
-		if (GetCurrentOwner()->IsLocallyControlled())
-		{
-			UpdateAmmoUI(0, 0);
-		}
-
-		SetOwner(nullptr);
-		SetInstigator(nullptr);
-	}
-}
-
-void AGrenadeBase::UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo)
-{
-	if (GetCurrentOwner()->IsLocallyControlled())
-	{
-		if (GetOwnerController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwnerController(), UPlayerControllerInterface::StaticClass()))
-		{
-			IPlayerControllerInterface::Execute_UpdateWeaponUI(GetOwnerController(), WeaponInfo.DisplayName, InCurrentAmmo, InRemainingAmmo);
-		}
-	}
-}
-#pragma endregion Weapon Equip & Drop
+#pragma endregion Weapon Equip
 
 #pragma region EndFire (Throw Grenade)
 void AGrenadeBase::EndFire_Implementation()
 {
-	if (GetCurrentOwner() != nullptr)
+	if (bIsUsed)
 	{
-		if (GetCurrentOwner()->IsLocallyControlled())
+		return;
+	}
+
+	if (LatestOwner != nullptr)
+	{
+		if (LatestOwner->IsLocallyControlled())
 		{
 			Fire();
+
+			// Update Weapon UI
+			if (LatestOwner->GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(LatestOwner->GetController(), UPlayerControllerInterface::StaticClass()))
+			{
+				IPlayerControllerInterface::Execute_UpdateWeaponUI(LatestOwner->GetController(), GrenadeInfo.DisplayName, 0, 0);
+			}
 		}
 
-		if (GetCurrentOwner()->GetLocalRole() == ROLE_Authority)
+		if (LatestOwner->GetLocalRole() == ROLE_Authority)
 		{
 			Multicast_Fire();
 		}
 
-		if (GetCurrentOwner()->GetLocalRole() == ROLE_AutonomousProxy)
+		if (LatestOwner->GetLocalRole() == ROLE_AutonomousProxy)
 		{
 			Server_Fire();
 		}
@@ -251,7 +250,7 @@ void AGrenadeBase::Server_Fire_Implementation()
 
 void AGrenadeBase::Multicast_Fire_Implementation()
 {
-	if (GetCurrentOwner() != nullptr && !GetCurrentOwner()->IsLocallyControlled())
+	if (LatestOwner != nullptr && !LatestOwner->IsLocallyControlled())
 	{
 		Fire();
 	}
@@ -265,6 +264,8 @@ void AGrenadeBase::Fire()
 		World->GetTimerManager().ClearTimer(PathDrawingtimer);
 	}
 
+	bIsUsed = true;
+
 	InitTrajectory();
 
 	if (GetLocalRole() == ROLE_Authority)
@@ -275,6 +276,9 @@ void AGrenadeBase::Fire()
 	{
 		ClientExplosionTime = 0.f;
 	}
+
+	FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+	TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 
 	SetActorTickEnabled(true);
 }
@@ -292,7 +296,12 @@ void AGrenadeBase::OnRep_ServerExplosionTime()
 #pragma region BeginFire (Grenade Path, Local only)
 void AGrenadeBase::BeginFire_Implementation()
 {
-	if (GetCurrentOwner() != nullptr && GetCurrentOwner()->IsLocallyControlled())
+	if (bIsUsed)
+	{
+		return;
+	}
+
+	if (LatestOwner != nullptr && LatestOwner->IsLocallyControlled())
 	{
 		UWorld* World = GetWorld();
 		if (World != nullptr)
@@ -316,12 +325,12 @@ void AGrenadeBase::DrawGrenadePath()
 #pragma region Trajectory
 void AGrenadeBase::InitTrajectory()
 {
-	if (GetCurrentOwner() != nullptr)
+	if (LatestOwner != nullptr)
 	{
 		Trajectory.LaunchLocation = FPWeaponMesh->GetComponentLocation();
-		Trajectory.LaunchForward = GetOwner()->GetActorForwardVector();
-		Trajectory.LaunchAngleInRad = GetCurrentOwner()->GetCameraPitch() * PI / 180.f;
-		Trajectory.LaunchSpeed = WeaponInfo.ThrowingPower;
+		Trajectory.LaunchForward = LatestOwner->GetActorForwardVector();
+		Trajectory.LaunchAngleInRad = LatestOwner->GetCameraPitch() * PI / 180.f;
+		Trajectory.LaunchSpeed = GrenadeInfo.ThrowingPower;
 		PrevLocation = Trajectory.LaunchLocation;
 		FlightTime = 0.f;
 	}
@@ -351,7 +360,7 @@ void AGrenadeBase::SimulateTrajectory(const float& DeltaSeconds, bool bMoveMesh)
 		FHitResult Hit;
 		FCollisionQueryParams Params;
 		Params.AddIgnoredActor(this);
-		Params.AddIgnoredActor(this->GetOwner());
+		Params.AddIgnoredActor(LatestOwner);
 		if (World->LineTraceSingleByChannel(Hit, PrevLocation, NewLocation, ECC_Visibility, Params))
 		{
 			if (bMoveMesh)
@@ -374,7 +383,7 @@ void AGrenadeBase::SimulateTrajectory(const float& DeltaSeconds, bool bMoveMesh)
 
 			FlightTime = 0.f;
 
-			Trajectory.LaunchSpeed *= WeaponInfo.Bounceness;
+			Trajectory.LaunchSpeed *= GrenadeInfo.Bounceness;
 
 			Trajectory.LaunchLocation = Hit.ImpactPoint + Hit.ImpactNormal;
 			NewLocation = Hit.ImpactPoint + Hit.ImpactNormal;

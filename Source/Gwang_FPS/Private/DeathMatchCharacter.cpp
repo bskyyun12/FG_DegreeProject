@@ -107,7 +107,7 @@ ADeathMatchPlayerState* ADeathMatchCharacter::GetPlayerState()
 	return PS;
 }
 
-AActor* ADeathMatchCharacter::GetCurrentWeapon()
+AActor* ADeathMatchCharacter::GetCurrentlyHeldWeapon()
 {
 	if (GetPlayerState() == nullptr)
 	{
@@ -195,6 +195,16 @@ void ADeathMatchCharacter::SetCurrentlyHeldWeapon(AActor* NewWeapon)
 void ADeathMatchCharacter::SetCameraWorldRotation(const FRotator& Rotation)
 {
 	FP_Camera->SetWorldRotation(Rotation);
+}
+
+void ADeathMatchCharacter::SetCurrentWeaponWithIndex(const uint8& Index, AActor* NewWeapon)
+{
+	if (GetPlayerState() == nullptr)
+	{
+		return;
+	}
+
+	GetPlayerState()->SetCurrentWeaponWithIndex(Index, NewWeapon);
 }
 
 #pragma endregion Getters & Setters
@@ -314,14 +324,13 @@ void ADeathMatchCharacter::Server_TakeDamage_Implementation(const uint8& DamageO
 
 		GetPlayerState()->Server_UpdateHealthArmor(CurrentHealth, CurrentArmor);
 
-		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::TakeDamage => ( %s ) Took ( %i ) Damage By ( %s ). CurrentHealth: %i"), *GetName(), DamageOnHealth, *DamageCauser->GetName(), CurrentHealth);
+		Client_OnTakeDamage();
 
+		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::TakeDamage => ( %s ) Took ( %i ) Damage By ( %s ). CurrentHealth: %i"), *GetName(), DamageOnHealth, *DamageCauser->GetName(), CurrentHealth);
 		if (CurrentHealth <= 0.f)
 		{
 			Server_OnDeath(DamageCauser);
 		}
-
-		Client_OnTakeDamage();
 	}
 }
 
@@ -480,9 +489,9 @@ void ADeathMatchCharacter::PickupWeapon(AActor* WeaponToPickup)
 		else
 		{
 			IWeaponInterface::Execute_SetVisibility(WeaponToPickup, false);
-			GetPlayerState()->SetCurrentWeaponWithIndex(WeaponIndex, WeaponToPickup);
+			SetCurrentWeaponWithIndex(WeaponIndex, WeaponToPickup);
 
-			if (GetCurrentWeapon() == nullptr)
+			if (GetCurrentlyHeldWeapon() == nullptr)
 			{
 				EquipWeapon(WeaponToPickup);
 			}
@@ -494,7 +503,7 @@ void ADeathMatchCharacter::EquipMainWeapon()
 {
 	if (GetCurrentMainWeapon() != nullptr)
 	{
-		if (GetCurrentWeapon() == GetCurrentMainWeapon())
+		if (GetCurrentlyHeldWeapon() == GetCurrentMainWeapon())
 		{
 			return;
 		}
@@ -517,7 +526,7 @@ void ADeathMatchCharacter::EquipSubWeapon()
 {
 	if (GetCurrentSubWeapon() != nullptr)
 	{
-		if (GetCurrentWeapon() == GetCurrentSubWeapon())
+		if (GetCurrentlyHeldWeapon() == GetCurrentSubWeapon())
 		{
 			return;
 		}
@@ -540,7 +549,7 @@ void ADeathMatchCharacter::EquipMeleeWeapon()
 {
 	if (GetCurrentMeleeWeapon() != nullptr)
 	{
-		if (GetCurrentWeapon() == GetCurrentMeleeWeapon())
+		if (GetCurrentlyHeldWeapon() == GetCurrentMeleeWeapon())
 		{
 			return;
 		}
@@ -563,7 +572,7 @@ void ADeathMatchCharacter::EquipGrenade()
 {
 	if (GetCurrentGrenade() != nullptr)
 	{
-		if (GetCurrentWeapon() == GetCurrentGrenade())
+		if (GetCurrentlyHeldWeapon() == GetCurrentGrenade())
 		{
 			return;
 		}
@@ -584,12 +593,15 @@ void ADeathMatchCharacter::EquipGrenade()
 
 void ADeathMatchCharacter::Server_EquipWeapon_Implementation(AActor* WeaponToEquip)
 {
-	Multicast_EquipWeapon(WeaponToEquip);
+	if (WeaponToEquip != nullptr)
+	{
+		Multicast_EquipWeapon(WeaponToEquip);
+	}
 }
 
 void ADeathMatchCharacter::Multicast_EquipWeapon_Implementation(AActor* WeaponToEquip)
 {
-	if (!IsLocallyControlled())
+	if (!IsLocallyControlled() && WeaponToEquip != nullptr)
 	{
 		EquipWeapon(WeaponToEquip);
 	}
@@ -620,26 +632,26 @@ void ADeathMatchCharacter::EquipWeapon(AActor* WeaponToEquip)
 			SetCurrentlyHeldWeapon(WeaponToEquip);
 			IWeaponInterface::Execute_OnWeaponEquipped(WeaponToEquip, this);
 			IWeaponInterface::Execute_SetVisibility(WeaponToEquip, true);
-		}
 
-		if (IsLocallyControlled())
-		{
-			// Notify ( ArmMesh )'s Animation that this player's weapon is changed
-			UAnimInstance* ArmsAnimInstance = GetArmMesh()->GetAnimInstance();
-			if (ArmsAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(ArmsAnimInstance, UFPSAnimInterface::StaticClass()))
+			if (IsLocallyControlled())
 			{
-				EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(WeaponToEquip);
-				IFPSAnimInterface::Execute_OnChangeWeapon(ArmsAnimInstance, WeaponType);
+				// Notify ( ArmMesh )'s Animation that this player's weapon is changed
+				UAnimInstance* ArmsAnimInstance = GetArmMesh()->GetAnimInstance();
+				if (ArmsAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(ArmsAnimInstance, UFPSAnimInterface::StaticClass()))
+				{
+					EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(WeaponToEquip);
+					IFPSAnimInterface::Execute_OnChangeWeapon(ArmsAnimInstance, WeaponType);
+				}
 			}
-		}
-		else
-		{
-			// Notify ( CharacterMesh )'s Animation that this player's weapon is changed
-			UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
-			if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
+			else
 			{
-				EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(WeaponToEquip);
-				IFPSAnimInterface::Execute_OnChangeWeapon(CharacterAnimInstance, WeaponType);
+				// Notify ( CharacterMesh )'s Animation that this player's weapon is changed
+				UAnimInstance* CharacterAnimInstance = GetMesh()->GetAnimInstance();
+				if (CharacterAnimInstance != nullptr && UKismetSystemLibrary::DoesImplementInterface(CharacterAnimInstance, UFPSAnimInterface::StaticClass()))
+				{
+					EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(WeaponToEquip);
+					IFPSAnimInterface::Execute_OnChangeWeapon(CharacterAnimInstance, WeaponType);
+				}
 			}
 		}
 	}
@@ -647,8 +659,15 @@ void ADeathMatchCharacter::EquipWeapon(AActor* WeaponToEquip)
 
 void ADeathMatchCharacter::Drop()
 {
-	if (GetCurrentWeapon() != nullptr)
+	if (GetCurrentlyHeldWeapon() != nullptr)
 	{
+		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(GetCurrentlyHeldWeapon());
+		if (WeaponType == EWeaponType::Grenade)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::DropWeapon => Can't drop grenade"));
+			return;
+		}
+
 		DropWeapon();
 
 		if (GetLocalRole() == ROLE_Authority)
@@ -675,7 +694,7 @@ void ADeathMatchCharacter::Multicast_DropWeapon_Implementation()
 	if (!IsLocallyControlled())
 	{
 		DropWeapon();
-		if (GetCurrentWeapon() != nullptr)
+		if (GetCurrentlyHeldWeapon() != nullptr)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("( %i ) ( %s ) ADeathMatchCharacter::DropWeapon"), GetLocalRole(), *GetName());
 		}
@@ -684,7 +703,7 @@ void ADeathMatchCharacter::Multicast_DropWeapon_Implementation()
 
 void ADeathMatchCharacter::DropWeapon()
 {
-	if (GetPlayerState() != nullptr && GetCurrentWeapon() != nullptr)
+	if (GetPlayerState() != nullptr && GetCurrentlyHeldWeapon() != nullptr)
 	{
 		UWorld* World = GetWorld();
 		if (World != nullptr)
@@ -698,11 +717,11 @@ void ADeathMatchCharacter::DropWeapon()
 				}, 1.5f, false);
 		}
 
-		IWeaponInterface::Execute_OnWeaponDropped(GetCurrentWeapon());
+		IWeaponInterface::Execute_OnWeaponDropped(GetCurrentlyHeldWeapon());
 
-		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(GetCurrentWeapon());
+		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(GetCurrentlyHeldWeapon());
 		uint8 WeaponIndex = (uint8)WeaponType;
-		GetPlayerState()->SetCurrentWeaponWithIndex(WeaponIndex, nullptr);
+		SetCurrentWeaponWithIndex(WeaponIndex, nullptr);
 		SetCurrentlyHeldWeapon(nullptr);
 	}
 }
@@ -711,18 +730,12 @@ void ADeathMatchCharacter::DropWeapon()
 #pragma region Weapon Fire
 void ADeathMatchCharacter::OnBeginFire()
 {
-	if (GetCurrentWeapon() != nullptr)
+	if (GetCurrentlyHeldWeapon() != nullptr)
 	{
-		if (GetLocalRole() == ROLE_Authority)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("(ROLE_Authority) OnBeginFire"));
-			IWeaponInterface::Execute_BeginFire(GetCurrentWeapon());
-		}
+		IWeaponInterface::Execute_BeginFire(GetCurrentlyHeldWeapon());
 
 		if (GetLocalRole() == ROLE_AutonomousProxy)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("(ROLE_AutonomousProxy) OnBeginFire"));
-			IWeaponInterface::Execute_BeginFire(GetCurrentWeapon());
 			Server_OnBeginFire();
 		}
 	}
@@ -730,38 +743,52 @@ void ADeathMatchCharacter::OnBeginFire()
 
 void ADeathMatchCharacter::Server_OnBeginFire_Implementation()
 {
-	if (GetCurrentWeapon() != nullptr)
+	if (GetCurrentlyHeldWeapon() != nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("(ROLE_Authority) OnBeginFire"));
-		IWeaponInterface::Execute_BeginFire(GetCurrentWeapon());
+		IWeaponInterface::Execute_BeginFire(GetCurrentlyHeldWeapon());
 	}
 }
 
 void ADeathMatchCharacter::OnEndFire()
 {
-	if (GetCurrentWeapon() != nullptr)
+	if (GetCurrentlyHeldWeapon() != nullptr)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("(ROLE_Authority) OnEndFire"));
+		IWeaponInterface::Execute_EndFire(GetCurrentlyHeldWeapon());
+
 		if (GetLocalRole() == ROLE_Authority)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("(ROLE_Authority) OnEndFire"));
-			IWeaponInterface::Execute_EndFire(GetCurrentWeapon());
+			EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(GetCurrentlyHeldWeapon());
+			if (WeaponType == EWeaponType::Grenade)
+			{
+				uint8 WeaponIndex = (uint8)WeaponType;
+				SetCurrentWeaponWithIndex(WeaponIndex, nullptr);
+				SetCurrentlyHeldWeapon(nullptr);
+			}
 		}
 
 		if (GetLocalRole() == ROLE_AutonomousProxy)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("(ROLE_AutonomousProxy) OnEndFire"));
-			IWeaponInterface::Execute_EndFire(GetCurrentWeapon());
+			Server_OnEndFire();
 		}
-		Server_OnEndFire();
 	}
 }
 
 void ADeathMatchCharacter::Server_OnEndFire_Implementation()
 {
-	if (GetCurrentWeapon() != nullptr)
+	if (GetCurrentlyHeldWeapon() != nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("(Server) OnEndFire"));
-		IWeaponInterface::Execute_EndFire(GetCurrentWeapon());
+		IWeaponInterface::Execute_EndFire(GetCurrentlyHeldWeapon());
+
+		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(GetCurrentlyHeldWeapon());
+		if (WeaponType == EWeaponType::Grenade)
+		{
+			uint8 WeaponIndex = (uint8)WeaponType;
+			SetCurrentWeaponWithIndex(WeaponIndex, nullptr);
+			SetCurrentlyHeldWeapon(nullptr);
+		}
 	}
 }
 #pragma endregion Weapon Fire
@@ -797,9 +824,9 @@ void ADeathMatchCharacter::Multicast_BeginReload_Implementation()
 
 void ADeathMatchCharacter::Reload()
 {
-	if (GetCurrentWeapon() != nullptr)
+	if (GetCurrentlyHeldWeapon() != nullptr)
 	{
-		IWeaponInterface::Execute_BeginReload(GetCurrentWeapon());
+		IWeaponInterface::Execute_BeginReload(GetCurrentlyHeldWeapon());
 	}
 }
 #pragma endregion Weapon Repload

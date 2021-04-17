@@ -9,6 +9,7 @@
 #include "GrenadeBase.generated.h"
 
 class UBoxComponent;
+class USphereComponent;
 class ADeathMatchPlayerController;
 
 USTRUCT(BlueprintType)
@@ -74,7 +75,7 @@ struct FGrenadeInfo
 	{
 		// Stats
 		DisplayName = TEXT("Gweapon");
-		WeaponType = EWeaponType::None;
+		WeaponType = EWeaponType::Grenade;
 		ExplosionDamage = 200.f;
 		ArmorPenetration = 0.5f;
 		ExplosionRadius = 500.f;
@@ -108,16 +109,13 @@ public:
 	FColor GetRoleColor();
 
 	// Getters
-	ADeathMatchCharacter* GetCurrentOwner();
-	ADeathMatchPlayerController* GetOwnerController();
 	EWeaponType GetWeaponType_Implementation() const override;
 
 	// Setters
 	void SetVisibility_Implementation(bool NewVisibility) override;
 
-	// Weapon Equip & Drop
+	// Weapon Equip
 	void OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner) override;
-	void OnWeaponDropped_Implementation() override;
 
 	// Fire
 	void BeginFire_Implementation() override;
@@ -136,13 +134,13 @@ protected:
 	USkeletalMeshComponent* TPWeaponMesh;
 
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
-	UBoxComponent* InteractCollider;
+	USphereComponent* ExplosionCollider;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	float PathDrawingFrequency = .05f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
-	FGrenadeInfo WeaponInfo;
+	FGrenadeInfo GrenadeInfo;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	FTrajectory Trajectory;
@@ -154,6 +152,11 @@ protected:
 	FVector PrevLocation;
 
 	FTimerHandle PathDrawingtimer;
+
+	UPROPERTY(Replicated)
+	ADeathMatchCharacter* LatestOwner;
+
+	bool bIsUsed;
 
 	float FlightTime;
 
@@ -182,8 +185,5 @@ protected:
 
 	// OnExplosion
 	void Explode();
-
-	// UI
-	void UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo);		
-
+	void ExplosionEffects();
 };
