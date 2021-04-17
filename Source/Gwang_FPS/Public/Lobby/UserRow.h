@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/FPSWidgetBase.h"
-#include "FPSGameInstance.h"
+#include "LobbyGameMode.h"
 #include "UserRow.generated.h"
 
 class UTextBlock;
@@ -18,7 +18,7 @@ class GWANG_FPS_API UUserRow : public UFPSWidgetBase
 public:
 	bool Initialize() override;
 
-	void UpdateRow(const FPlayerData& Data);
+	void UpdateRow(const FLobbyPlayerData& Data);
 
 private:
 	UPROPERTY(meta = (BindWidget))

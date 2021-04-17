@@ -27,7 +27,11 @@ public:
 	bool GetIsReadyToJoin() const { return bIsReadyToJoin; }
 	bool GetIsDead() const { return bIsDead; }
 	ADeathMatchPlayerController* GetPlayerController();
-	
+
+	// Called after ADeathMatchGameMode::PostLogin
+	UFUNCTION(Server, Reliable)
+	void Server_OnPostLogin();
+
 	void SetCurrentlyHeldWeapon(AActor* NewWeapon) { CurrentlyHeldWeapon = NewWeapon; }
 	void SetCurrentWeaponWithIndex(const uint8& Index, AActor* NewWeapon) { CurrentWeapons[Index] = NewWeapon; }
 
@@ -90,9 +94,11 @@ protected:
 protected:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	void PostInitializeComponents() override;
+	// Called after Server_OnPostLogin
+	UFUNCTION(Client, Reliable)
+	void Client_OnPostLogin();
 
-	// Called after PostInitializeComponents
+	// Called after Client_OnPostLogin
 	UFUNCTION(Server, Reliable)
 	void Server_InitialDataSetup(const FPlayerData& PlayerData);
 

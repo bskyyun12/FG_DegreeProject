@@ -6,7 +6,8 @@
 #include "Kismet/KismetSystemLibrary.h"
 
 #include "Lobby/LobbyPlayerController.h"
-#include "Lobby/LobbyInterface.h"
+#include "Lobby/LobbyPlayerControllerInterface.h"
+#include "Lobby/LobbyGameMode.h"
 
 bool UUserRow::Initialize()
 {
@@ -20,20 +21,13 @@ bool UUserRow::Initialize()
 }
 
 // Called by ULobbyWidget::UpdateUserRowData
-void UUserRow::UpdateRow(const FPlayerData& Data)
+void UUserRow::UpdateRow(const FLobbyPlayerData& Data)
 {
 	Text_UserName->SetText(FText::FromName(Data.PlayerName));
-	Text_ID->SetText(FText::FromString(FString::FromInt(Data.ControllerID)));
 
-	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
+	if (Data.PlayerController == GetOwningPlayer())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ILobbyInterface::Execute_GetUserData(GetOwningPlayer()).ControllerID: %i"), ILobbyInterface::Execute_GetUserData(GetOwningPlayer()).ControllerID);
-		UE_LOG(LogTemp, Warning, TEXT("Data.ControllerID: %i"), Data.ControllerID);
-
-		if (Data.ControllerID == ILobbyInterface::Execute_GetUserData(GetOwningPlayer()).ControllerID)
-		{
-			Button_Ready->SetVisibility(ESlateVisibility::Visible);
-		}
+		Button_Ready->SetVisibility(ESlateVisibility::Visible);
 	}
 
 	bIsReady = Data.bIsReady;
@@ -54,12 +48,9 @@ void UUserRow::OnClicked_Button_Ready()
 {
 	UE_LOG(LogTemp, Warning, TEXT("UUserRow::OnClicked_Button_Ready"));
 
-	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
+	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyPlayerControllerInterface::StaticClass()))
 	{
 		bIsReady = !bIsReady;
-
-		FPlayerData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
-		UserData.bIsReady = bIsReady;
-		ILobbyInterface::Execute_UpdateUserData(GetOwningPlayer(), UserData);
+		ILobbyPlayerControllerInterface::Execute_UpdateReadyStatus(GetOwningPlayer(), bIsReady);
 	}
 }

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/FPSWidgetBase.h"
-#include "UserRow.h"
+#include "LobbyGameMode.h"
 
 #include "LobbyWidget.generated.h"
 
@@ -21,7 +21,7 @@ class GWANG_FPS_API ULobbyWidget : public UFPSWidgetBase
 public:
 	bool Initialize() override;
 
-	void UpdateUserRowData(TArray<FPlayerData> UserData);
+	void UpdateUserRowData(TArray<FLobbyPlayerData> UserData);
 
 private:
 	UPROPERTY(EditDefaultsOnly)

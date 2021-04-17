@@ -10,8 +10,8 @@
 #include "MainMenu/MainMenuPlayerController.h"
 #include "Lobby/UserRow.h"
 #include "Lobby/LobbyPlayerController.h"
-#include "Lobby/LobbyInterface.h"
 #include "Lobby/LobbyInventory.h"
+#include "Lobby/LobbyPlayerControllerInterface.h"
 
 bool ULobbyWidget::Initialize()
 {
@@ -34,13 +34,12 @@ bool ULobbyWidget::Initialize()
 }
 
 // Called by ALobbyPlayerController::Client_UpdateLobbyUI_Implementation
-void ULobbyWidget::UpdateUserRowData(TArray<FPlayerData> UserData)
+void ULobbyWidget::UpdateUserRowData(TArray<FLobbyPlayerData> UserData)
 {
 	VerticalBox_TeamMarvel->ClearChildren();
 	VerticalBox_TeamDC->ClearChildren();
 
-	bool bIsAllReady = true;
-	for (FPlayerData Data : UserData)
+	for (FLobbyPlayerData Data : UserData)
 	{
 		UWorld* World = GetWorld();
 		if (!ensure(World != nullptr))
@@ -62,52 +61,33 @@ void ULobbyWidget::UpdateUserRowData(TArray<FPlayerData> UserData)
 		{
 			VerticalBox_TeamDC->AddChild(UserRow);
 		}
-
-		if (Data.bIsReady == false)
-		{
-			bIsAllReady = false;
-		}
-	}
-
-	if (bIsAllReady)
-	{
-		if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
-		{
-			ILobbyInterface::Execute_StartGame(GetOwningPlayer());
-		}
 	}
 }
 
 void ULobbyWidget::OnClicked_Button_MarvelTeam()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ULobbyWidget::OnClicked_Button_MarvelTeam"));
-	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
+	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyPlayerControllerInterface::StaticClass()))
 	{
-		FPlayerData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
-		UE_LOG(LogTemp, Warning, TEXT("UserData.ControllerID: %i"), UserData.ControllerID);
-		UserData.Team = ETeam::Marvel;
-		ILobbyInterface::Execute_UpdateUserData(GetOwningPlayer(), UserData);
+		ILobbyPlayerControllerInterface::Execute_UpdateTeamData(GetOwningPlayer(), ETeam::Marvel);
 	}
 }
 
 void ULobbyWidget::OnClicked_Button_DCTeam()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ULobbyWidget::OnClicked_Button_DCTeam"));
-	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
+	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyPlayerControllerInterface::StaticClass()))
 	{
-		FPlayerData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
-		UE_LOG(LogTemp, Warning, TEXT("UserData.ControllerID: %i"), UserData.ControllerID);
-		UserData.Team = ETeam::DC;
-		ILobbyInterface::Execute_UpdateUserData(GetOwningPlayer(), UserData);
+		ILobbyPlayerControllerInterface::Execute_UpdateTeamData(GetOwningPlayer(), ETeam::DC);
 	}
 }
 
 void ULobbyWidget::OnClicked_Button_BackToMainMenu()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ULobbyWidget::OnClicked_Button_BackToMainMenu"));
-	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
+	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyPlayerControllerInterface::StaticClass()))
 	{
-		ILobbyInterface::Execute_LobbyToMainMenu(GetOwningPlayer());
+		ILobbyPlayerControllerInterface::Execute_LobbyToMainMenu(GetOwningPlayer());
 	}
 }
 

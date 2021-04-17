@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Widgets/FPSWidgetBase.h"
+#include "Blueprint/UserWidget.h"
 #include "LobbyInventory.generated.h"
 
 class UTextBlock;
 class UButton;
 
 UCLASS()
-class GWANG_FPS_API ULobbyInventory : public UFPSWidgetBase
+class GWANG_FPS_API ULobbyInventory : public UUserWidget
 {
 	GENERATED_BODY()
 

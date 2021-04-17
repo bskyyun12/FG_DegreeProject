@@ -6,7 +6,7 @@
 #include "Components/TextBlock.h"
 #include "Kismet/KismetSystemLibrary.h"
 
-#include "Lobby/LobbyInterface.h"
+#include "Lobby/LobbyPlayerControllerInterface.h"
 #include "FPSGameInstance.h"
 
 bool ULobbyInventory::Initialize()
@@ -27,14 +27,16 @@ bool ULobbyInventory::Initialize()
 
 	Button_Apply->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_Apply);
 
-	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
+	UFPSGameInstance* GI = Cast<UFPSGameInstance>(GetGameInstance());
+	if (!ensure(GI != nullptr))
 	{
-		FPlayerData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
-		MainWeaponIndex = (int)UserData.StartMainWeapon;
-		SubWeaponIndex = (int)UserData.StartSubWeapon;
-		MeleeWeaponIndex = (int)UserData.StartMeleeWeapon;
-		GrenadeIndex = (int)UserData.StartGrenade;
+		return false;
 	}
+	FPlayerData PlayerData = GI->GetPlayerData();
+	MainWeaponIndex = (int)PlayerData.StartMainWeapon;
+	SubWeaponIndex = (int)PlayerData.StartSubWeapon;
+	MeleeWeaponIndex = (int)PlayerData.StartMeleeWeapon;
+	GrenadeIndex = (int)PlayerData.StartGrenade;
 
 	// ENUM NAME CHANGING needs a caution
 	MainWeaponEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("EMainWeapon"));
@@ -46,7 +48,7 @@ bool ULobbyInventory::Initialize()
 	ChangeWeaponText(SubWeaponIndex, SubWeaponEnum, Text_SubWeapon);
 	ChangeWeaponText(MeleeWeaponIndex, MeleeWeaponEnum, Text_MeleeWeapon);
 	ChangeWeaponText(GrenadeIndex, GrenadeEnum, Text_Grenade);
-	
+
 	return true;
 }
 
@@ -58,7 +60,7 @@ void ULobbyInventory::OnClicked_Button_MainWeaponLeft()
 
 void ULobbyInventory::OnClicked_Button_MainWeaponRight()
 {
-	MainWeaponIndex--;
+	MainWeaponIndex++;
 	ChangeWeaponText(MainWeaponIndex, MainWeaponEnum, Text_MainWeapon);
 }
 
@@ -115,13 +117,16 @@ void ULobbyInventory::OnClicked_Button_Apply()
 {
 	SetVisibility(ESlateVisibility::Hidden);
 
-	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), ULobbyInterface::StaticClass()))
+	UFPSGameInstance* GI = Cast<UFPSGameInstance>(GetGameInstance());
+	if (!ensure(GI != nullptr))
 	{
-		FPlayerData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
-		UserData.StartMainWeapon = (EMainWeapon)MainWeaponIndex;
-		UserData.StartSubWeapon = (ESubWeapon)SubWeaponIndex;
-		UserData.StartMeleeWeapon = (EMeleeWeapon)MeleeWeaponIndex;
-		UserData.StartGrenade = (EGrenade)GrenadeIndex;
-		ILobbyInterface::Execute_UpdateUserData(GetOwningPlayer(), UserData);
+		return;
 	}
+
+	FPlayerData PlayerData = GI->GetPlayerData();
+	PlayerData.StartMainWeapon = (EMainWeapon)MainWeaponIndex;
+	PlayerData.StartSubWeapon = (ESubWeapon)SubWeaponIndex;
+	PlayerData.StartMeleeWeapon = (EMeleeWeapon)MeleeWeaponIndex;
+	PlayerData.StartGrenade = (EGrenade)GrenadeIndex;
+	GI->SetPlayerData(PlayerData);
 }

@@ -30,10 +30,20 @@ void ADeathMatchGameMode::PostLogin(APlayerController* NewPlayer)
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::PostLogin => ( %s ) successfully Logged in"), *NewPlayer->GetName());
 
 	ADeathMatchPlayerController* PC = Cast<ADeathMatchPlayerController>(NewPlayer);
+	if (!ensure(PC != nullptr))
+	{
+		return;
+	}
 
 	PlayerControllers.Add(PC);
-
 	PC->Server_OnPostLogin();
+
+	ADeathMatchPlayerState* PS = PC->GetPlayerState<ADeathMatchPlayerState>();
+	if (!ensure(PS != nullptr))
+	{
+		return;
+	}
+	PS->Server_OnPostLogin();
 }
 
 // Called when a player leaves the game or is destroyed.
@@ -69,6 +79,7 @@ void ADeathMatchGameMode::SpawnPlayer(ADeathMatchPlayerController* PC)
 		if (PS != nullptr)
 		{
 			ETeam Team = PS->GetTeam();
+			UE_LOG(LogTemp, Warning, TEXT(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>ADeathMatchGameMode::SpawnPlayer Team: ( %i )"), Team);
 
 			// Team is None if the player did not choose a team from a lobby
 			if (Team == ETeam::None)

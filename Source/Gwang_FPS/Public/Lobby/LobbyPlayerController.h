@@ -4,9 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
-#include "LobbyInterface.h"
 #include "UserRow.h"
 #include "FPSGameInstance.h"
+#include "LobbyPlayerControllerInterface.h"
+#include "LobbyGameMode.h"
 #include "LobbyPlayerController.generated.h"
 
 class ALobbyGameMode;
@@ -14,51 +15,50 @@ class ULobbyWidget;
 class UFPSGameInstance;
 
 UCLASS()
-class GWANG_FPS_API ALobbyPlayerController : public APlayerController, public ILobbyInterface
+class GWANG_FPS_API ALobbyPlayerController : public APlayerController, public ILobbyPlayerControllerInterface
 {
 	GENERATED_BODY()
 
 public:
 	ALobbyPlayerController(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	// GameMode & UserData Setup
-	void OnPostLogin_Implementation(ALobbyGameMode* LobbyGM, const FPlayerData& NewUserData) override;
+	// Called after ALobbyGameMode::UpdateLobbyUI()
+	void UpdateLobbyUI_Implementation(const TArray<FLobbyPlayerData>& UserDataList) override;
 	UFUNCTION(Client, Reliable)
-	void Client_LoadLobbyWidget();
+	void Client_UpdateLobbyUI(const TArray<FLobbyPlayerData>& UserDataList);
 
-	// UserData Handle
-	FPlayerData GetUserData_Implementation() override;
-	void UpdateUserData_Implementation(const FPlayerData& NewData) override;
+	// Called after UUserRow::OnClicked_Button_Ready
+	void UpdateReadyStatus_Implementation(bool bIsReady) override;
 	UFUNCTION(Server, Reliable)
-		void Server_UpdateUserdata(const FPlayerData& UpdatedData);
-	UFUNCTION(Client, Reliable)
-		void Client_UpdateUserdata(const FPlayerData& UpdatedData);
+	void Server_UpdateReadyStatus(bool bIsReady);
 
-	// Lobby UI Updating
-	void UpdateLobbyUI_Implementation(const TArray<FPlayerData>& UserDataList) override;
-	UFUNCTION(Client, Reliable)
-	void Client_UpdateLobbyUI(const TArray<FPlayerData>& UserDataList);
+	// Called after ULobbyWidget::OnClicked_Button_MarvelTeam, OnClicked_Button_DCTeam
+	void UpdateTeamData_Implementation(const ETeam& NewTeam) override;
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateTeamData(const ETeam& NewTeam);
 
-	// Lobby to MainMenu
+	// Called after ULobbyWidget::OnClicked_Button_BackToMainMenu()
 	void LobbyToMainMenu_Implementation() override;
 	UFUNCTION(Server, Reliable)
 	void Server_LobbyToMainMenu();
 
-	// Start Game
-	void StartGame_Implementation() override;
+	// Called after ALobbyGameMode::StartGame()
+	void OnStartGame_Implementation(const FLobbyPlayerData& LobbyPlayerData) override;
+	UFUNCTION(Client, Reliable)
+	void Client_OnStartGame(const FLobbyPlayerData& LobbyPlayerData);
+	UFUNCTION(Server, Reliable)
+	void Server_OnStartGame();
 
-private:
+protected:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUserWidget> LobbyWidgetClass;
 
 	ULobbyWidget* LobbyWidget;
 
-	ALobbyGameMode* LobbyGameMode;
+	ALobbyGameMode* GM;
 
-	UFPSGameInstance* GameInstance;
-
-	UPROPERTY(Replicated)
-	int ControllerID = 0;
+protected:
+	void BeginPlay() override;
+	UFUNCTION(Server, Reliable)
+	void Server_OnSetupWidget();
 };

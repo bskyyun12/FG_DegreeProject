@@ -268,12 +268,6 @@ void UFPSGameInstance::StartSession()
 	{
 		SessionInterface->StartSession(SessionName);
 	}
-
-	UEngine* Engine = GetEngine();
-	if (Engine != nullptr)
-	{
-		Engine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, "Game Start!");
-	}
 }
 
 void UFPSGameInstance::DestroySession()
@@ -289,9 +283,9 @@ FPlayerData UFPSGameInstance::GetPlayerData() const
 	return PlayerData;
 }
 
-void UFPSGameInstance::SetUserData(const FPlayerData& Data)
+void UFPSGameInstance::SetPlayerData(const FPlayerData& Data)
 {
 	PlayerData = Data;
 
-	UE_LOG(LogTemp, Warning, TEXT("UFPSGameInstance::SetUserData => PlayerName: %s, NewTeam: %i"), *Data.PlayerName.ToString(), Data.Team);
+	UE_LOG(LogTemp, Warning, TEXT(">>>>>>>>>>>>>>UFPSGameInstance::SetUserData => PlayerName: %s, Team: %i, StartMain: %i"), *Data.PlayerName.ToString(), Data.Team, Data.StartMainWeapon);
 }

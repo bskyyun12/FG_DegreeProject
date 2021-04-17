@@ -4,12 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
-#include "UserRow.h"
-#include "LobbyInterface.generated.h"
+#include "LobbyGameMode.h"
+#include "FPSGameInstance.h"
+#include "LobbyPlayerControllerInterface.generated.h"
 
 // This class does not need to be modified.
 UINTERFACE(MinimalAPI)
-class ULobbyInterface : public UInterface
+class ULobbyPlayerControllerInterface : public UInterface
 {
 	GENERATED_BODY()
 };
@@ -17,27 +18,25 @@ class ULobbyInterface : public UInterface
 /**
  * 
  */
-class GWANG_FPS_API ILobbyInterface
+class GWANG_FPS_API ILobbyPlayerControllerInterface
 {
 	GENERATED_BODY()
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:	
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnPostLogin(ALobbyGameMode* LobbyGM, const FPlayerData& NewUserData);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	FPlayerData GetUserData();
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void UpdateUserData(const FPlayerData& NewData);
-
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void LobbyToMainMenu();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void StartGame();
+	void UpdateLobbyUI(const TArray<FLobbyPlayerData>& LobbyData);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void UpdateLobbyUI(const TArray<FPlayerData>& UserData);
+	void UpdateReadyStatus(bool bIsReady);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void UpdateTeamData(const ETeam& NewTeam);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void OnStartGame(const FLobbyPlayerData& LobbyPlayerData);
+
 };

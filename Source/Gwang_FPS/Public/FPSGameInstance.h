@@ -74,12 +74,6 @@ struct FPlayerData
 	FName PlayerName;
 
 	UPROPERTY()
-	int ControllerID;
-
-	UPROPERTY()
-	bool bIsReady;
-
-	UPROPERTY()
 	ETeam Team;
 
 	UPROPERTY()
@@ -97,19 +91,12 @@ struct FPlayerData
 	FPlayerData()
 	{
 		PlayerName = "Gwang";
-		ControllerID = 0;
-		bIsReady = false;
 		Team = ETeam::None;
 
 		StartMainWeapon = EMainWeapon::M4A1;
 		StartSubWeapon = ESubWeapon::Pistol;
 		StartMeleeWeapon = EMeleeWeapon::Knife;
 		StartGrenade = EGrenade::Grenade;
-	}
-
-	bool operator == (FPlayerData const& PlayerData)
-	{
-		return ControllerID == PlayerData.ControllerID;
 	}
 };
 
@@ -124,7 +111,7 @@ public:
 	void Init() override;
 
 	FPlayerData GetPlayerData() const;
-	void SetUserData(const FPlayerData& Data);
+	void SetPlayerData(const FPlayerData& Data);
 
 	void SetMainMenu(UMainMenuWidget* InMainMenu);
 	void LoadMainMenu(TSubclassOf<UUserWidget> MainMenuWidgetClass, TSubclassOf<UUserWidget> SessionInfoRowClass);

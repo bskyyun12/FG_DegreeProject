@@ -37,10 +37,16 @@ void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(ADeathMatchPlayerState, MatchTimeLeft);
 }
 
-void ADeathMatchPlayerState::PostInitializeComponents()
+// Called after ADeathMatchGameMode::PostLogin
+void ADeathMatchPlayerState::Server_OnPostLogin_Implementation()
 {
-	Super::PostInitializeComponents();
+	Client_OnPostLogin();	
+	
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Server_OnPostLogin ( %i ) => ( %s )"), GetLocalRole(), *GetName());
+}
 
+void ADeathMatchPlayerState::Client_OnPostLogin_Implementation()
+{
 	UFPSGameInstance* GI = GetGameInstance<UFPSGameInstance>();
 	if (!ensure(GI != nullptr))
 	{

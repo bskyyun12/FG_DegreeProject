@@ -2,7 +2,6 @@
 
 
 #include "Lobby/LobbyPlayerController.h"
-#include "Net/UnrealNetwork.h"
 
 #include "Lobby/LobbyWidget.h"
 #include "Lobby/UserRow.h"
@@ -15,114 +14,153 @@ ALobbyPlayerController::ALobbyPlayerController(const FObjectInitializer& ObjectI
 	bReplicates = true;
 }
 
-void ALobbyPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void ALobbyPlayerController::BeginPlay()
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(ALobbyPlayerController, ControllerID);
-}
-
-void ALobbyPlayerController::OnPostLogin_Implementation(ALobbyGameMode* LobbyGM, const FPlayerData& NewUserData)
-{
-	LobbyGameMode = LobbyGM;
-	ControllerID = NewUserData.ControllerID; 
-	Client_LoadLobbyWidget();
-	Execute_UpdateUserData(this, NewUserData);
-}
-
-void ALobbyPlayerController::Client_LoadLobbyWidget_Implementation()
-{
-	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::Client_LoadLobbyWidget_Implementation"));
-	UWorld* World = GetWorld();
-	if (!ensure(World != nullptr))
+	if (GetLocalRole() == ROLE_Authority)
 	{
-		return;
-	}
-	if (!ensure(LobbyWidgetClass != nullptr))
-	{
-		return;
-	}
-
-	LobbyWidget = CreateWidget<ULobbyWidget>(World, LobbyWidgetClass);
-	if (!ensure(LobbyWidget != nullptr))
-	{
-		return;
-	}
-	LobbyWidget->Setup();
-}
-
-#pragma region UserData Handle
-FPlayerData ALobbyPlayerController::GetUserData_Implementation()
-{
-	if (GameInstance == nullptr)
-	{
-		GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
-		if (!ensure(GameInstance != nullptr))
+		// Cache GameMode
+		UWorld* World = GetWorld();
+		if (World != nullptr)
 		{
-			return FPlayerData();
+			GM = World->GetAuthGameMode<ALobbyGameMode>();
+			if (!ensure(GM != nullptr))
+			{
+				return;
+			}
 		}
 	}
-	return GameInstance->GetPlayerData();
-}
 
-void ALobbyPlayerController::UpdateUserData_Implementation(const FPlayerData& NewData)
-{
-	Server_UpdateUserdata(NewData);
-	Client_UpdateUserdata(NewData);
-}
-
-void ALobbyPlayerController::Server_UpdateUserdata_Implementation(const FPlayerData& UpdatedData)
-{
-	if (LobbyGameMode != nullptr)
+	if (IsLocalController())
 	{
-		LobbyGameMode->GwangUpdateLobbyData(UpdatedData);
-	}
-}
-
-void ALobbyPlayerController::Client_UpdateUserdata_Implementation(const FPlayerData& UpdatedData)
-{
-	if (GameInstance == nullptr)
-	{
-		GameInstance = Cast<UFPSGameInstance>(GetGameInstance());
-		if (!ensure(GameInstance != nullptr))
+		UWorld* World = GetWorld();
+		if (!ensure(World != nullptr))
 		{
 			return;
 		}
-	}
-	GameInstance->SetUserData(UpdatedData);
-}
-#pragma endregion UserData Handle
+		if (!ensure(LobbyWidgetClass != nullptr))
+		{
+			return;
+		}
 
-// Called by ALobbyGameMode::UpdateLobbyUI
-void ALobbyPlayerController::UpdateLobbyUI_Implementation(const TArray<FPlayerData>& UserDataList)
+		LobbyWidget = CreateWidget<ULobbyWidget>(World, LobbyWidgetClass);
+		if (!ensure(LobbyWidget != nullptr))
+		{
+			return;
+		}
+		LobbyWidget->Setup();
+
+		Server_OnSetupWidget();
+	}
+}
+
+void ALobbyPlayerController::Server_OnSetupWidget_Implementation()
+{
+	if (GM != nullptr)
+	{
+		GM->UpdateLobbyUI();
+	}
+}
+
+// Called after ALobbyGameMode::UpdateLobbyUI()
+void ALobbyPlayerController::UpdateLobbyUI_Implementation(const TArray<FLobbyPlayerData>& UserDataList)
 {
 	Client_UpdateLobbyUI(UserDataList);
 }
 
-void ALobbyPlayerController::Client_UpdateLobbyUI_Implementation(const TArray<FPlayerData>& UserDataList)
+void ALobbyPlayerController::Client_UpdateLobbyUI_Implementation(const TArray<FLobbyPlayerData>& UserDataList)
 {
 	LobbyWidget->UpdateUserRowData(UserDataList);
 }
 
+// ( bIsReady Update ) Called after UUserRow::OnClicked_Button_Ready
+void ALobbyPlayerController::UpdateReadyStatus_Implementation(bool bIsReady)
+{
+	Server_UpdateReadyStatus(bIsReady);
+}
+
+void ALobbyPlayerController::Server_UpdateReadyStatus_Implementation(bool bIsReady)
+{
+	if (GM != nullptr)
+	{
+		FLobbyPlayerData LobbyData = GM->GetLobbyPlayerData(this);
+		LobbyData.bIsReady = bIsReady;
+		GM->UpdateLobbyPlayerData(LobbyData);
+	}
+}
+
+// ( Team Update ) Called after ULobbyWidget::OnClicked_Button_MarvelTeam, OnClicked_Button_DCTeam
+void ALobbyPlayerController::UpdateTeamData_Implementation(const ETeam& NewTeam)
+{
+	Server_UpdateTeamData(NewTeam);
+}
+
+void ALobbyPlayerController::Server_UpdateTeamData_Implementation(const ETeam& NewTeam)
+{
+	if (GM != nullptr)
+	{
+		FLobbyPlayerData LobbyData = GM->GetLobbyPlayerData(this);
+		LobbyData.Team = NewTeam;
+		GM->UpdateLobbyPlayerData(LobbyData);
+	}
+}
+
+// Called after ULobbyWidget::OnClicked_Button_BackToMainMenu()
 void ALobbyPlayerController::LobbyToMainMenu_Implementation()
 {
-	GameInstance->DestroySession();
-	UGameplayStatics::OpenLevel(GetWorld(), TEXT("Menu"));
-	Server_LobbyToMainMenu();
+	UFPSGameInstance* GI = Cast<UFPSGameInstance>(GetGameInstance());
+	if (!ensure(GI != nullptr))
+	{
+		GI->DestroySession();
+		UGameplayStatics::OpenLevel(GetWorld(), TEXT("Menu"));
+		Server_LobbyToMainMenu();
+	}
 }
 
 void ALobbyPlayerController::Server_LobbyToMainMenu_Implementation()
 {
-	LobbyGameMode->RemoveUserData(ControllerID);
+	if (GM != nullptr)
+	{
+		GM->RemoveLobbyPlayerData(this);
+	}
 }
 
-void ALobbyPlayerController::StartGame_Implementation()
+void ALobbyPlayerController::OnStartGame_Implementation(const FLobbyPlayerData& LobbyPlayerData)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::StartGame_Implementation"));
-	if (HasAuthority())
+	Client_OnStartGame(LobbyPlayerData);
+}
+
+void ALobbyPlayerController::Client_OnStartGame_Implementation(const FLobbyPlayerData& LobbyPlayerData)
+{
+	UFPSGameInstance* GI = Cast<UFPSGameInstance>(GetGameInstance());
+	if (!ensure(GI != nullptr))
 	{
-		if (LobbyGameMode != nullptr)
-		{
-			LobbyGameMode->StartGame();
-		}
+		return;
+	}
+
+	FPlayerData PlayerData = GI->GetPlayerData();
+
+	PlayerData.PlayerName = LobbyPlayerData.PlayerName;
+	PlayerData.Team = LobbyPlayerData.Team;
+
+	// Weapons are handled directly in ( ULobbyInventory::OnClicked_Button_Apply ) because players don't need to know each others' weapons
+	//PlayerData.StartMainWeapon = LobbyPlayerData.StartMainWeapon;
+	//PlayerData.StartSubWeapon = LobbyPlayerData.StartSubWeapon;
+	//PlayerData.StartMeleeWeapon = LobbyPlayerData.StartMeleeWeapon;
+	//PlayerData.StartGrenade = LobbyPlayerData.StartGrenade;
+
+	GI->SetPlayerData(PlayerData);
+
+	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::Client_OnStartGame ( %i ) => ( %s ) team: %i, StartMain: %i"), GetLocalRole(), *GetName(), GI->GetPlayerData().Team, GI->GetPlayerData().StartMainWeapon);
+
+	Server_OnStartGame();
+}
+
+void ALobbyPlayerController::Server_OnStartGame_Implementation()
+{
+	if (GM != nullptr)
+	{
+		FLobbyPlayerData LobbyData = GM->GetLobbyPlayerData(this);
+		LobbyData.bFinishedSavingData = true;
+		GM->UpdateLobbyPlayerData(LobbyData);
 	}
 }
