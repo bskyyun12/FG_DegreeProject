@@ -19,8 +19,8 @@ bool ULobbyInventory::Initialize()
 	Button_SubWeaponLeft->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_SubWeaponLeft);
 	Button_SubWeaponRight->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_SubWeaponRight);
 
-	Button_KnifeLeft->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_KnifeLeft);
-	Button_KnifeRight->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_KnifeRight);
+	Button_MeleeWeaponLeft->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_MeleeWeaponLeft);
+	Button_MeleeWeaponRight->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_MeleeWeaponRight);
 
 	Button_GrenadeLeft->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_GrenadeLeft);
 	Button_GrenadeRight->OnClicked.AddDynamic(this, &ULobbyInventory::OnClicked_Button_GrenadeRight);
@@ -32,19 +32,19 @@ bool ULobbyInventory::Initialize()
 		FPlayerData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
 		MainWeaponIndex = (int)UserData.StartMainWeapon;
 		SubWeaponIndex = (int)UserData.StartSubWeapon;
-		KnifeIndex = (int)UserData.StartMeleeWeapon;
+		MeleeWeaponIndex = (int)UserData.StartMeleeWeapon;
 		GrenadeIndex = (int)UserData.StartGrenade;
 	}
 
 	// ENUM NAME CHANGING needs a caution
 	MainWeaponEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("EMainWeapon"));
 	SubWeaponEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("ESubWeapon"));
-	KnifeEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("EKnife"));
+	MeleeWeaponEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("EMeleeWeapon"));
 	GrenadeEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("EGrenade"));
 
 	ChangeWeaponText(MainWeaponIndex, MainWeaponEnum, Text_MainWeapon);
 	ChangeWeaponText(SubWeaponIndex, SubWeaponEnum, Text_SubWeapon);
-	ChangeWeaponText(KnifeIndex, KnifeEnum, Text_Knife);
+	ChangeWeaponText(MeleeWeaponIndex, MeleeWeaponEnum, Text_MeleeWeapon);
 	ChangeWeaponText(GrenadeIndex, GrenadeEnum, Text_Grenade);
 	
 	return true;
@@ -74,16 +74,16 @@ void ULobbyInventory::OnClicked_Button_SubWeaponRight()
 	ChangeWeaponText(SubWeaponIndex, SubWeaponEnum, Text_SubWeapon);
 }
 
-void ULobbyInventory::OnClicked_Button_KnifeLeft()
+void ULobbyInventory::OnClicked_Button_MeleeWeaponLeft()
 {
-	KnifeIndex--;
-	ChangeWeaponText(KnifeIndex, KnifeEnum, Text_Knife);
+	MeleeWeaponIndex--;
+	ChangeWeaponText(MeleeWeaponIndex, MeleeWeaponEnum, Text_MeleeWeapon);
 }
 
-void ULobbyInventory::OnClicked_Button_KnifeRight()
+void ULobbyInventory::OnClicked_Button_MeleeWeaponRight()
 {
-	KnifeIndex++;
-	ChangeWeaponText(KnifeIndex, KnifeEnum, Text_Knife);
+	MeleeWeaponIndex++;
+	ChangeWeaponText(MeleeWeaponIndex, MeleeWeaponEnum, Text_MeleeWeapon);
 }
 
 void ULobbyInventory::OnClicked_Button_GrenadeLeft()
@@ -120,7 +120,7 @@ void ULobbyInventory::OnClicked_Button_Apply()
 		FPlayerData UserData = ILobbyInterface::Execute_GetUserData(GetOwningPlayer());
 		UserData.StartMainWeapon = (EMainWeapon)MainWeaponIndex;
 		UserData.StartSubWeapon = (ESubWeapon)SubWeaponIndex;
-		UserData.StartMeleeWeapon = (EMeleeWeapon)KnifeIndex;
+		UserData.StartMeleeWeapon = (EMeleeWeapon)MeleeWeaponIndex;
 		UserData.StartGrenade = (EGrenade)GrenadeIndex;
 		ILobbyInterface::Execute_UpdateUserData(GetOwningPlayer(), UserData);
 	}

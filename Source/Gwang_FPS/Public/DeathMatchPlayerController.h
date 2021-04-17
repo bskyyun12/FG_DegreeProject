@@ -53,7 +53,7 @@ public:
 
 	// Chat
 	void StartChat_Implementation() override;
-	void SendChat(const FName& ChatContent);
+	void SendChat_Implementation(const FName& ChatToSend) override;
 	void UpdateChatUI(const FName& PlayerName, const FName& ChatContent);
 	
 	void UpdateWeaponUI_Implementation(const FName& WeaponName, const int& CurrentAmmo, const int& RemainingAmmo) override;
@@ -97,6 +97,8 @@ protected:
 
 	bool bWidgetLoaded;
 public:
+
+
 
 
 

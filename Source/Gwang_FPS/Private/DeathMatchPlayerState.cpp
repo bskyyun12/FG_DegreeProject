@@ -18,7 +18,6 @@ void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 
 	DOREPLIFETIME(ADeathMatchPlayerState, bIsReadyToJoin);
 
-	DOREPLIFETIME(ADeathMatchPlayerState, PlayerName);
 	DOREPLIFETIME(ADeathMatchPlayerState, Team);
 
 	// Weapons
@@ -36,7 +35,6 @@ void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(ADeathMatchPlayerState, bIsDead);
 
 	DOREPLIFETIME(ADeathMatchPlayerState, MatchTimeLeft);
-	DOREPLIFETIME(ADeathMatchPlayerState, LastChat);
 }
 
 void ADeathMatchPlayerState::PostInitializeComponents()
@@ -53,7 +51,6 @@ void ADeathMatchPlayerState::PostInitializeComponents()
 
 void ADeathMatchPlayerState::Server_InitialDataSetup_Implementation(const FPlayerData& PlayerData)
 {
-	PlayerName = PlayerData.PlayerName;
 	Team = PlayerData.Team;
 
 	for (uint8 i = 0; i < (uint8)EWeaponType::EnumSize; i++)
@@ -269,11 +266,14 @@ void ADeathMatchPlayerState::Server_ResetCurrentWeapons_Implementation()
 
 void ADeathMatchPlayerState::Server_OnSendChat_Implementation(const FName& ChatContent)
 {
-	LastChat = ChatContent;
+	Multicast_OnSendChat(ChatContent);
+}
 
+void ADeathMatchPlayerState::Multicast_OnSendChat_Implementation(const FName& ChatContent)
+{
 	if (GetPlayerController() != nullptr && GetPlayerController()->IsLocalController())
 	{
-		GetPlayerController()->UpdateChatUI(PlayerName, LastChat);
+		GetPlayerController()->UpdateChatUI(*GetPlayerName(), ChatContent);
 	}
 }
 

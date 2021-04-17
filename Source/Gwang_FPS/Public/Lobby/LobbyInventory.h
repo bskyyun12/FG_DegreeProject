@@ -46,19 +46,19 @@ private:
 	UFUNCTION()
 	void OnClicked_Button_SubWeaponRight();
 
-	// Knife
+	// MeleeWeapon
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* Text_Knife;
+	UTextBlock* Text_MeleeWeapon;
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* Button_KnifeLeft;
+	UButton* Button_MeleeWeaponLeft;
 	UFUNCTION()
-	void OnClicked_Button_KnifeLeft();
+	void OnClicked_Button_MeleeWeaponLeft();
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* Button_KnifeRight;
+	UButton* Button_MeleeWeaponRight;
 	UFUNCTION()
-	void OnClicked_Button_KnifeRight();
+	void OnClicked_Button_MeleeWeaponRight();
 
 	// Grenade
 	UPROPERTY(meta = (BindWidget))
@@ -83,11 +83,11 @@ private:
 
 	UEnum* MainWeaponEnum;
 	UEnum* SubWeaponEnum;
-	UEnum* KnifeEnum;
+	UEnum* MeleeWeaponEnum;
 	UEnum* GrenadeEnum;
 
 	int MainWeaponIndex;
 	int SubWeaponIndex;
-	int KnifeIndex;
+	int MeleeWeaponIndex;
 	int GrenadeIndex;
 };

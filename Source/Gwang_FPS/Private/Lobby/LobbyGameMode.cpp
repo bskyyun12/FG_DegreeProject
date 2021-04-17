@@ -20,6 +20,7 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 		return;
 	}		
 
+	// TODO: Make Logout and remove the UserData
 	FPlayerData NewUserData;
 	NewUserData.PlayerName = GetUserName(NewPlayer);
 	NewUserData.ControllerID = GetPlayerID(NewPlayer);

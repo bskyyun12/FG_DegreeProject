@@ -25,7 +25,6 @@ bool UChatPanel::Initialize()
 void UChatPanel::OnStartChat()
 {
 	UE_LOG(LogTemp, Warning, TEXT("UChatPanel::OnStartChat"));
-
 	if (GetOwningPlayer() != nullptr)
 	{
 		FInputModeGameAndUI InputModeData;

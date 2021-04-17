@@ -45,6 +45,8 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_OnSendChat(const FName& ChatContent);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnSendChat(const FName& ChatContent);
 
 	UFUNCTION(Server, Reliable)
 	void Server_UpdateHealthArmor(const uint8& NewHealth, const uint8& NewArmor);
@@ -58,8 +60,6 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsReadyToJoin;
 
-	UPROPERTY(Replicated, BlueprintReadOnly)
-	FName PlayerName;
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	ETeam Team;
 
@@ -86,9 +86,6 @@ protected:
 
 	UPROPERTY(Replicated)
 	float MatchTimeLeft = 0.f;
-	
-	UPROPERTY(Replicated)
-	FName LastChat;
 
 protected:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;

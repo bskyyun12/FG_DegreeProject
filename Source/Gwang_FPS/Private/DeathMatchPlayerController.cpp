@@ -187,13 +187,25 @@ void ADeathMatchPlayerController::VignetteEffectOnTakeDamage_Implementation()
 	VignetteWidget->OnTakeDamage();
 }
 
-void ADeathMatchPlayerController::SendChat(const FName& ChatContent)
+void ADeathMatchPlayerController::StartChat_Implementation()
 {
-	PS->Server_OnSendChat(ChatContent);
+	HUDWidget->OnStartChat();
+}
+
+void ADeathMatchPlayerController::SendChat_Implementation(const FName& ChatToSend)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerController::SendChat ( %i )"), GetLocalRole());
+	// TODO: make a getter for PS? like how I did in Character script
+	PS = GetPlayerState<ADeathMatchPlayerState>();
+	if (PS != nullptr)
+	{
+		PS->Server_OnSendChat(ChatToSend);
+	}
 }
 
 void ADeathMatchPlayerController::UpdateChatUI(const FName& PlayerName, const FName& ChatContent)
 {
+	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerController::UpdateChatUI ( %i )"), GetLocalRole());
 	HUDWidget->AddChatRow(PlayerName, ChatContent);
 }
 
@@ -216,11 +228,6 @@ void ADeathMatchPlayerController::SetScoreBoardUIVisibility_Implementation(bool 
 void ADeathMatchPlayerController::UpdateHealthArmorUI(const uint8& CurrentHealth, const uint8& CurrentArmor)
 {
 	HUDWidget->UpdateHealthArmorUI(CurrentHealth, CurrentArmor);
-}
-
-void ADeathMatchPlayerController::StartChat_Implementation()
-{
-	HUDWidget->OnStartChat();
 }
 
 #pragma endregion

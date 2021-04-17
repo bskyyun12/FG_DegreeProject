@@ -71,7 +71,7 @@ protected:
 	DECLARE_DELEGATE_OneParam(FOneBooleanDelegate, bool)
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 
-	#pragma region Move & LookUp
+	#pragma region Move & Turn
 	void MoveForward(float Val);
 	void MoveRight(float Val);
 
@@ -80,7 +80,22 @@ protected:
 	void Server_LookUp(const FRotator& CameraRotation);
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_LookUp(const FRotator& CameraRotation);
-	#pragma endregion Move & LookUp
+	#pragma endregion Move & Turn
+	
+	#pragma region Spawn & Death
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnSpawn();
+	void HandleCameraOnSpawn();
+
+	UFUNCTION(Server, Reliable)
+	void Server_OnDeath(AActor* DeathCauser);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnDeath();
+	void HandleCameraOnDeath();
+
+	UFUNCTION(Server, Reliable)
+	void Server_OnKill(ADeathMatchCharacter* DeadPlayer);
+	#pragma endregion Spawn & Death
 
 	#pragma region Weapon Equip & Swap
 	void EquipMainWeapon();
@@ -129,21 +144,6 @@ protected:
 	void Multicast_BeginReload();
 	void Reload();
 	#pragma endregion Weapon Reload
-
-	#pragma region Spawn & Death
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnSpawn();
-	void HandleCameraOnSpawn();
-
-	UFUNCTION(Server, Reliable)
-	void Server_OnDeath(AActor* DeathCauser);
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnDeath();
-	void HandleCameraOnDeath();
-
-	UFUNCTION(Server, Reliable)
-	void Server_OnKill(ADeathMatchCharacter* DeadPlayer);
-	#pragma endregion Spawn & Death
 
 	#pragma region Crouch
 	void HandleCrouch(bool bCrouchButtonDown);

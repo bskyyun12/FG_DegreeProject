@@ -32,9 +32,9 @@ public:
 	FPlayerData GetUserData_Implementation() override;
 	void UpdateUserData_Implementation(const FPlayerData& NewData) override;
 	UFUNCTION(Server, Reliable)
-	void Server_UpdateUserdata(const FPlayerData& UpdatedData);
+		void Server_UpdateUserdata(const FPlayerData& UpdatedData);
 	UFUNCTION(Client, Reliable)
-	void Client_UpdateUserdata(const FPlayerData& UpdatedData);
+		void Client_UpdateUserdata(const FPlayerData& UpdatedData);
 
 	// Lobby UI Updating
 	void UpdateLobbyUI_Implementation(const TArray<FPlayerData>& UserDataList) override;
