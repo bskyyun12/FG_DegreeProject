@@ -10,12 +10,59 @@
 class ADeathMatchGameMode;
 class ADeathMatchPlayerState;
 
+USTRUCT(BlueprintType)
+struct FScoreboardData
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	int32 PlayerId;
+
+	UPROPERTY()
+	FName PlayerName;
+
+	UPROPERTY()
+	ETeam Team;
+
+	UPROPERTY()
+	uint8 Kills;
+
+	UPROPERTY()
+	uint8 Deaths;
+
+	FScoreboardData()
+	{}
+
+	FScoreboardData(const int32& Id, const FName& Name, const ETeam& _Team)
+	{
+		PlayerId = Id;
+		PlayerName = Name;
+		Team = _Team;
+		Kills = 0;
+		Deaths = 0;
+	}
+
+	void operator = (const FScoreboardData& NewData) 
+	{
+		PlayerId = NewData.PlayerId;
+		PlayerName = NewData.PlayerName;
+		Team = NewData.Team;
+		Kills = NewData.Kills;
+		Deaths = NewData.Deaths;
+	}
+};
+
 UCLASS()
 class GWANG_FPS_API ADeathMatchGameState : public AGameStateBase
 {
 	GENERATED_BODY()
 	
 public:
+	// Scoreboard
+	FScoreboardData GetScoreboardData(ADeathMatchPlayerState* PS);
+	void SetScoreboardData(const FScoreboardData& Data);
+
+	// Team score
 	void AddScore(const ETeam& TeamToAddScore);
 
 protected:
@@ -28,10 +75,7 @@ protected:
 	uint8 DCTeamScore;
 
 	UPROPERTY(Replicated)
-	TArray<ADeathMatchPlayerState*> MarvelPlayerStates;
-
-	UPROPERTY(Replicated)
-	TArray<ADeathMatchPlayerState*> DCPlayerStates;
+	TArray<FScoreboardData> ScoreboardData;
 
 	int TimeLeftInSeconds;
 
@@ -48,6 +92,8 @@ protected:
 
 	UFUNCTION()
 	void MatchTimeCountdown();
+
+	void UpdateScoreBoard();
 	
 	void EndMatch();
 };

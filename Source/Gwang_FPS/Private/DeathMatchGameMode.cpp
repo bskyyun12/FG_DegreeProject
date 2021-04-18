@@ -52,8 +52,10 @@ void ADeathMatchGameMode::PostLogin(APlayerController* NewPlayer)
 void ADeathMatchGameMode::Logout(AController* Exiting)
 {
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::Logout => ( %s ) Logged out"), *Exiting->GetName());
-	Super::Logout(Exiting);
+
 	PlayerControllers.Remove(Cast<ADeathMatchPlayerController>(Exiting));
+
+	Super::Logout(Exiting);
 }
 
 // Spawn players and start the game!
@@ -81,7 +83,7 @@ void ADeathMatchGameMode::SpawnPlayer(ADeathMatchPlayerController* PC)
 		if (PS != nullptr)
 		{
 			ETeam Team = PS->GetTeam();
-			UE_LOG(LogTemp, Warning, TEXT(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>ADeathMatchGameMode::SpawnPlayer Team: ( %i )"), Team);
+			UE_LOG(LogTemp, Warning, TEXT("ADeathMatchGameMode::SpawnPlayer Team: ( %i )"), Team);
 
 			// Team is None if the player did not choose a team from a lobby
 			if (Team == ETeam::None)

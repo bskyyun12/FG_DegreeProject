@@ -4,9 +4,9 @@
 #include "Widgets/ScoreBoardUserRow.h"
 #include "Components/TextBlock.h"
 
-void UScoreBoardUserRow::UpdateUserRowData(const FName& UserName, const uint8& Kills, const uint8& Deaths)
+void UScoreBoardUserRow::UpdateUserRowData(const FName& PlayerName, const uint8& Kills, const uint8& Deaths)
 {
-	Text_UserName->SetText(FText::FromName(UserName));
+	Text_PlayerName->SetText(FText::FromName(PlayerName));
 	Text_Kills->SetText(FText::AsNumber(Kills));
-	Text_Kills->SetText(FText::AsNumber(Deaths));
+	Text_Deaths->SetText(FText::AsNumber(Deaths));
 }

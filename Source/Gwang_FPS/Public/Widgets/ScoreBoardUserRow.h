@@ -14,11 +14,11 @@ class GWANG_FPS_API UScoreBoardUserRow : public UFPSWidgetBase
 	GENERATED_BODY()
 
 public:
-	void UpdateUserRowData(const FName& UserName, const uint8& Kills, const uint8& Deaths);
+	void UpdateUserRowData(const FName& PlayerName, const uint8& Kills, const uint8& Deaths);
 
 private:
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* Text_UserName;
+	UTextBlock* Text_PlayerName;
 	
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Text_Kills;

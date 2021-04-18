@@ -8,14 +8,13 @@
 
 #include "DeathMatchGameMode.h"
 #include "PlayerControllerInterface.h"
+#include "DeathMatchPlayerState.h"
 
 void ADeathMatchGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ADeathMatchGameState, MarvelTeamScore);
 	DOREPLIFETIME(ADeathMatchGameState, DCTeamScore);
-	DOREPLIFETIME(ADeathMatchGameState, MarvelPlayerStates);
-	DOREPLIFETIME(ADeathMatchGameState, DCPlayerStates);
 }
 
 void ADeathMatchGameState::PostInitializeComponents()
@@ -105,6 +104,57 @@ void ADeathMatchGameState::AddScore(const ETeam& TeamToAddScore)
 		if (MarvelTeamScore >= ScoreToWin || DCTeamScore >= ScoreToWin)
 		{
 			EndMatch();
+		}
+	}
+}
+
+FScoreboardData ADeathMatchGameState::GetScoreboardData(ADeathMatchPlayerState* PS)
+{
+	if (PS == nullptr)
+	{
+		return FScoreboardData();
+	}
+
+	for (const FScoreboardData& Data : ScoreboardData)
+	{
+		if (Data.PlayerId == PS->GetPlayerId())
+		{
+			return Data;
+		}
+	}
+
+	ScoreboardData.Add(FScoreboardData(PS->GetPlayerId(), *PS->GetPlayerName(), PS->GetTeam()));
+	return GetScoreboardData(PS);
+}
+
+void ADeathMatchGameState::SetScoreboardData(const FScoreboardData& NewData)
+{
+	for (FScoreboardData& Data : ScoreboardData)
+	{
+		if (Data.PlayerId == NewData.PlayerId)
+		{
+			Data = NewData;
+		}
+	}
+
+	UpdateScoreBoard();
+}
+
+void ADeathMatchGameState::UpdateScoreBoard()
+{
+	for (APlayerState* PS : PlayerArray)
+	{
+		if (PS != nullptr)
+		{
+			APawn* Pawn = PS->GetPawn();
+			if (Pawn != nullptr)
+			{
+				AController* Controller = Pawn->GetController();
+				if (Controller != nullptr && UKismetSystemLibrary::DoesImplementInterface(Controller, UPlayerControllerInterface::StaticClass()))
+				{
+					IPlayerControllerInterface::Execute_UpdateScoreBoard(Controller, ScoreboardData);
+				}
+			}
 		}
 	}
 }

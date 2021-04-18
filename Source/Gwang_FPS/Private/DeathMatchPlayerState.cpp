@@ -182,6 +182,13 @@ ADeathMatchGameState* ADeathMatchPlayerState::GetGameState()
 void ADeathMatchPlayerState::Server_OnSpawn_Implementation()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Server_OnStartMatch"));
+
+	if (GetGameState() != nullptr)
+	{
+		FScoreboardData ScoreboardData = GetGameState()->GetScoreboardData(this);
+		GetGameState()->SetScoreboardData(ScoreboardData);
+	}
+
 	Multicast_OnSpawn();
 }
 
@@ -230,6 +237,13 @@ void ADeathMatchPlayerState::Server_OnKillPlayer_Implementation(ADeathMatchChara
 		{
 			GetGameState()->AddScore(Team);
 		}
+
+		if (GetGameState() != nullptr)
+		{
+			FScoreboardData ScoreboardData = GetGameState()->GetScoreboardData(this);
+			ScoreboardData.Kills++;
+			GetGameState()->SetScoreboardData(ScoreboardData);
+		}
 	}
 }
 
@@ -248,6 +262,13 @@ void ADeathMatchPlayerState::Server_OnDeath_Implementation()
 
 	NumDeaths++;
 	bIsDead = true;
+
+	if (GetGameState() != nullptr)
+	{
+		FScoreboardData ScoreboardData = GetGameState()->GetScoreboardData(this);
+		ScoreboardData.Deaths++;
+		GetGameState()->SetScoreboardData(ScoreboardData);
+	}
 }
 
 void ADeathMatchPlayerState::Server_ResetCurrentWeapons_Implementation()

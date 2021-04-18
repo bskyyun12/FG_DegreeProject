@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "PlayerControllerInterface.h"
+#include "DeathMatchGameState.h"
 #include "DeathMatchPlayerController.generated.h"
 
 class ADeathMatchGameMode;
@@ -69,7 +70,13 @@ public:
 	void Client_LoadGameOverUI(const ETeam& WinnerTeam, bool bIsDraw);
 
 	void UpdateWeaponUI_Implementation(const FName& WeaponName, const int& CurrentAmmo, const int& RemainingAmmo) override;
+
+	// ScoreBoard
 	void SetScoreBoardUIVisibility_Implementation(bool bNewVisibility) override;
+	void UpdateScoreBoard_Implementation(const TArray<FScoreboardData>& ScoreBoardData) override;
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateScoreBoard(const TArray<FScoreboardData>& ScoreBoardData);
+
 #pragma endregion Widget Related
 
 protected:
@@ -107,4 +114,6 @@ protected:
 	void Server_RequestPlayerSpawn();
 
 	bool bWidgetLoaded;
+public:
+
 };

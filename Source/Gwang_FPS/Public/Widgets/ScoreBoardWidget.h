@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/FPSWidgetBase.h"
+#include "DeathMatchGameState.h"
 #include "ScoreBoardWidget.generated.h"
 
 class UVerticalBox;
@@ -14,7 +15,7 @@ class GWANG_FPS_API UScoreBoardWidget : public UFPSWidgetBase
 	GENERATED_BODY()
 
 public:
-	void UpdateScoreBoard();
+	void UpdateScoreBoard(const TArray<FScoreboardData>& ScoreBoardData);
 
 private:
 	UPROPERTY(EditDefaultsOnly)

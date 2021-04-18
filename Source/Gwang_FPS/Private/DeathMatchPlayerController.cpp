@@ -247,6 +247,16 @@ void ADeathMatchPlayerController::SetScoreBoardUIVisibility_Implementation(bool 
 	ScoreboardWidget->SetVisibility(bNewVisibility ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
 }
 
+void ADeathMatchPlayerController::UpdateScoreBoard_Implementation(const TArray<FScoreboardData>& ScoreBoardData)
+{
+	Client_UpdateScoreBoard(ScoreBoardData);
+}
+
+void ADeathMatchPlayerController::Client_UpdateScoreBoard_Implementation(const TArray<FScoreboardData>& ScoreBoardData)
+{
+	ScoreboardWidget->UpdateScoreBoard(ScoreBoardData);
+}
+
 void ADeathMatchPlayerController::UpdateHealthArmorUI(const uint8& CurrentHealth, const uint8& CurrentArmor)
 {
 	HUDWidget->UpdateHealthArmorUI(CurrentHealth, CurrentArmor);

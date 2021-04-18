@@ -50,5 +50,8 @@ public:
 	void VignetteEffectOnTakeDamage();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void UpdateScoreBoard(const TArray<FScoreboardData>& ScoreBoardData);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void LoadGameOverUI(const ETeam& WinnerTeam, bool bIsDraw);
 };
