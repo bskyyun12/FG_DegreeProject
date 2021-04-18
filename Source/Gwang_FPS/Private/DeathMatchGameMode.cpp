@@ -155,7 +155,12 @@ void ADeathMatchGameMode::OnPlayerDeath(ADeathMatchPlayerController* PC)
 void ADeathMatchGameMode::EndMatch()
 {
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::EndMatch"));
-	// TODO: Server travel to lobby
+
+	UWorld* World = GetWorld();
+	if (World != nullptr)
+	{
+		World->ServerTravel("/Game/Maps/Lobby?listen");
+	}
 }
 
 ETeam ADeathMatchGameMode::GetTeamWithLessPeople()

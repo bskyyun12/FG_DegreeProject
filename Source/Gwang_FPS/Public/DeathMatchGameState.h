@@ -33,8 +33,7 @@ protected:
 	UPROPERTY(Replicated)
 	TArray<ADeathMatchPlayerState*> DCPlayerStates;
 
-	UPROPERTY(Replicated)
-	float TimeLeftInSeconds;
+	int TimeLeftInSeconds;
 
 	FTimerHandle MatchTimer;
 

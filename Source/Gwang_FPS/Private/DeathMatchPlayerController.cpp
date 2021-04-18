@@ -167,9 +167,17 @@ void ADeathMatchPlayerController::Client_SetupWidgets_Implementation()
 	}
 }
 
-void ADeathMatchPlayerController::UpdateMatchTimeUI(const float& MatchTime)
+void ADeathMatchPlayerController::UpdateMatchTimeUI_Implementation(const int& MatchTimeInSeconds)
 {
+	Client_UpdateMatchTimeUI(MatchTimeInSeconds);
+}
 
+void ADeathMatchPlayerController::Client_UpdateMatchTimeUI_Implementation(const int& MatchTimeInSeconds)
+{
+	uint8 Minutes = MatchTimeInSeconds / 60;
+	uint8 Seconds = MatchTimeInSeconds % 60;
+
+	HUDWidget->UpdateMatchTime(Minutes, Seconds);
 }
 
 void ADeathMatchPlayerController::UpdateScoreUI(const uint8& MarvelScore, const uint8& DCScore)

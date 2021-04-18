@@ -47,6 +47,12 @@ void UFPSHUDWidget::OnStartChat()
 	ChatPanel->OnStartChat();
 }
 
+void UFPSHUDWidget::UpdateMatchTime(const uint8& Minutes, const uint8& Seconds)
+{
+	Text_Minutes->SetText(UKismetTextLibrary::Conv_IntToText(Minutes));
+	Text_Seconds->SetText(UKismetTextLibrary::Conv_IntToText(Seconds));
+}
+
 void UFPSHUDWidget::AddChatRow(const FName& PlayerName, const FName& ChatContent)
 {
 	ChatPanel->AddChatRow(PlayerName, ChatContent);

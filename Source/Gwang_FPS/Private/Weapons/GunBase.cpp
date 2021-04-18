@@ -251,6 +251,12 @@ void AGunBase::Fire()
 		ADeathMatchCharacter* HitPlayer = Cast<ADeathMatchCharacter>(Hit.GetActor());
 		if (HitPlayer != nullptr)
 		{
+			UWorld* World = GetWorld();
+			if (World != nullptr)
+			{
+				DrawDebugPoint(World, Hit.ImpactPoint, 15.f, FColor::Red, false, 1.f);
+			}
+
 			// Attacker => Crosshair UI change on hit player
 			if (GetCurrentOwner()->IsLocallyControlled())
 			{
@@ -330,7 +336,6 @@ bool AGunBase::FireLineTrace(FHitResult& OutHit)
 
 	if (World->LineTraceSingleByChannel(OutHit, Start, End, ECC_Visibility, Params))
 	{
-		DrawDebugPoint(World, OutHit.ImpactPoint, 20.f, FColor::Red, false, 1.f);
 		return true;
 	}
 

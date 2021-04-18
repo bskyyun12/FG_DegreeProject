@@ -2,10 +2,12 @@
 
 
 #include "DeathMatchGameState.h"
+#include "GameFramework/PlayerState.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
 
 #include "DeathMatchGameMode.h"
-#include "DeathMatchPlayerState.h"
+#include "PlayerControllerInterface.h"
 
 void ADeathMatchGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -14,19 +16,12 @@ void ADeathMatchGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME(ADeathMatchGameState, DCTeamScore);
 	DOREPLIFETIME(ADeathMatchGameState, MarvelPlayerStates);
 	DOREPLIFETIME(ADeathMatchGameState, DCPlayerStates);
-	DOREPLIFETIME(ADeathMatchGameState, TimeLeftInSeconds);
 }
 
 void ADeathMatchGameState::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameState::PostInitializeComponents (%s)"), *GetName());
-
-	UFPSGameInstance* GI = GetGameInstance<UFPSGameInstance>();
-	if (!ensure(GI != nullptr))
-	{
-		return;
-	}
 }
 
 void ADeathMatchGameState::BeginPlay()
@@ -52,12 +47,28 @@ void ADeathMatchGameState::BeginPlay()
 
 void ADeathMatchGameState::MatchTimeCountdown()
 {
-	TimeLeftInSeconds -= 1.f;
-	UE_LOG(LogTemp, Warning, TEXT("TimeLeftInSeconds: (%f)"), TimeLeftInSeconds);
-	if (TimeLeftInSeconds <= 0.f)
+	TimeLeftInSeconds -= 1;
+	UE_LOG(LogTemp, Warning, TEXT("TimeLeftInSeconds: (%i)"), TimeLeftInSeconds);
+	if (TimeLeftInSeconds == 0)
 	{
 		GM->EndMatch();
 		GetWorld()->GetTimerManager().ClearTimer(MatchTimer);
+	}
+
+	for (APlayerState* PS : PlayerArray)
+	{
+		if (PS != nullptr)
+		{	
+			APawn* Pawn = PS->GetPawn();
+			if (Pawn != nullptr)
+			{
+				AController* Controller = Pawn->GetController();
+				if (Controller != nullptr && UKismetSystemLibrary::DoesImplementInterface(Controller, UPlayerControllerInterface::StaticClass()))
+				{
+					IPlayerControllerInterface::Execute_UpdateMatchTimeUI(Controller, TimeLeftInSeconds);
+				}
+			}
+		}
 	}
 }
 

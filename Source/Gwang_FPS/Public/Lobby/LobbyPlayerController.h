@@ -43,7 +43,7 @@ public:
 	void Server_LobbyToMainMenu();
 
 	// Called after ALobbyGameMode::StartGame()
-	void OnStartGame_Implementation(const FLobbyPlayerData& LobbyPlayerData) override;
+	void OnStartGame_Implementation() override;
 	UFUNCTION(Client, Reliable)
 	void Client_OnStartGame(const FLobbyPlayerData& LobbyPlayerData);
 	UFUNCTION(Server, Reliable)

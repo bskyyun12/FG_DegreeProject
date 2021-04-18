@@ -43,7 +43,7 @@ class GWANG_FPS_API ADeathMatchGameMode : public AGameModeBase
 	GENERATED_BODY()
 
 public:
-	float GetMatchTimeInSeconds() const { return MatchTimeInSeconds; }
+	int GetMatchTimeInSeconds() const { return MatchTimeInSeconds; }
 
 	// Finish the game and move players to lobby
 	void EndMatch();
@@ -71,7 +71,7 @@ protected:
 	TSubclassOf<ADeathMatchCharacter> DC_CharacterClass;
 
 	UPROPERTY(EditDefaultsOnly)
-	float MatchTimeInSeconds = 10.f; // TODO: this should be 600.f if the match should last for 10 mins for example
+	int MatchTimeInSeconds = 10; // TODO: this should be 600 if the match should last for 10 mins for example
 
 	UPROPERTY(EditDefaultsOnly)
 	float RespawnDelay = 5.f;

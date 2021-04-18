@@ -129,7 +129,7 @@ void ALobbyGameMode::StartGame()
 	{
 		if (PC != nullptr && UKismetSystemLibrary::DoesImplementInterface(PC, ULobbyPlayerControllerInterface::StaticClass()))
 		{
-			ILobbyPlayerControllerInterface::Execute_UpdateLobbyUI(PC, LobbyPlayerData);
+			ILobbyPlayerControllerInterface::Execute_OnStartGame(PC);
 		}
 	}
 

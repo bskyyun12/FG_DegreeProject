@@ -41,7 +41,12 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_SetupWidgets();
 
-	void UpdateMatchTimeUI(const float& MatchTime);
+	// Match Time UI
+	void UpdateMatchTimeUI_Implementation(const int& MatchTimeInSeconds) override;
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateMatchTimeUI(const int& MatchTimeInSeconds);
+
+	// Team score UI
 	void UpdateScoreUI(const uint8& MarvelScore, const uint8& DCScore);
 
 	// Crosshair
@@ -97,6 +102,8 @@ protected:
 
 	bool bWidgetLoaded;
 public:
+
+
 
 
 

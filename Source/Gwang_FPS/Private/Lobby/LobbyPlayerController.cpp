@@ -125,9 +125,14 @@ void ALobbyPlayerController::Server_LobbyToMainMenu_Implementation()
 	}
 }
 
-void ALobbyPlayerController::OnStartGame_Implementation(const FLobbyPlayerData& LobbyPlayerData)
+// Called after ALobbyGameMode::StartGame()
+void ALobbyPlayerController::OnStartGame_Implementation()
 {
-	Client_OnStartGame(LobbyPlayerData);
+	if (GM != nullptr)
+	{
+		FLobbyPlayerData LobbyData = GM->GetLobbyPlayerData(this);
+		Client_OnStartGame(LobbyData);
+	}
 }
 
 void ALobbyPlayerController::Client_OnStartGame_Implementation(const FLobbyPlayerData& LobbyPlayerData)
@@ -151,10 +156,12 @@ void ALobbyPlayerController::Client_OnStartGame_Implementation(const FLobbyPlaye
 
 	GI->SetPlayerData(PlayerData);
 	Server_OnStartGame();
+	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::Client_OnStartGame ( %s )"), *GetName());
 }
 
 void ALobbyPlayerController::Server_OnStartGame_Implementation()
 {
+	UE_LOG(LogTemp, Warning, TEXT("ALobbyPlayerController::Server_OnStartGame ( %s )"), *GetName());
 	if (GM != nullptr)
 	{
 		FLobbyPlayerData LobbyData = GM->GetLobbyPlayerData(this);

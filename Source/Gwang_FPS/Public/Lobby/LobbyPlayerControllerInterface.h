@@ -37,6 +37,6 @@ public:
 	void UpdateTeamData(const ETeam& NewTeam);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void OnStartGame(const FLobbyPlayerData& LobbyPlayerData);
+	void OnStartGame();
 
 };
