@@ -129,9 +129,6 @@ class GWANG_FPS_API AGunBase : public AActor, public IWeaponInterface
 public:
 	AGunBase();
 
-	// Temp
-	FColor GetRoleColor();
-
 	#pragma region Getters & Setters
 	ADeathMatchCharacter* GetCurrentOwner();
 	ADeathMatchPlayerController* GetOwnerController();
@@ -196,7 +193,7 @@ protected:
 	bool CanFire();
 	void Fire();
 	bool FireLineTrace(FHitResult& OutHit);
-	void CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor);
+	void CalcDamageToApply(FHitResult& OutHit, float& DamageOnHealth, float& DamageOnArmor);
 
 	// Fire Effects
 	void FireEffects();

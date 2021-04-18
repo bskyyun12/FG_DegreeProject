@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "FPSGameInstance.h"
 #include "DeathMatchCharacter.generated.h"
 
 class UInputComponent;
@@ -28,6 +29,7 @@ public:
 	AActor* GetCurrentSubWeapon();
 	AActor* GetCurrentMeleeWeapon();
 	AActor* GetCurrentGrenade();
+	ETeam GetTeam();
 	bool IsDead();
 	USkeletalMeshComponent* GetArmMesh() const { return ArmMesh; }
 	FVector GetCameraLocation() const;

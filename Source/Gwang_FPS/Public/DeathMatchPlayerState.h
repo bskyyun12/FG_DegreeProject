@@ -10,6 +10,7 @@
 class UFPSGameInstance;
 class ADeathMatchCharacter;
 class ADeathMatchPlayerController;
+class ADeathMatchGameState;
 
 UCLASS()
 class GWANG_FPS_API ADeathMatchPlayerState : public APlayerState
@@ -27,6 +28,7 @@ public:
 	bool GetIsReadyToJoin() const { return bIsReadyToJoin; }
 	bool GetIsDead() const { return bIsDead; }
 	ADeathMatchPlayerController* GetPlayerController();
+	ADeathMatchGameState* GetGameState();
 
 	// Called after ADeathMatchGameMode::PostLogin
 	UFUNCTION(Server, Reliable)
@@ -39,7 +41,7 @@ public:
 	void Server_SetTeam(const ETeam& NewTeam);
 
 	UFUNCTION(Server, Reliable)
-	void Server_OnKillPlayer();
+	void Server_OnKillPlayer(ADeathMatchCharacter* DeadPlayer);
 
 	UFUNCTION(Server, Reliable)
 	void Server_OnDeath();
@@ -60,6 +62,7 @@ public:
 
 protected:
 	ADeathMatchPlayerController* PC;
+	ADeathMatchGameState* GS;
 	
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsReadyToJoin;

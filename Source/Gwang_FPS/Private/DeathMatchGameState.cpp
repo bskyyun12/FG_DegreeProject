@@ -36,6 +36,7 @@ void ADeathMatchGameState::BeginPlay()
 			return;
 		}
 		TimeLeftInSeconds = GM->GetMatchTimeInSeconds();
+		ScoreToWin = GM->GetScoreToWin();
 
 		UWorld* World = GetWorld();
 		if (World != nullptr)
@@ -51,14 +52,14 @@ void ADeathMatchGameState::MatchTimeCountdown()
 	UE_LOG(LogTemp, Warning, TEXT("TimeLeftInSeconds: (%i)"), TimeLeftInSeconds);
 	if (TimeLeftInSeconds == 0)
 	{
-		GM->EndMatch();
+		EndMatch();
 		GetWorld()->GetTimerManager().ClearTimer(MatchTimer);
 	}
 
 	for (APlayerState* PS : PlayerArray)
 	{
 		if (PS != nullptr)
-		{	
+		{
 			APawn* Pawn = PS->GetPawn();
 			if (Pawn != nullptr)
 			{
@@ -72,18 +73,58 @@ void ADeathMatchGameState::MatchTimeCountdown()
 	}
 }
 
-void ADeathMatchGameState::AddScore(const ETeam& WinnerTeam)
+void ADeathMatchGameState::AddScore(const ETeam& TeamToAddScore)
 {
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		if (WinnerTeam == ETeam::Marvel)
+		if (TeamToAddScore == ETeam::Marvel)
 		{
 			MarvelTeamScore++;
 		}
-		else if (WinnerTeam == ETeam::DC)
+		else if (TeamToAddScore == ETeam::DC)
 		{
 			DCTeamScore++;
 		}
+
+		for (APlayerState* PS : PlayerArray)
+		{
+			if (PS != nullptr)
+			{
+				APawn* Pawn = PS->GetPawn();
+				if (Pawn != nullptr)
+				{
+					AController* Controller = Pawn->GetController();
+					if (Controller != nullptr && UKismetSystemLibrary::DoesImplementInterface(Controller, UPlayerControllerInterface::StaticClass()))
+					{
+						IPlayerControllerInterface::Execute_UpdateTeamScoreUI(Controller, MarvelTeamScore, DCTeamScore);
+					}
+				}
+			}
+		}
+
+		if (MarvelTeamScore >= ScoreToWin || DCTeamScore >= ScoreToWin)
+		{
+			EndMatch();
+		}
 	}
-	// TODO: Use OnRep_MarvelTeamScore to update client's ScoreBoardWidget
 }
+
+void ADeathMatchGameState::EndMatch()
+{
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		if (MarvelTeamScore > DCTeamScore)
+		{
+			GM->EndMatch(ETeam::Marvel);
+		}
+		else if (DCTeamScore > MarvelTeamScore)
+		{
+			GM->EndMatch(ETeam::DC);
+		}
+		else if (MarvelTeamScore == DCTeamScore)
+		{
+			GM->EndMatch(ETeam::None, true);
+		}
+	}
+}
+

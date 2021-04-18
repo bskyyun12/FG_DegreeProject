@@ -47,7 +47,9 @@ public:
 	void Client_UpdateMatchTimeUI(const int& MatchTimeInSeconds);
 
 	// Team score UI
-	void UpdateScoreUI(const uint8& MarvelScore, const uint8& DCScore);
+	void UpdateTeamScoreUI_Implementation(const int& MarvelTeamScore, const int& DCTeamScore) override;
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateTeamScoreUI(const int& MarvelTeamScore, const int& DCTeamScore);
 
 	// Crosshair
 	void ChangeCrosshairUIOnHit_Implementation() override;
@@ -61,8 +63,12 @@ public:
 	void SendChat_Implementation(const FName& ChatToSend) override;
 	void UpdateChatUI(const FName& PlayerName, const FName& ChatContent);
 	
+	// EndMatch
+	void LoadGameOverUI_Implementation(const ETeam& WinnerTeam, bool bIsDraw) override;
+	UFUNCTION(Client, Reliable)
+	void Client_LoadGameOverUI(const ETeam& WinnerTeam, bool bIsDraw);
+
 	void UpdateWeaponUI_Implementation(const FName& WeaponName, const int& CurrentAmmo, const int& RemainingAmmo) override;
-	void LoadGameOverUI(const bool& bIsWinner, const bool& bWidgetVisibility);
 	void SetScoreBoardUIVisibility_Implementation(bool bNewVisibility) override;
 #pragma endregion Widget Related
 
@@ -101,14 +107,4 @@ protected:
 	void Server_RequestPlayerSpawn();
 
 	bool bWidgetLoaded;
-public:
-
-
-
-
-
-
-
-
-
 };

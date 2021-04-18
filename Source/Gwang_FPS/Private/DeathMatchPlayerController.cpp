@@ -161,7 +161,7 @@ void ADeathMatchPlayerController::Client_SetupWidgets_Implementation()
 			{
 				return;
 			}
-			GameOverWidget->Setup(EInputMode::GameOnly, false);
+			GameOverWidget->AddToViewport(3);
 			GameOverWidget->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
@@ -180,9 +180,14 @@ void ADeathMatchPlayerController::Client_UpdateMatchTimeUI_Implementation(const 
 	HUDWidget->UpdateMatchTime(Minutes, Seconds);
 }
 
-void ADeathMatchPlayerController::UpdateScoreUI(const uint8& MarvelScore, const uint8& DCScore)
+void ADeathMatchPlayerController::UpdateTeamScoreUI_Implementation(const int& MarvelTeamScore, const int& DCTeamScore)
 {
-	HUDWidget->UpdateScoreUI(MarvelScore, DCScore);
+	Client_UpdateTeamScoreUI(MarvelTeamScore, DCTeamScore);
+}
+
+void ADeathMatchPlayerController::Client_UpdateTeamScoreUI_Implementation(const int& MarvelTeamScore, const int& DCTeamScore)
+{
+	HUDWidget->UpdateScoreUI(MarvelTeamScore, DCTeamScore);
 }
 
 void ADeathMatchPlayerController::ChangeCrosshairUIOnHit_Implementation()
@@ -222,10 +227,19 @@ void ADeathMatchPlayerController::UpdateWeaponUI_Implementation(const FName& Wea
 	HUDWidget->UpdateWeaponUI(WeaponName, CurrentAmmo, RemainingAmmo);
 }
 
-void ADeathMatchPlayerController::LoadGameOverUI(const bool& bIsWinner, const bool& bWidgetVisibility)
+void ADeathMatchPlayerController::LoadGameOverUI_Implementation(const ETeam& WinnerTeam, bool bIsDraw)
 {
-	GameOverWidget->SetVisibility(bWidgetVisibility ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
-	GameOverWidget->SetResultText(bIsWinner);
+	Client_LoadGameOverUI(WinnerTeam, bIsDraw);
+}
+
+void ADeathMatchPlayerController::Client_LoadGameOverUI_Implementation(const ETeam& WinnerTeam, bool bIsDraw)
+{
+	PS = GetPlayerState<ADeathMatchPlayerState>();
+	if (PS != nullptr)
+	{
+		GameOverWidget->SetResultText(WinnerTeam == PS->GetTeam(), bIsDraw);
+		GameOverWidget->SetVisibility(ESlateVisibility::Visible);
+	}
 }
 
 void ADeathMatchPlayerController::SetScoreBoardUIVisibility_Implementation(bool bNewVisibility)

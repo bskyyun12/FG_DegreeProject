@@ -16,7 +16,7 @@ class GWANG_FPS_API ADeathMatchGameState : public AGameStateBase
 	GENERATED_BODY()
 	
 public:
-	void AddScore(const ETeam& WinnerTeam);
+	void AddScore(const ETeam& TeamToAddScore);
 
 protected:
 	ADeathMatchGameMode* GM;
@@ -35,6 +35,8 @@ protected:
 
 	int TimeLeftInSeconds;
 
+	int ScoreToWin;
+
 	FTimerHandle MatchTimer;
 
 protected:
@@ -45,5 +47,7 @@ protected:
 	void BeginPlay() override;
 
 	UFUNCTION()
-	void MatchTimeCountdown();	
+	void MatchTimeCountdown();
+	
+	void EndMatch();
 };

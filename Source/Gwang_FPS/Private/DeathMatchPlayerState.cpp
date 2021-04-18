@@ -40,8 +40,8 @@ void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 // Called after ADeathMatchGameMode::PostLogin
 void ADeathMatchPlayerState::Server_OnPostLogin_Implementation()
 {
-	Client_OnPostLogin();	
-	
+	Client_OnPostLogin();
+
 	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Server_OnPostLogin ( %i ) => ( %s )"), GetLocalRole(), *GetName());
 }
 
@@ -146,6 +146,38 @@ AActor* ADeathMatchPlayerState::GetCurrentWeaponWithIndex(const uint8& Index) co
 	return CurrentWeapons[Index];
 }
 
+ADeathMatchPlayerController* ADeathMatchPlayerState::GetPlayerController()
+{
+	if (PC == nullptr)
+	{
+		UWorld* World = GetWorld();
+		if (World != nullptr)
+		{
+			PC = Cast<ADeathMatchPlayerController>(UGameplayStatics::GetPlayerController(World, 0));
+			if (!ensure(PC != nullptr))
+			{
+				return nullptr;
+			}
+		}
+	}
+
+	return PC;
+}
+
+ADeathMatchGameState* ADeathMatchPlayerState::GetGameState()
+{
+	if (GS == nullptr)
+	{
+		UWorld* World = GetWorld();
+		if (World != nullptr)
+		{
+			GS = World->GetGameState<ADeathMatchGameState>();
+		}
+	}
+
+	return GS;
+}
+
 // Called after ADeathMatchGameMode::SpawnPlayer
 void ADeathMatchPlayerState::Server_OnSpawn_Implementation()
 {
@@ -182,39 +214,22 @@ void ADeathMatchPlayerState::Client_UpdateHealthUI_Implementation(const uint8& N
 	}
 }
 
-ADeathMatchPlayerController* ADeathMatchPlayerState::GetPlayerController()
-{
-	if (PC == nullptr)
-	{
-		UWorld* World = GetWorld();
-		if (World != nullptr)
-		{
-			PC = Cast<ADeathMatchPlayerController>(UGameplayStatics::GetPlayerController(World, 0));
-			if (!ensure(PC != nullptr))
-			{
-				return nullptr;
-			}
-		}
-	}
-
-	return PC;
-}
-
 void ADeathMatchPlayerState::Server_SetTeam_Implementation(const ETeam& NewTeam)
 {
 	Team = NewTeam;
 	// TODO: Send PlayerInfo to GameState and then update HUD??
 }
 
-void ADeathMatchPlayerState::Server_OnKillPlayer_Implementation()
+void ADeathMatchPlayerState::Server_OnKillPlayer_Implementation(ADeathMatchCharacter* DeadPlayer)
 {
-	NumKills++;
-
-	UWorld* World = GetWorld();
-	if (World != nullptr)
+	ETeam DeadPlayerTeam = DeadPlayer->GetTeam();
+	if (DeadPlayerTeam != ETeam::None && this->Team != DeadPlayerTeam)
 	{
-		ADeathMatchGameState* GS = World->GetGameState<ADeathMatchGameState>();
-		// TODO: update GS team score
+		NumKills++;
+		if (GetGameState() != nullptr)
+		{
+			GetGameState()->AddScore(Team);
+		}
 	}
 }
 

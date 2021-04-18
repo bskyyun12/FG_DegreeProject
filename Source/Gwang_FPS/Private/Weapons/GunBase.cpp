@@ -3,6 +3,7 @@
 
 #include "Weapons/GunBase.h"
 #include "Components/BoxComponent.h"
+#include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
@@ -11,30 +12,6 @@
 #include "PlayerControllerInterface.h"
 #include "Animation/FPSAnimInterface.h"
 #include "DeathMatchPlayerController.h"
-
-// Temp
-#include "DrawDebugHelpers.h"
-
-// Temp
-FColor AGunBase::GetRoleColor()
-{
-	if (GetCurrentOwner()->GetLocalRole() == ROLE_Authority)
-	{
-		return FColor::Red;
-	}
-
-	if (GetCurrentOwner()->GetLocalRole() == ROLE_AutonomousProxy)
-	{
-		return FColor::Green;
-	}
-
-	if (GetCurrentOwner()->GetLocalRole() == ROLE_SimulatedProxy)
-	{
-		return FColor::Blue;
-	}
-
-	return FColor::Cyan;
-}
 
 AGunBase::AGunBase()
 {
@@ -251,12 +228,6 @@ void AGunBase::Fire()
 		ADeathMatchCharacter* HitPlayer = Cast<ADeathMatchCharacter>(Hit.GetActor());
 		if (HitPlayer != nullptr)
 		{
-			UWorld* World = GetWorld();
-			if (World != nullptr)
-			{
-				DrawDebugPoint(World, Hit.ImpactPoint, 15.f, FColor::Red, false, 1.f);
-			}
-
 			// Attacker => Crosshair UI change on hit player
 			if (GetCurrentOwner()->IsLocallyControlled())
 			{
@@ -269,10 +240,13 @@ void AGunBase::Fire()
 			// Apply damage ( ROLE_Authority )
 			if (GetCurrentOwner()->GetLocalRole() == ROLE_Authority)
 			{
-				float DamageOnHealth = 0.f;
-				float DamageOnArmor = 0.f;
-				CalcDamageToApply(Hit.PhysMaterial.Get(), DamageOnHealth, DamageOnArmor);
-				HitPlayer->Server_TakeDamage((uint8)DamageOnHealth, (uint8)DamageOnArmor, GetOwner());
+				if (GetCurrentOwner()->GetTeam() != HitPlayer->GetTeam())
+				{
+					float DamageOnHealth = 0.f;
+					float DamageOnArmor = 0.f;
+					CalcDamageToApply(Hit, DamageOnHealth, DamageOnArmor);
+					HitPlayer->Server_TakeDamage((uint8)DamageOnHealth, (uint8)DamageOnArmor, GetOwner());
+				}
 			}
 		}
 		else
@@ -332,26 +306,35 @@ bool AGunBase::FireLineTrace(FHitResult& OutHit)
 	const FVector Start = GetCurrentOwner()->GetCameraLocation();
 	const FVector End = GetCurrentOwner()->GetCameraLocation() + GetCurrentOwner()->GetCameraForward() * WeaponInfo.Range;
 
-	DrawDebugLine(World, Start, End, GetRoleColor(), false, 1.f);
+	//DrawDebugLine(World, Start, End, FColor::Green, false, 1.f);
 
 	if (World->LineTraceSingleByChannel(OutHit, Start, End, ECC_Visibility, Params))
 	{
+		EPhysicalSurface SurfaceType = UPhysicalMaterial::DetermineSurfaceType(OutHit.PhysMaterial.Get());
+		if (SurfaceType == SurfaceType1) // Head
+		{
+			DrawDebugPoint(World, OutHit.ImpactPoint + OutHit.ImpactNormal, 30.f, FColor::Red, false, .7f);
+		}
+		else
+		{
+			DrawDebugPoint(World, OutHit.ImpactPoint + OutHit.ImpactNormal, 10.f, FColor::Red, false, .7f);
+		}
 		return true;
 	}
 
 	return false;
 }
 
-void AGunBase::CalcDamageToApply(const UPhysicalMaterial* PhysMat, float& DamageOnHealth, float& DamageOnArmor)
+void AGunBase::CalcDamageToApply(FHitResult& OutHit, float& DamageOnHealth, float& DamageOnArmor)
 {
 	float DamageMultiplier = 1.f;
 
-	EPhysicalSurface SurfaceType = UPhysicalMaterial::DetermineSurfaceType(PhysMat);
+	EPhysicalSurface SurfaceType = UPhysicalMaterial::DetermineSurfaceType(OutHit.PhysMaterial.Get());
 	switch (SurfaceType)
 	{
 	case SurfaceType_Default:
 		break;
-	case SurfaceType1:	// Head
+	case SurfaceType1:	// Head	
 		DamageMultiplier = 3.5f;
 		break;
 	case SurfaceType2:	// Torso

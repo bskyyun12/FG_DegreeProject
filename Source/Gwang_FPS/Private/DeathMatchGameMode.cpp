@@ -2,14 +2,16 @@
 
 
 #include "DeathMatchGameMode.h"
+#include "DrawDebugHelpers.h"
+#include "EngineUtils.h"	// TActorIterator
 #include "GameFramework/PlayerStart.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 #include "DeathMatchPlayerController.h"
 #include "DeathMatchCharacter.h"
 #include "DeathMatchPlayerState.h"
 #include "DeathMatchGameState.h"
-#include <DrawDebugHelpers.h>
-#include <EngineUtils.h>
+#include "PlayerControllerInterface.h"
 
 void ADeathMatchGameMode::InitGameState()
 {
@@ -152,9 +154,17 @@ void ADeathMatchGameMode::OnPlayerDeath(ADeathMatchPlayerController* PC)
 }
 
 // Finish the game and move players to lobby
-void ADeathMatchGameMode::EndMatch()
+void ADeathMatchGameMode::EndMatch(const ETeam& WinnerTeam, const bool& bIsDraw)
 {
 	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::EndMatch"));
+
+	for (ADeathMatchPlayerController* PC : PlayerControllers)
+	{
+		if (PC != nullptr && UKismetSystemLibrary::DoesImplementInterface(PC, UPlayerControllerInterface::StaticClass()))
+		{
+			IPlayerControllerInterface::Execute_LoadGameOverUI(PC, WinnerTeam, bIsDraw);
+		}
+	}
 
 	UWorld* World = GetWorld();
 	if (World != nullptr)

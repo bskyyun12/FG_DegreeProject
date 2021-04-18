@@ -24,6 +24,9 @@ class GWANG_FPS_API IPlayerControllerInterface
 public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void UpdateMatchTimeUI(const int& MatchTimeInSeconds);
+		
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void UpdateTeamScoreUI(const int& MarvelTeamScore, const int& DCTeamScore);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void UpdateWeaponUI(const FName& WeaponName, const int& CurrentAmmo, const int& RemainingAmmo);
@@ -45,4 +48,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	void VignetteEffectOnTakeDamage();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void LoadGameOverUI(const ETeam& WinnerTeam, bool bIsDraw);
 };

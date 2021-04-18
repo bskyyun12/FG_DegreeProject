@@ -157,6 +157,15 @@ AActor* ADeathMatchCharacter::GetCurrentGrenade()
 	return GetPlayerState()->GetCurrentWeaponWithIndex(4);
 }
 
+ETeam ADeathMatchCharacter::GetTeam()
+{
+	if (GetPlayerState() == nullptr)
+	{
+		return ETeam::None;
+	}
+	return GetPlayerState()->GetTeam();
+}
+
 bool ADeathMatchCharacter::IsDead()
 {
 	if (GetPlayerState() == nullptr)
@@ -428,12 +437,7 @@ void ADeathMatchCharacter::Server_OnKill_Implementation(ADeathMatchCharacter* De
 
 	if (GetPlayerState() != nullptr)
 	{
-		GetPlayerState()->Server_OnKillPlayer();
-	}
-
-	if (DeadPlayer != nullptr)
-	{
-		// TODO: DeadPlayer is probably not needed here. Maybe remove?
+		GetPlayerState()->Server_OnKillPlayer(DeadPlayer);
 	}
 }
 #pragma endregion Spawn and Death
