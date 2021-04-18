@@ -134,8 +134,9 @@ void AGrenadeBase::Explode()
 		ExplosionCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 
+	FPWeaponMesh->SetVisibility(false, true);
+	TPWeaponMesh->SetVisibility(false, true);
 	SetActorTickEnabled(false);
-	Destroy();
 }
 
 void AGrenadeBase::ExplosionEffects()

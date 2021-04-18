@@ -130,22 +130,18 @@ void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 	SetOwner(NewOwner);
 	SetInstigator(NewOwner);
 
-	if (GetCurrentOwner()->IsLocallyControlled())
-	{
-		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
-	}
-
 	// skeleton is not yet created in the constructor, so AttachToComponent should be happened after constructor
 	TPWeaponMesh->SetSimulatePhysics(false);
 	TPWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	TPWeaponMesh->AttachToComponent(NewOwner->GetMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), WeaponInfo.TP_SocketName);
-
 	FPWeaponMesh->AttachToComponent(NewOwner->GetArmMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), WeaponInfo.FP_SocketName);
-
 	InteractCollider->SetCollisionProfileName(TEXT("NoCollision"));
 
 	if (GetCurrentOwner()->IsLocallyControlled())
 	{
+		// Update UI
+		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
+
 		// Play FP_EquipAnim
 		UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
 		if (AnimInstance != nullptr && WeaponInfo.FP_EquipAnim != nullptr)
