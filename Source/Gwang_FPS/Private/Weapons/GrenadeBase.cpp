@@ -76,7 +76,7 @@ AGrenadeBase::AGrenadeBase()
 void AGrenadeBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AGrenadeBase, ServerExplosionTime);
+	DOREPLIFETIME_CONDITION(AGrenadeBase, ServerExplosionTime, COND_InitialOnly);
 	DOREPLIFETIME(AGrenadeBase, LatestOwner);
 }
 
@@ -272,7 +272,7 @@ void AGrenadeBase::Fire()
 
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		ServerExplosionTime = 0.f;
+		ServerExplosionTime = 0.01f;
 	}
 	else
 	{
@@ -287,11 +287,12 @@ void AGrenadeBase::Fire()
 
 void AGrenadeBase::OnRep_ServerExplosionTime()
 {
-	float NetworkLatency = ClientExplosionTime - ServerExplosionTime;
-	ClientExplosionTime -= NetworkLatency;
+	UE_LOG(LogTemp, Warning, TEXT("AGrenadeBase::OnRep_ServerExplosionTime ClientExplosionTime: ( %f ), ServerExplosionTime: ( %f )"), ClientExplosionTime, ServerExplosionTime);
+	//float NetworkLatency = ClientExplosionTime - ServerExplosionTime;
+	//ClientExplosionTime -= NetworkLatency;
 	//FlightTime += NetworkLatency;
 
-	UE_LOG(LogTemp, Warning, TEXT("AGrenadeBase::OnRep_ServerExplosionTime NetworkLatency: ( %f )"), NetworkLatency);
+	ClientExplosionTime = ServerExplosionTime;
 }
 #pragma endregion EndFire (Throw Grenade)
 
@@ -308,7 +309,7 @@ void AGrenadeBase::BeginFire_Implementation()
 		UWorld* World = GetWorld();
 		if (World != nullptr)
 		{
-			World->GetTimerManager().SetTimer(PathDrawingtimer, this, &AGrenadeBase::DrawGrenadePath, PathDrawingFrequency, true);
+			World->GetTimerManager().SetTimer(PathDrawingtimer, this, &AGrenadeBase::DrawGrenadePath, World->GetDeltaSeconds(), true);
 		}
 	}
 }
@@ -316,10 +317,14 @@ void AGrenadeBase::BeginFire_Implementation()
 void AGrenadeBase::DrawGrenadePath()
 {
 	InitTrajectory();
-
-	for (float Time = 0.f; Time < 2.f; Time += PathDrawingFrequency)
+	
+	UWorld* World = GetWorld();
+	if (World != nullptr)
 	{
-		SimulateTrajectory(PathDrawingFrequency, false);
+		for (float Time = 0.f; Time < 1.f; Time += World->GetDeltaSeconds())
+		{
+			SimulateTrajectory(World->GetDeltaSeconds(), false);
+		}
 	}
 }
 #pragma endregion BeginFire (Grenade Path, Local only)

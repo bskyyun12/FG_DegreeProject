@@ -66,15 +66,14 @@ public:
 	void AddScore(const ETeam& TeamToAddScore);
 
 protected:
-	ADeathMatchGameMode* GM;
-
 	UPROPERTY(Replicated)
 	uint8 MarvelTeamScore;
 
 	UPROPERTY(Replicated)
 	uint8 DCTeamScore;
 
-	UPROPERTY(Replicated)
+	ADeathMatchGameMode* GM;
+
 	TArray<FScoreboardData> ScoreboardData;
 
 	int TimeLeftInSeconds;

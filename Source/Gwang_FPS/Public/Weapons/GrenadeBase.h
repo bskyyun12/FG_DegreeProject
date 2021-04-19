@@ -137,9 +137,6 @@ protected:
 	USphereComponent* ExplosionCollider;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
-	float PathDrawingFrequency = .05f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	FGrenadeInfo GrenadeInfo;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
