@@ -41,8 +41,6 @@ void ADeathMatchPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 void ADeathMatchPlayerState::Server_OnPostLogin_Implementation()
 {
 	Client_OnPostLogin();
-
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Server_OnPostLogin ( %i ) => ( %s )"), GetLocalRole(), *GetName());
 }
 
 void ADeathMatchPlayerState::Client_OnPostLogin_Implementation()
@@ -181,8 +179,6 @@ ADeathMatchGameState* ADeathMatchPlayerState::GetGameState()
 // Called after ADeathMatchGameMode::SpawnPlayer
 void ADeathMatchPlayerState::Server_OnSpawn_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Server_OnStartMatch"));
-
 	if (GetGameState() != nullptr)
 	{
 		FScoreboardData ScoreboardData = GetGameState()->GetScoreboardData(this);
@@ -213,8 +209,6 @@ void ADeathMatchPlayerState::Server_UpdateHealthArmor_Implementation(const uint8
 
 void ADeathMatchPlayerState::Client_UpdateHealthUI_Implementation(const uint8& NewHealth, const uint8& NewArmor)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchPlayerState::Client_UpdateHealthUI => Player ( %s ), Role: %i, CurrentHealth: ( %i )."), *GetPawn()->GetName(), GetLocalRole(), CurrentHealth);
-
 	if (GetPlayerController() != nullptr && GetPlayerController()->IsLocalController())
 	{
 		GetPlayerController()->UpdateHealthArmorUI(NewHealth, NewArmor);
@@ -293,17 +287,11 @@ void ADeathMatchPlayerState::Server_ResetCurrentWeapons_Implementation()
 					CurrentWeapons[i] = World->SpawnActor<AActor>(StartWeaponClasses[i]);
 				}
 			}
-
-			if (CurrentWeapons[i] != nullptr)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("ResetCurrentWeapons => CurrentWeapons[%i]"), i, *CurrentWeapons[i]->GetName());
-			}
 		}
 	}
 
 	// set main weapon(1) to currently held weapon
 	CurrentlyHeldWeapon = CurrentWeapons[1];
-	UE_LOG(LogTemp, Warning, TEXT("ResetCurrentWeapons => CurrentWeapons[1]"), *CurrentWeapons[1]->GetName());
 }
 
 void ADeathMatchPlayerState::Server_OnSendChat_Implementation(const FName& ChatContent)

@@ -28,8 +28,6 @@ void ADeathMatchGameMode::InitGameState()
 void ADeathMatchGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) ----------------------------------------------------"));
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::PostLogin => ( %s ) successfully Logged in"), *NewPlayer->GetName());
 
 	ADeathMatchPlayerController* PC = Cast<ADeathMatchPlayerController>(NewPlayer);
 	if (!ensure(PC != nullptr))
@@ -51,7 +49,7 @@ void ADeathMatchGameMode::PostLogin(APlayerController* NewPlayer)
 // Called when a player leaves the game or is destroyed.
 void ADeathMatchGameMode::Logout(AController* Exiting)
 {
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::Logout => ( %s ) Logged out"), *Exiting->GetName());
+	//UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::Logout => ( %s ) Logged out"), *Exiting->GetName());
 
 	PlayerControllers.Remove(Cast<ADeathMatchPlayerController>(Exiting));
 
@@ -61,8 +59,6 @@ void ADeathMatchGameMode::Logout(AController* Exiting)
 // Spawn players and start the game!
 void ADeathMatchGameMode::RestartMatch()
 {
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::StartMatch"));
-
 	for (ADeathMatchPlayerController* PC : PlayerControllers)
 	{
 		SpawnPlayer(PC);
@@ -83,7 +79,6 @@ void ADeathMatchGameMode::SpawnPlayer(ADeathMatchPlayerController* PC)
 		if (PS != nullptr)
 		{
 			ETeam Team = PS->GetTeam();
-			UE_LOG(LogTemp, Warning, TEXT("ADeathMatchGameMode::SpawnPlayer Team: ( %i )"), Team);
 
 			// Team is None if the player did not choose a team from a lobby
 			if (Team == ETeam::None)
@@ -142,8 +137,6 @@ AActor* ADeathMatchGameMode::GetBestPlayerStart(const FString& PlayerStartTag) c
 // Called after ADeathMatchPlayerController::Server_OnPlayerDeath
 void ADeathMatchGameMode::OnPlayerDeath(ADeathMatchPlayerController* PC)
 {
-	UE_LOG(LogTemp, Warning, TEXT("GameMode::OnPlayerDeath => ( %s ) is dead"), *PC->GetPawn()->GetName());
-
 	// Respawn player
 	FTimerHandle RespawnTimer;
 	FTimerDelegate RespawnTimerDel;
@@ -158,8 +151,6 @@ void ADeathMatchGameMode::OnPlayerDeath(ADeathMatchPlayerController* PC)
 // Finish the game and move players to lobby
 void ADeathMatchGameMode::EndMatch(const ETeam& WinnerTeam, const bool& bIsDraw)
 {
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameMode::EndMatch"));
-
 	for (ADeathMatchPlayerController* PC : PlayerControllers)
 	{
 		if (PC != nullptr && UKismetSystemLibrary::DoesImplementInterface(PC, UPlayerControllerInterface::StaticClass()))

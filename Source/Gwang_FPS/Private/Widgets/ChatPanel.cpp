@@ -24,7 +24,6 @@ bool UChatPanel::Initialize()
 
 void UChatPanel::OnStartChat()
 {
-	UE_LOG(LogTemp, Warning, TEXT("UChatPanel::OnStartChat"));
 	if (GetOwningPlayer() != nullptr)
 	{
 		FInputModeGameAndUI InputModeData;
@@ -42,7 +41,6 @@ void UChatPanel::OnStartChat()
 
 void UChatPanel::SendChat()
 {
-	UE_LOG(LogTemp, Warning, TEXT("UChatPanel::SendChat"));
 	FName ChatToSend = *(UKismetTextLibrary::Conv_TextToString(EditableText_Chat->GetText()));
 	if (GetOwningPlayer() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwningPlayer(), UPlayerControllerInterface::StaticClass()))
 	{
@@ -54,8 +52,6 @@ void UChatPanel::SendChat()
 
 void UChatPanel::EndChat()
 {
-	UE_LOG(LogTemp, Warning, TEXT("UChatPanel::EndChat"));
-
 	if (GetOwningPlayer() != nullptr)
 	{
 		FInputModeGameOnly InputModeData;

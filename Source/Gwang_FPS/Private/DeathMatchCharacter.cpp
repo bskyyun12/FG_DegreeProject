@@ -335,7 +335,7 @@ void ADeathMatchCharacter::Server_TakeDamage_Implementation(const uint8& DamageO
 
 		Client_OnTakeDamage();
 
-		UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::TakeDamage => ( %s ) Took ( %i ) Damage By ( %s ). CurrentHealth: %i"), *GetName(), DamageOnHealth, *DamageCauser->GetName(), CurrentHealth);
+		//UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::TakeDamage => ( %s ) Took ( %i ) Damage By ( %s ). CurrentHealth: %i"), *GetName(), DamageOnHealth, *DamageCauser->GetName(), CurrentHealth);
 		if (CurrentHealth <= 0.f)
 		{
 			Server_OnDeath(DamageCauser);
@@ -358,7 +358,7 @@ void ADeathMatchCharacter::Client_OnTakeDamage_Implementation()
 
 void ADeathMatchCharacter::Server_OnDeath_Implementation(AActor* DeathCauser)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnDeath => ( %s ) is killed by ( %s )."), *GetName(), *DeathCauser->GetName());
+	//UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnDeath => ( %s ) is killed by ( %s )."), *GetName(), *DeathCauser->GetName());
 
 	// Call "Server_OnKill()" for the killer player
 	ADeathMatchCharacter* KillerPlayer = Cast<ADeathMatchCharacter>(DeathCauser);
@@ -433,7 +433,7 @@ void ADeathMatchCharacter::HandleCameraOnDeath()
 
 void ADeathMatchCharacter::Server_OnKill_Implementation(ADeathMatchCharacter* DeadPlayer)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnKill => ( %s ) killed ( %s )."), *GetName(), *DeadPlayer->GetName());
+	//UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnKill => ( %s ) killed ( %s )."), *GetName(), *DeadPlayer->GetName());
 
 	if (GetPlayerState() != nullptr)
 	{
@@ -449,8 +449,6 @@ void ADeathMatchCharacter::OnBeginOverlap(UPrimitiveComponent* OverlappedCompone
 	{
 		if (OtherActor != nullptr && UKismetSystemLibrary::DoesImplementInterface(OtherActor, UWeaponInterface::StaticClass()))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::OnBeginOverlap => OtherActor: ( %s )."), *OtherActor->GetName());
-
 			if (GetLocalRole() == ROLE_Authority)
 			{
 				PickupWeapon(OtherActor);
@@ -626,13 +624,11 @@ void ADeathMatchCharacter::EquipWeapon(AActor* WeaponToEquip)
 
 		if (WeaponToEquip == nullptr)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::EquipWeapon => ( %s ) equipped ( NONE )"), *GetName());
 			SetCurrentlyHeldWeapon(nullptr);
 		}
 
 		if (WeaponToEquip != nullptr)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("ADeathMatchCharacter::EquipWeapon => ( %s ) equipped ( %s )"), *GetName(), *WeaponToEquip->GetName());
 			SetCurrentlyHeldWeapon(WeaponToEquip);
 			IWeaponInterface::Execute_OnWeaponEquipped(WeaponToEquip, this);
 			IWeaponInterface::Execute_SetVisibility(WeaponToEquip, true);
@@ -676,13 +672,11 @@ void ADeathMatchCharacter::Drop()
 
 		if (GetLocalRole() == ROLE_Authority)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("( %i ) ( %s ) ADeathMatchCharacter::DropWeapon"), GetLocalRole(), *GetName());
 			Multicast_DropWeapon();
 		}
 
 		if (GetLocalRole() == ROLE_AutonomousProxy)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("( %i ) ( %s ) ADeathMatchCharacter::DropWeapon"), GetLocalRole(), *GetName());
 			Server_DropWeapon();
 		}
 	}
@@ -698,10 +692,6 @@ void ADeathMatchCharacter::Multicast_DropWeapon_Implementation()
 	if (!IsLocallyControlled())
 	{
 		DropWeapon();
-		if (GetCurrentlyHeldWeapon() != nullptr)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("( %i ) ( %s ) ADeathMatchCharacter::DropWeapon"), GetLocalRole(), *GetName());
-		}
 	}
 }
 
@@ -749,7 +739,6 @@ void ADeathMatchCharacter::Server_OnBeginFire_Implementation()
 {
 	if (GetCurrentlyHeldWeapon() != nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("(ROLE_Authority) OnBeginFire"));
 		IWeaponInterface::Execute_BeginFire(GetCurrentlyHeldWeapon());
 	}
 }
@@ -758,7 +747,6 @@ void ADeathMatchCharacter::OnEndFire()
 {
 	if (GetCurrentlyHeldWeapon() != nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("(ROLE_Authority) OnEndFire"));
 		IWeaponInterface::Execute_EndFire(GetCurrentlyHeldWeapon());
 
 		if (GetLocalRole() == ROLE_Authority)
@@ -783,7 +771,6 @@ void ADeathMatchCharacter::Server_OnEndFire_Implementation()
 {
 	if (GetCurrentlyHeldWeapon() != nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("(Server) OnEndFire"));
 		IWeaponInterface::Execute_EndFire(GetCurrentlyHeldWeapon());
 
 		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(GetCurrentlyHeldWeapon());
@@ -867,7 +854,6 @@ void ADeathMatchCharacter::CrouchSimulate()
 		{
 			FP_Camera->SetRelativeLocation(DesiredCameraRelativeLocation);
 			World->GetTimerManager().ClearTimer(CrouchTimerHandle);
-			UE_LOG(LogTemp, Warning, TEXT("AFPSCharacter::CrouchSimulate (Timer Cleared)"));
 		}
 	}
 }

@@ -17,12 +17,6 @@ void ADeathMatchGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME(ADeathMatchGameState, DCTeamScore);
 }
 
-void ADeathMatchGameState::PostInitializeComponents()
-{
-	Super::PostInitializeComponents();
-	UE_LOG(LogTemp, Warning, TEXT("(GameFlow) GameState::PostInitializeComponents (%s)"), *GetName());
-}
-
 void ADeathMatchGameState::BeginPlay()
 {
 	Super::BeginPlay();
@@ -48,7 +42,6 @@ void ADeathMatchGameState::BeginPlay()
 void ADeathMatchGameState::MatchTimeCountdown()
 {
 	TimeLeftInSeconds -= 1;
-	UE_LOG(LogTemp, Warning, TEXT("TimeLeftInSeconds: (%i)"), TimeLeftInSeconds);
 	if (TimeLeftInSeconds == 0)
 	{
 		EndMatch();

@@ -31,7 +31,13 @@ struct FScoreboardData
 	uint8 Deaths;
 
 	FScoreboardData()
-	{}
+	{
+		PlayerId = -1;
+		PlayerName = "Gwang";
+		Team = ETeam::None;
+		Kills = -1;
+		Deaths = -1;
+	}
 
 	FScoreboardData(const int32& Id, const FName& Name, const ETeam& _Team)
 	{
@@ -84,8 +90,6 @@ protected:
 
 protected:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	void PostInitializeComponents() override;
 
 	void BeginPlay() override;
 

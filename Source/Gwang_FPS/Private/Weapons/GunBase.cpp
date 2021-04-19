@@ -36,6 +36,7 @@ AGunBase::AGunBase()
 	TPWeaponMesh->SetOwnerNoSee(true);
 	TPWeaponMesh->SetCollisionProfileName(TEXT("NoCollision"));
 	TPWeaponMesh->SetupAttachment(RootComponent);
+	TPWeaponMesh->SetIsReplicated(true);	// This allows drop-in players to see TPWeaponMesh.
 
 	InteractCollider = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractCollider"));
 	InteractCollider->SetCollisionProfileName(TEXT("NoCollision"));
