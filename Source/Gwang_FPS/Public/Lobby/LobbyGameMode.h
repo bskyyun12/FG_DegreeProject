@@ -76,6 +76,9 @@ public:
 	void RemoveLobbyPlayerData(APlayerController* PlayerController);
 
 protected:
+	UPROPERTY(EditDefaultsOnly)
+	FString LevelNameToStart = "Gwang_FPS";
+
 	TArray<FLobbyPlayerData> LobbyPlayerData;
 	TArray<APlayerController*> PlayerControllers;
 

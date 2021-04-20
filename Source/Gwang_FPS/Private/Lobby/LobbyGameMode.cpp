@@ -168,7 +168,8 @@ void ALobbyGameMode::GameStartCheck()
 		}
 
 		//bUseSeamlessTravel = true;
-		World->ServerTravel("/Game/Maps/Gwang_FPS?listen");
+		FString Path = (TEXT("/Game/Maps/%s?listen"), *LevelNameToStart);
+		World->ServerTravel(Path);
 	}
 }
 

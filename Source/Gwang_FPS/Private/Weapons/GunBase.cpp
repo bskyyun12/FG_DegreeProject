@@ -420,7 +420,6 @@ void AGunBase::FireEffects()
 		if (WeaponInfo.FireSound != nullptr)
 		{
 			UGameplayStatics::SpawnSoundAttached(WeaponInfo.FireSound, TPWeaponMesh, WeaponInfo.TP_FireEmitterSocketName);
-			UE_LOG(LogTemp, Warning, TEXT("FireEffects => PlaySound ( %i )"), GetLocalRole());
 		}
 
 		// Locally controlled owner
@@ -437,7 +436,6 @@ void AGunBase::FireEffects()
 			if (WeaponInfo.FireEmitter != nullptr)
 			{
 				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, FPWeaponMesh, WeaponInfo.FP_FireEmitterSocketName);
-				UE_LOG(LogTemp, Warning, TEXT("FireEffects => FP_FireEmitter ( %i )"), GetLocalRole());
 			}
 
 			// Camera shake
@@ -456,7 +454,6 @@ void AGunBase::FireEffects()
 			if (WeaponInfo.FireEmitter != nullptr)
 			{
 				UGameplayStatics::SpawnEmitterAttached(WeaponInfo.FireEmitter, TPWeaponMesh, WeaponInfo.TP_FireEmitterSocketName);
-				UE_LOG(LogTemp, Warning, TEXT("FireEffects => TP_FireEmitter ( %i )"), GetLocalRole());
 			}
 		}
 	}
@@ -538,7 +535,6 @@ void AGunBase::Reload()
 			if (AnimInstance != nullptr && WeaponInfo.FP_ArmsReloadAnim != nullptr)
 			{
 				AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
-				UE_LOG(LogTemp, Warning, TEXT("Reload => FP_ArmsReloadAnim ( %i )"), GetLocalRole());
 			}
 
 			// Play FP_WeaponReloadAnim
@@ -554,7 +550,6 @@ void AGunBase::Reload()
 			if (AnimInstance != nullptr && WeaponInfo.TP_ReloadAnim != nullptr)
 			{
 				AnimInstance->Montage_Play(WeaponInfo.TP_ReloadAnim);
-				UE_LOG(LogTemp, Warning, TEXT("Reload => TP_ReloadAnim ( %i )"), GetLocalRole());
 			}
 		}
 	}
@@ -562,8 +557,6 @@ void AGunBase::Reload()
 
 void AGunBase::OnEndReload()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Reload => OnEndReload ( %i )"), GetLocalRole());
-
 	bIsReloading = false;
 	int AmmoToPool = WeaponInfo.MagazineCapacity - CurrentAmmo;
 	AmmoToPool = (CurrentRemainingAmmo < AmmoToPool) ? CurrentRemainingAmmo : AmmoToPool;
