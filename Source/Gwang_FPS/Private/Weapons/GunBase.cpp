@@ -225,7 +225,7 @@ void AGunBase::Fire()
 	FHitResult Hit;
 	if (FireLineTrace(Hit))
 	{
-		// TODO: Change to interface approach
+		// TODO: Change to interface approach?
 		ADeathMatchCharacter* HitPlayer = Cast<ADeathMatchCharacter>(Hit.GetActor());
 		if (HitPlayer != nullptr)
 		{

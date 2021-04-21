@@ -168,8 +168,7 @@ void ALobbyGameMode::GameStartCheck()
 		}
 
 		//bUseSeamlessTravel = true;
-		FString Path = (TEXT("/Game/Maps/%s?listen"), *LevelNameToStart);
-		World->ServerTravel(Path);
+		World->ServerTravel(LevelUrlToStart);
 	}
 }
 

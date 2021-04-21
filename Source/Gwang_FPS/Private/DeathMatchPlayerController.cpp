@@ -41,7 +41,6 @@ void ADeathMatchPlayerController::Server_OnPostLogin_Implementation()
 
 void ADeathMatchPlayerController::Client_CheckReadyStatus_Implementation()
 {
-	// TODO: make a getter for PS? like how I did in Character script
 	PS = GetPlayerState<ADeathMatchPlayerState>();
 	if (PS != nullptr)
 	{
@@ -207,7 +206,6 @@ void ADeathMatchPlayerController::StartChat_Implementation()
 
 void ADeathMatchPlayerController::SendChat_Implementation(const FName& ChatToSend)
 {
-	// TODO: make a getter for PS? like how I did in Character script
 	PS = GetPlayerState<ADeathMatchPlayerState>();
 	if (PS != nullptr)
 	{

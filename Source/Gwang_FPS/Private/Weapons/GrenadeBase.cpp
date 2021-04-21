@@ -85,9 +85,6 @@ void AGrenadeBase::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 
 	SimulateTrajectory(DeltaSeconds, true);
-	FPWeaponMesh->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
-	TPWeaponMesh->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
-	ExplosionCollider->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 
 	if (GetLocalRole() == ROLE_Authority)
 	{
@@ -356,8 +353,10 @@ void AGrenadeBase::SimulateTrajectory(const float& DeltaSeconds, bool bMoveMesh)
 
 		if (bMoveMesh)
 		{
-			// TODO: Move Mesh here
 			DrawDebugLine(World, PrevLocation, NewLocation, GetRoleColor(), false, DeltaSeconds * 10.f, 0, 7.f);
+			FPWeaponMesh->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+			TPWeaponMesh->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+			ExplosionCollider->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 		}
 		else
 		{

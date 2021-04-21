@@ -251,7 +251,7 @@ void ADeathMatchPlayerState::Server_OnDeath_Implementation()
 		World->GetTimerManager().SetTimer(WeaponResetTimer, [&]()
 			{
 				Server_ResetCurrentWeapons();
-			}, 3.f, false);
+			}, 2.f, false);
 	}
 
 	NumDeaths++;
