@@ -115,7 +115,7 @@ void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 	FPWeaponMesh->AttachToComponent(NewOwner->GetArmMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), WeaponInfo.FP_SocketName);
 	InteractCollider->SetCollisionProfileName(TEXT("NoCollision"));
 
-	if (GetCurrentOwner()->IsLocallyControlled())
+	if (GetCurrentOwner() != nullptr && GetCurrentOwner()->IsLocallyControlled())
 	{
 		// Update UI
 		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
@@ -137,6 +137,8 @@ void AGunBase::OnWeaponDropped_Implementation()
 {
 	if (GetCurrentOwner() != nullptr)
 	{
+		Execute_EndFire(this);
+		
 		InteractCollider->SetCollisionProfileName(TEXT("Weapon_Dropped"));
 
 		FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
@@ -145,7 +147,7 @@ void AGunBase::OnWeaponDropped_Implementation()
 		TPWeaponMesh->SetCollisionProfileName(TEXT("Weapon_Dropped"));
 		TPWeaponMesh->SetSimulatePhysics(true);
 
-		if (GetCurrentOwner()->IsLocallyControlled())
+		if (GetCurrentOwner() != nullptr && GetCurrentOwner()->IsLocallyControlled())
 		{
 			UpdateAmmoUI(0, 0);
 		}
@@ -200,7 +202,7 @@ void AGunBase::Fire()
 	}
 
 	// Fire Effects
-	if (GetCurrentOwner()->IsLocallyControlled())
+	if (GetCurrentOwner() != nullptr && GetCurrentOwner()->IsLocallyControlled())
 	{
 		FireEffects();
 	}
@@ -217,7 +219,7 @@ void AGunBase::Fire()
 
 	// Ammo
 	CurrentAmmo--;
-	if (GetCurrentOwner()->IsLocallyControlled())
+	if (GetCurrentOwner() != nullptr && GetCurrentOwner()->IsLocallyControlled())
 	{
 		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 	}
@@ -230,7 +232,7 @@ void AGunBase::Fire()
 		if (HitPlayer != nullptr)
 		{
 			// Attacker => Crosshair UI change on hit player
-			if (GetCurrentOwner()->IsLocallyControlled())
+			if (GetCurrentOwner() != nullptr && GetCurrentOwner()->IsLocallyControlled())
 			{
 				if (GetCurrentOwner()->GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetCurrentOwner()->GetController(), UPlayerControllerInterface::StaticClass()))
 				{
@@ -252,7 +254,7 @@ void AGunBase::Fire()
 		}
 		else
 		{
-			if (GetCurrentOwner()->IsLocallyControlled())
+			if (GetCurrentOwner() != nullptr && GetCurrentOwner()->IsLocallyControlled())
 			{
 				ImpactEffect(Hit.ImpactPoint);
 			}
@@ -358,7 +360,7 @@ void AGunBase::CalcDamageToApply(FHitResult& OutHit, float& DamageOnHealth, floa
 
 void AGunBase::UpdateAmmoUI(const int& InCurrentAmmo, const int& InRemainingAmmo)
 {
-	if (GetCurrentOwner()->IsLocallyControlled())
+	if (GetCurrentOwner() != nullptr && GetCurrentOwner()->IsLocallyControlled())
 	{
 		if (GetOwnerController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(GetOwnerController(), UPlayerControllerInterface::StaticClass()))
 		{
@@ -423,7 +425,7 @@ void AGunBase::FireEffects()
 		}
 
 		// Locally controlled owner
-		if (GetCurrentOwner()->IsLocallyControlled())
+		if (GetCurrentOwner() != nullptr && GetCurrentOwner()->IsLocallyControlled())
 		{
 			// FP FireAnim
 			UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
@@ -528,17 +530,20 @@ void AGunBase::Reload()
 		bIsReloading = true;
 		World->GetTimerManager().SetTimer(ReloadTimer, this, &AGunBase::OnEndReload, WeaponInfo.ReloadTime, false);
 
-		if (GetCurrentOwner()->IsLocallyControlled())
+		if (GetCurrentOwner() != nullptr && GetCurrentOwner()->IsLocallyControlled())
 		{
 			// Play FP_ArmsReloadAnim
-			UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
-			if (AnimInstance != nullptr && WeaponInfo.FP_ArmsReloadAnim != nullptr)
+			if (GetCurrentOwner() != nullptr && GetCurrentOwner()->GetMesh() != nullptr)
 			{
-				AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
+				UAnimInstance* AnimInstance = GetCurrentOwner()->GetArmMesh()->GetAnimInstance();
+				if (AnimInstance != nullptr && WeaponInfo.FP_ArmsReloadAnim != nullptr)
+				{
+					AnimInstance->Montage_Play(WeaponInfo.FP_ArmsReloadAnim);
+				}
 			}
 
 			// Play FP_WeaponReloadAnim
-			if (WeaponInfo.FP_WeaponReloadAnim != nullptr)
+			if (FPWeaponMesh != nullptr && WeaponInfo.FP_WeaponReloadAnim != nullptr)
 			{
 				FPWeaponMesh->PlayAnimation(WeaponInfo.FP_WeaponReloadAnim, false);
 			}
@@ -546,10 +551,13 @@ void AGunBase::Reload()
 		else
 		{
 			// Play TP_ReloadAnim
-			UAnimInstance* AnimInstance = GetCurrentOwner()->GetMesh()->GetAnimInstance();
-			if (AnimInstance != nullptr && WeaponInfo.TP_ReloadAnim != nullptr)
+			if (GetCurrentOwner() != nullptr && GetCurrentOwner()->GetMesh() != nullptr)
 			{
-				AnimInstance->Montage_Play(WeaponInfo.TP_ReloadAnim);
+				UAnimInstance* AnimInstance = GetCurrentOwner()->GetMesh()->GetAnimInstance();
+				if (AnimInstance != nullptr && WeaponInfo.TP_ReloadAnim != nullptr)
+				{
+					AnimInstance->Montage_Play(WeaponInfo.TP_ReloadAnim);
+				}
 			}
 		}
 	}
@@ -563,7 +571,7 @@ void AGunBase::OnEndReload()
 	CurrentRemainingAmmo -= AmmoToPool;
 	CurrentAmmo += AmmoToPool;
 
-	if (GetCurrentOwner()->IsLocallyControlled())
+	if (GetCurrentOwner() != nullptr && GetCurrentOwner()->IsLocallyControlled())
 	{
 		UpdateAmmoUI(CurrentAmmo, CurrentRemainingAmmo);
 	}

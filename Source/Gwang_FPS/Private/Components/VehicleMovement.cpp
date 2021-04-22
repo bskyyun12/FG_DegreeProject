@@ -238,7 +238,7 @@ void UVehicleMovement::OnRep_ServerState()
 	}
 	else if (GetOwner()->GetLocalRole() == ROLE_SimulatedProxy)
 	{
-		// I don't want the update too often
+		// I don't want it to update when the time is too small
 		if (ClientTimeSinceUpdate < KINDA_SMALL_NUMBER)
 		{
 			return;

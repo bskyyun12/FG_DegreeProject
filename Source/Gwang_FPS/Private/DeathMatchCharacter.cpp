@@ -666,6 +666,11 @@ void ADeathMatchCharacter::EquipWeapon(AActor* WeaponToEquip)
 
 		if (WeaponToEquip != nullptr)
 		{
+			if (GetCurrentlyHeldWeapon() != nullptr)
+			{
+				IWeaponInterface::Execute_EndFire(GetCurrentlyHeldWeapon());
+			}
+
 			SetCurrentlyHeldWeapon(WeaponToEquip);
 			IWeaponInterface::Execute_OnWeaponEquipped(WeaponToEquip, this);
 			IWeaponInterface::Execute_SetVisibility(WeaponToEquip, true);
@@ -786,14 +791,16 @@ void ADeathMatchCharacter::OnEndFire()
 	{
 		IWeaponInterface::Execute_EndFire(GetCurrentlyHeldWeapon());
 
-		if (GetLocalRole() == ROLE_Authority)
+		// if it was grenade
+		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(GetCurrentlyHeldWeapon());
+		if (WeaponType == EWeaponType::Grenade)
 		{
-			EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(GetCurrentlyHeldWeapon());
-			if (WeaponType == EWeaponType::Grenade)
+			uint8 WeaponIndex = (uint8)WeaponType;
+			SetCurrentWeaponWithIndex(WeaponIndex, nullptr);
+			//SetCurrentlyHeldWeapon(nullptr);
+			if (GetCurrentMainWeapon() != nullptr)
 			{
-				uint8 WeaponIndex = (uint8)WeaponType;
-				SetCurrentWeaponWithIndex(WeaponIndex, nullptr);
-				SetCurrentlyHeldWeapon(nullptr);
+				EquipWeapon(GetCurrentMainWeapon());
 			}
 		}
 
@@ -810,12 +817,17 @@ void ADeathMatchCharacter::Server_OnEndFire_Implementation()
 	{
 		IWeaponInterface::Execute_EndFire(GetCurrentlyHeldWeapon());
 
+		// if it was grenade
 		EWeaponType WeaponType = IWeaponInterface::Execute_GetWeaponType(GetCurrentlyHeldWeapon());
 		if (WeaponType == EWeaponType::Grenade)
 		{
 			uint8 WeaponIndex = (uint8)WeaponType;
 			SetCurrentWeaponWithIndex(WeaponIndex, nullptr);
-			SetCurrentlyHeldWeapon(nullptr);
+			//SetCurrentlyHeldWeapon(nullptr);
+			if (GetCurrentMainWeapon() != nullptr)
+			{
+				EquipWeapon(GetCurrentMainWeapon());
+			}
 		}
 	}
 }

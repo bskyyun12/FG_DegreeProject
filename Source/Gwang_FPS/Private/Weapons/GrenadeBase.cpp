@@ -343,7 +343,7 @@ FTrajectory AGrenadeBase::InitTrajectory()
 			Trajectory.LaunchSpeed += MoveSpeedFactor;
 		}
 
-		Trajectory.LaunchForward = LatestOwner->GetCameraForward();
+		Trajectory.LaunchForward = LatestOwner->GetActorForwardVector();
 		if (LatestOwner->IsMoveingRight() != -1)
 		{
 			Trajectory.LaunchForward += LatestOwner->IsMoveingRight() ? LatestOwner->GetActorRightVector() * OwnerSpeedPercentage * .15f : -LatestOwner->GetActorRightVector() * OwnerSpeedPercentage * .15f;
