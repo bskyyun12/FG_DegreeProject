@@ -19,6 +19,8 @@ void UVehicleMovement::TickComponent(float DeltaTime, enum ELevelTick TickType, 
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	DrawDebugLine(GetWorld(), ServerState.Transform.GetLocation(), ServerState.Transform.GetLocation() + FVector::UpVector * 200.f, FColor::Green, false, -1.f, 0, 15.f);
+
 	bool HostPlayer = GetOwner()->GetRemoteRole() != ROLE_AutonomousProxy && GetOwner()->GetLocalRole() == ROLE_Authority;
 	if (HostPlayer || GetOwner()->GetLocalRole() == ROLE_AutonomousProxy)
 	{
@@ -124,8 +126,8 @@ void UVehicleMovement::HandleCollision(const FHitResult& Hit)
 
 	FVector V1i = Velocity;
 	float M1 = MassInKilo;
-	float M2 = 10000.f;
-	FVector V2i = FVector::ZeroVector;
+	float M2 = MassInKilo;
+	FVector V2i = FVector::OneVector;
 
 	UVehicleMovement* MoveComp = HitActor->FindComponentByClass<UVehicleMovement>();
 	if (MoveComp != nullptr)
@@ -199,31 +201,40 @@ void UVehicleMovement::UpdateServerState(const FVehicleMove& Move)
 
 void UVehicleMovement::OnRep_ServerState()
 {
-
 	if (GetOwner()->GetLocalRole() == ROLE_AutonomousProxy)
 	{
 		// I don't want the update too often
 		uint16 NumMoves = ClientMoves.Num();
-		if (NumMoves < 30)
+		if (NumMoves < 60)
 		{
 			return;
 		}
 
-		// 1. Override velocity and transfrom from server
-		Velocity = ServerState.Velocity;
-		GetOwner()->SetActorTransform(ServerState.Transform);
-
-		// 2. Simulate the unrecognized moves
-		for (const FVehicleMove& Move : ClientMoves)
+		if (VehicleMesh != nullptr)
 		{
-			if (Move.Time >= ServerState.LastMove.Time)
-			{
-				SimulateMove(Move);
-			}
-		}
+			// 0. Save Current location before correction
+			FVector ClientLocation = VehicleMesh->GetComponentLocation();
 
-		// 3. Empty the moves
-		ClientMoves.Empty();
+			// 1. Correct velocity and transfrom from server
+			Velocity = ServerState.Velocity;
+			VehicleMesh->SetWorldLocationAndRotation(ServerState.Transform.GetLocation(), ServerState.Transform.GetRotation());
+
+			// 2. Simulate the unrecognized moves
+			for (const FVehicleMove& Move : ClientMoves)
+			{
+				if (Move.Time > ServerState.LastMove.Time)
+				{
+					SimulateMove(Move);
+				}
+			}
+
+			// 3. Empty the moves
+			ClientMoves.Empty();
+
+			// 4. Partially correct the location.
+			FVector NewLocation = FMath::VInterpTo(ClientLocation, VehicleMesh->GetComponentLocation(), ClientMove.DeltaTime, NumMoves / 10.f);
+			VehicleMesh->SetWorldLocation(NewLocation);
+		}
 	}
 	else if (GetOwner()->GetLocalRole() == ROLE_SimulatedProxy)
 	{
@@ -243,8 +254,6 @@ void UVehicleMovement::OnRep_ServerState()
 			ClientStartVelocity = Velocity;
 		}
 	}
-
-	DrawDebugPoint(GetWorld(), ServerState.Transform.GetLocation(), 10.f, FColor::Green, false, .5f);
 }
 
 void UVehicleMovement::ClientTick(const float& DeltaTime)

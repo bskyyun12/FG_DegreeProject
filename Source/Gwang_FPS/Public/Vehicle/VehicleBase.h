@@ -41,5 +41,4 @@ protected:
 	void MoveRight(float Value);
 	void DriftPressed();
 	void DriftReleased();
-
 };

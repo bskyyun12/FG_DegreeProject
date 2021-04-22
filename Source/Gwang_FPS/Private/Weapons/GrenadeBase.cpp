@@ -76,7 +76,7 @@ AGrenadeBase::AGrenadeBase()
 void AGrenadeBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME_CONDITION(AGrenadeBase, ServerExplosionTime, COND_InitialOnly);
+	DOREPLIFETIME(AGrenadeBase, ServerExplosionTime);
 	DOREPLIFETIME(AGrenadeBase, LatestOwner);
 }
 
@@ -84,22 +84,29 @@ void AGrenadeBase::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	SimulateTrajectory(DeltaSeconds, true);
-
-	if (GetLocalRole() == ROLE_Authority)
+	if (bDrawPath)
 	{
-		ServerExplosionTime += DeltaSeconds;
-		if (ServerExplosionTime > GrenadeInfo.ExplodeInSeconds)
-		{
-			Explode();
-		}
+		DrawGrenadePath(DeltaSeconds);
 	}
 	else
 	{
-		ClientExplosionTime += DeltaSeconds;
-		if (ClientExplosionTime > GrenadeInfo.ExplodeInSeconds)
+		SimulateTrajectory(DeltaSeconds, true);
+
+		if (GetLocalRole() == ROLE_Authority)
 		{
-			Explode();
+			ServerExplosionTime += DeltaSeconds;
+			if (ServerExplosionTime > GrenadeInfo.ExplodeInSeconds)
+			{
+				Explode();
+			}
+		}
+		else
+		{
+			ClientExplosionTime += DeltaSeconds;
+			if (ClientExplosionTime > GrenadeInfo.ExplodeInSeconds)
+			{
+				Explode();
+			}
 		}
 	}
 }
@@ -142,6 +149,8 @@ void AGrenadeBase::ExplosionEffects()
 	if (World != nullptr)
 	{
 		DrawDebugSphere(World, NewLocation, GrenadeInfo.ExplosionRadius, 10, GetRoleColor(), false, 5.f, 0, 5.f);
+
+		UE_LOG(LogTemp, Warning, TEXT("AGrenadeBase::ExplosionEffects => Explosion Location: %s ( LocalRole: %i )"), *NewLocation.ToString(), GetLocalRole());
 
 		// Sound
 		if (GrenadeInfo.ExplosionSound != nullptr)
@@ -221,8 +230,6 @@ void AGrenadeBase::EndFire_Implementation()
 	{
 		if (LatestOwner->IsLocallyControlled())
 		{
-			Fire();
-
 			// Update Weapon UI
 			if (LatestOwner->GetController() != nullptr && UKismetSystemLibrary::DoesImplementInterface(LatestOwner->GetController(), UPlayerControllerInterface::StaticClass()))
 			{
@@ -230,46 +237,45 @@ void AGrenadeBase::EndFire_Implementation()
 			}
 		}
 
+		Trajectory = InitTrajectory();
+
+		Fire(Trajectory);
+
 		if (LatestOwner->GetLocalRole() == ROLE_Authority)
 		{
-			Multicast_Fire();
+			Multicast_Fire(Trajectory);
 		}
 
 		if (LatestOwner->GetLocalRole() == ROLE_AutonomousProxy)
 		{
-			Server_Fire();
+			Server_Fire(Trajectory);
 		}
 	}
 }
 
-void AGrenadeBase::Server_Fire_Implementation()
+void AGrenadeBase::Server_Fire_Implementation(const FTrajectory& Traj)
 {
-	Multicast_Fire();
+	Multicast_Fire(Traj);
 }
 
-void AGrenadeBase::Multicast_Fire_Implementation()
+void AGrenadeBase::Multicast_Fire_Implementation(const FTrajectory& Traj)
 {
 	if (LatestOwner != nullptr && !LatestOwner->IsLocallyControlled())
 	{
-		Fire();
+		Fire(Traj);
 	}
 }
 
-void AGrenadeBase::Fire()
+void AGrenadeBase::Fire(const FTrajectory& Traj)
 {
-	UWorld* World = GetWorld();
-	if (World != nullptr)
-	{
-		World->GetTimerManager().ClearTimer(PathDrawingtimer);
-	}
+	Trajectory = Traj;
 
+	bDrawPath = false;
 	bIsUsed = true;
-
-	InitTrajectory();
 
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		ServerExplosionTime = 0.01f;
+		ServerExplosionTime = 0.f;
 	}
 	else
 	{
@@ -285,11 +291,12 @@ void AGrenadeBase::Fire()
 void AGrenadeBase::OnRep_ServerExplosionTime()
 {
 	UE_LOG(LogTemp, Warning, TEXT("AGrenadeBase::OnRep_ServerExplosionTime ClientExplosionTime: ( %f ), ServerExplosionTime: ( %f )"), ClientExplosionTime, ServerExplosionTime);
-	//float NetworkLatency = ClientExplosionTime - ServerExplosionTime;
+	float NetworkLatency = ClientExplosionTime - ServerExplosionTime;
 	//ClientExplosionTime -= NetworkLatency;
 	//FlightTime += NetworkLatency;
 
 	ClientExplosionTime = ServerExplosionTime;
+	ClientExplosionTime -= NetworkLatency;
 }
 #pragma endregion EndFire (Throw Grenade)
 
@@ -303,41 +310,52 @@ void AGrenadeBase::BeginFire_Implementation()
 
 	if (LatestOwner != nullptr && LatestOwner->IsLocallyControlled())
 	{
-		UWorld* World = GetWorld();
-		if (World != nullptr)
-		{
-			World->GetTimerManager().SetTimer(PathDrawingtimer, this, &AGrenadeBase::DrawGrenadePath, World->GetDeltaSeconds(), true);
-		}
+		bDrawPath = true;
+		SetActorTickEnabled(true);
 	}
 }
 
-void AGrenadeBase::DrawGrenadePath()
+void AGrenadeBase::DrawGrenadePath(const float& DeltaTime)
 {
 	InitTrajectory();
-	
-	UWorld* World = GetWorld();
-	if (World != nullptr)
+
+	for (float Time = 0.f; Time < 1.f; Time += DeltaTime)
 	{
-		for (float Time = 0.f; Time < 1.f; Time += World->GetDeltaSeconds())
-		{
-			SimulateTrajectory(World->GetDeltaSeconds(), false);
-		}
+		SimulateTrajectory(DeltaTime, false);
 	}
 }
 #pragma endregion BeginFire (Grenade Path, Local only)
 
 #pragma region Trajectory
-void AGrenadeBase::InitTrajectory()
+FTrajectory AGrenadeBase::InitTrajectory()
 {
 	if (LatestOwner != nullptr)
 	{
-		Trajectory.LaunchLocation = FPWeaponMesh->GetComponentLocation();
-		Trajectory.LaunchForward = LatestOwner->GetActorForwardVector();
-		Trajectory.LaunchAngleInRad = LatestOwner->GetCameraPitch() * PI / 180.f;
+		Trajectory.LaunchLocation = LatestOwner->GetCameraLocation() + LatestOwner->GetCameraRight() * 20.f + LatestOwner->GetCameraUp() * -20.f;// FPWeaponMesh->GetComponentLocation();
+		Trajectory.PrevLocation = Trajectory.LaunchLocation;
+
+		float OwnerSpeedPercentage = LatestOwner->GetMoveSpeedInPercntage();
+
 		Trajectory.LaunchSpeed = GrenadeInfo.ThrowingPower;
-		PrevLocation = Trajectory.LaunchLocation;
-		FlightTime = 0.f;
+		if (LatestOwner->IsMoveingForward() != -1)
+		{
+			float MoveSpeedFactor = LatestOwner->IsMoveingForward() ? OwnerSpeedPercentage * 1500.f : -OwnerSpeedPercentage * 1500.f;
+			Trajectory.LaunchSpeed += MoveSpeedFactor;
+		}
+
+		Trajectory.LaunchForward = LatestOwner->GetCameraForward();
+		if (LatestOwner->IsMoveingRight() != -1)
+		{
+			Trajectory.LaunchForward += LatestOwner->IsMoveingRight() ? LatestOwner->GetActorRightVector() * OwnerSpeedPercentage * .15f : -LatestOwner->GetActorRightVector() * OwnerSpeedPercentage * .15f;
+		}
+
+		Trajectory.LaunchAngleInRad = LatestOwner->GetCameraPitch() * PI / 180.f;
+		Trajectory.FlightTime = 0.f;
+
+		return Trajectory;
 	}
+
+	return FTrajectory();
 }
 
 void AGrenadeBase::SimulateTrajectory(const float& DeltaSeconds, bool bMoveMesh)
@@ -345,29 +363,29 @@ void AGrenadeBase::SimulateTrajectory(const float& DeltaSeconds, bool bMoveMesh)
 	UWorld* World = GetWorld();
 	if (World != nullptr)
 	{
-		FlightTime += DeltaSeconds;
+		Trajectory.FlightTime += DeltaSeconds;
 
-		DisplacementX = Trajectory.LaunchSpeed * FlightTime * FMath::Cos(Trajectory.LaunchAngleInRad);
-		DisplacementZ = Trajectory.LaunchSpeed * FlightTime * FMath::Sin(Trajectory.LaunchAngleInRad) - 0.5f * Gravity * FlightTime * FlightTime;
+		DisplacementX = Trajectory.LaunchSpeed * Trajectory.FlightTime * FMath::Cos(Trajectory.LaunchAngleInRad);
+		DisplacementZ = Trajectory.LaunchSpeed * Trajectory.FlightTime * FMath::Sin(Trajectory.LaunchAngleInRad) - 0.5f * Gravity * Trajectory.FlightTime * Trajectory.FlightTime;
 		NewLocation = Trajectory.LaunchLocation + Trajectory.LaunchForward * DisplacementX + FVector::UpVector * DisplacementZ;
 
 		if (bMoveMesh)
 		{
-			DrawDebugLine(World, PrevLocation, NewLocation, GetRoleColor(), false, DeltaSeconds * 10.f, 0, 7.f);
+			DrawDebugLine(World, Trajectory.PrevLocation, NewLocation, GetRoleColor(), false, DeltaSeconds * 10.f, 0, 7.f);
 			FPWeaponMesh->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 			TPWeaponMesh->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 			ExplosionCollider->SetWorldLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 		}
 		else
 		{
-			DrawDebugLine(World, PrevLocation, NewLocation, GetRoleColor(), false, DeltaSeconds, 0, 7.f);
+			DrawDebugLine(World, Trajectory.PrevLocation, NewLocation, GetRoleColor(), false, DeltaSeconds * 1.1f, 0, 7.f);
 		}
 
 		FHitResult Hit;
 		FCollisionQueryParams Params;
 		Params.AddIgnoredActor(this);
 		Params.AddIgnoredActor(LatestOwner);
-		if (World->LineTraceSingleByChannel(Hit, PrevLocation, NewLocation, ECC_Visibility, Params))
+		if (World->LineTraceSingleByChannel(Hit, Trajectory.PrevLocation, NewLocation, ECC_Visibility, Params))
 		{
 			if (bMoveMesh)
 			{
@@ -378,7 +396,7 @@ void AGrenadeBase::SimulateTrajectory(const float& DeltaSeconds, bool bMoveMesh)
 				DrawDebugPoint(World, Hit.ImpactPoint, 20.f, FColor::Red, false, DeltaSeconds);
 			}
 
-			FVector Reflection = FMath::GetReflectionVector((Hit.ImpactPoint - PrevLocation).GetSafeNormal(), Hit.ImpactNormal);
+			FVector Reflection = FMath::GetReflectionVector((Hit.ImpactPoint - Trajectory.PrevLocation).GetSafeNormal(), Hit.ImpactNormal);
 			FVector RightVector = FVector::CrossProduct(Reflection, FVector::UpVector);
 			Trajectory.LaunchForward = FVector::CrossProduct(FVector::UpVector, RightVector);
 
@@ -387,7 +405,7 @@ void AGrenadeBase::SimulateTrajectory(const float& DeltaSeconds, bool bMoveMesh)
 			// If the reflection vector heads downwards, we need the negative angle
 			Trajectory.LaunchAngleInRad *= FMath::Sign(Reflection.Z);
 
-			FlightTime = 0.f;
+			Trajectory.FlightTime = 0.f;
 
 			Trajectory.LaunchSpeed *= GrenadeInfo.Bounceness;
 
@@ -395,7 +413,7 @@ void AGrenadeBase::SimulateTrajectory(const float& DeltaSeconds, bool bMoveMesh)
 			NewLocation = Hit.ImpactPoint + Hit.ImpactNormal;
 		}
 
-		PrevLocation = NewLocation;
+		Trajectory.PrevLocation = NewLocation;
 	}
 }
 #pragma endregion Trajectory

@@ -31,9 +31,14 @@ public:
 	AActor* GetCurrentGrenade();
 	ETeam GetTeam();
 	bool IsDead();
+	int8 IsMoveingForward() const;;
+	int8 IsMoveingRight() const;;
+	float GetMoveSpeedInPercntage() const;
 	USkeletalMeshComponent* GetArmMesh() const { return ArmMesh; }
 	FVector GetCameraLocation() const;
 	FVector GetCameraForward() const;
+	FVector GetCameraRight() const;
+	FVector GetCameraUp() const;
 	float GetCameraPitch() const;
 
 	// Setters
@@ -67,6 +72,10 @@ protected:
 
 	// Cache
 	ADeathMatchPlayerState* PS;
+
+	// Movement
+	int8 IsMovingForward;
+	int8 IsMovingRight;
 
 protected:
 	virtual void BeginPlay();

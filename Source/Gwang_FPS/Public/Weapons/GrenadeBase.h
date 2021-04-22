@@ -20,11 +20,15 @@ struct FTrajectory
 	UPROPERTY()
 	FVector LaunchLocation;
 	UPROPERTY()
+	FVector PrevLocation;
+	UPROPERTY()
 	FVector LaunchForward;
 	UPROPERTY()
 	float LaunchAngleInRad;
 	UPROPERTY()
 	float LaunchSpeed;
+	UPROPERTY()
+	float FlightTime;
 };
 
 USTRUCT(BlueprintType)
@@ -146,16 +150,13 @@ protected:
 	float DisplacementX;
 	float DisplacementZ;
 	FVector NewLocation;
-	FVector PrevLocation;
-
-	FTimerHandle PathDrawingtimer;
 
 	UPROPERTY(Replicated)
 	ADeathMatchCharacter* LatestOwner;
 
-	bool bIsUsed;
+	bool bDrawPath;
 
-	float FlightTime;
+	bool bIsUsed;
 
 	UPROPERTY(ReplicatedUsing=OnRep_ServerExplosionTime)
 	float ServerExplosionTime;
@@ -169,15 +170,15 @@ protected:
 	void Tick(float DeltaSeconds) override;
 
 	// Fire
-	void Fire();
 	UFUNCTION(Server, Reliable)
-	void Server_Fire();
+	void Server_Fire(const FTrajectory& Traj);
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_Fire();
+	void Multicast_Fire(const FTrajectory& Traj);
+	void Fire(const FTrajectory& Traj);
 
 	// Trajectory
-	void InitTrajectory();
-	void DrawGrenadePath();
+	FTrajectory InitTrajectory();
+	void DrawGrenadePath(const float& DeltaTime);
 	void SimulateTrajectory(const float& DeltaSeconds, bool bMoveMesh);
 
 	// OnExplosion

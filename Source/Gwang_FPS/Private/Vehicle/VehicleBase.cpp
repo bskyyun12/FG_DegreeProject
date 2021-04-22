@@ -19,7 +19,7 @@ AVehicleBase::AVehicleBase()
 	SetReplicatingMovement(false);
 	bReplicates = true;
 
-	//NetUpdateFrequency = 5.f;
+	//NetUpdateFrequency = 1.f;
 }
 
 // Called when the game starts or when spawned

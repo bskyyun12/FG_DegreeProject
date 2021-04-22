@@ -176,6 +176,21 @@ bool ADeathMatchCharacter::IsDead()
 	return GetPlayerState()->GetIsDead();
 }
 
+int8 ADeathMatchCharacter::IsMoveingForward() const
+{
+	return IsMovingForward;
+}
+
+int8 ADeathMatchCharacter::IsMoveingRight() const
+{
+	return IsMovingRight;
+}
+
+float ADeathMatchCharacter::GetMoveSpeedInPercntage() const
+{
+	return GetVelocity().Size() / GetMovementComponent()->GetMaxSpeed();
+}
+
 FVector ADeathMatchCharacter::GetCameraLocation() const
 {
 	return FP_Camera->GetComponentLocation();
@@ -184,6 +199,16 @@ FVector ADeathMatchCharacter::GetCameraLocation() const
 FVector ADeathMatchCharacter::GetCameraForward() const
 {
 	return FP_Camera->GetForwardVector();
+}
+
+FVector ADeathMatchCharacter::GetCameraRight() const
+{
+	return FP_Camera->GetRightVector();
+}
+
+FVector ADeathMatchCharacter::GetCameraUp() const
+{
+	return FP_Camera->GetUpVector();
 }
 
 float ADeathMatchCharacter::GetCameraPitch() const
@@ -225,6 +250,12 @@ void ADeathMatchCharacter::MoveForward(float Value)
 	{
 		// add movement in that direction
 		AddMovementInput(GetActorForwardVector(), Value);
+
+		IsMovingForward = Value > 0.1f;
+	}
+	else
+	{
+		IsMovingForward = -1;
 	}
 }
 
@@ -234,6 +265,12 @@ void ADeathMatchCharacter::MoveRight(float Value)
 	{
 		// add movement in that direction
 		AddMovementInput(GetActorRightVector(), Value);
+
+		IsMovingRight = Value > 0.f;
+	}
+	else
+	{
+		IsMovingRight = -1;
 	}
 }
 
