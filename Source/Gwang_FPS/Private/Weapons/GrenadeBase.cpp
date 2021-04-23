@@ -114,6 +114,9 @@ void AGrenadeBase::Tick(float DeltaSeconds)
 void AGrenadeBase::Explode()
 {
 	ExplosionEffects();
+	FPWeaponMesh->SetVisibility(false, true);
+	TPWeaponMesh->SetVisibility(false, true);
+	SetActorTickEnabled(false);
 
 	if (GetLocalRole() == ROLE_Authority)
 	{
@@ -137,10 +140,6 @@ void AGrenadeBase::Explode()
 
 		ExplosionCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
-
-	FPWeaponMesh->SetVisibility(false, true);
-	TPWeaponMesh->SetVisibility(false, true);
-	SetActorTickEnabled(false);
 }
 
 void AGrenadeBase::ExplosionEffects()
@@ -189,6 +188,9 @@ void AGrenadeBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwne
 	}
 	LatestOwner = NewOwner;
 	SetOwner(NewOwner);
+
+	bDrawPath = true;
+	bIsUsed = false;
 
 	// skeleton is not yet created in the constructor, so AttachToComponent should be happened after constructor
 	TPWeaponMesh->SetSimulatePhysics(false);
@@ -303,6 +305,11 @@ void AGrenadeBase::OnRep_ServerExplosionTime()
 #pragma region BeginFire (Grenade Path, Local only)
 void AGrenadeBase::BeginFire_Implementation()
 {
+	if (bIsUsed || bDrawPath)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AGrenadeBase::BeginFire_Implementation bIsUsed || bDrawPath"));
+	}
+
 	if (bIsUsed)
 	{
 		return;

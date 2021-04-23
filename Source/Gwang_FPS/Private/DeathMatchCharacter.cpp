@@ -425,6 +425,8 @@ void ADeathMatchCharacter::Multicast_OnDeath_Implementation()
 	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh_Dead"));
 	GetCapsuleComponent()->SetGenerateOverlapEvents(false);
 
+	GetCharacterMovement()->SetJumpAllowed(false);
+
 	// Drop Weapon
 	DropWeapon();
 
@@ -797,7 +799,7 @@ void ADeathMatchCharacter::OnEndFire()
 		{
 			uint8 WeaponIndex = (uint8)WeaponType;
 			SetCurrentWeaponWithIndex(WeaponIndex, nullptr);
-			//SetCurrentlyHeldWeapon(nullptr);
+			SetCurrentlyHeldWeapon(nullptr);
 			if (GetCurrentMainWeapon() != nullptr)
 			{
 				EquipWeapon(GetCurrentMainWeapon());
@@ -823,7 +825,7 @@ void ADeathMatchCharacter::Server_OnEndFire_Implementation()
 		{
 			uint8 WeaponIndex = (uint8)WeaponType;
 			SetCurrentWeaponWithIndex(WeaponIndex, nullptr);
-			//SetCurrentlyHeldWeapon(nullptr);
+			SetCurrentlyHeldWeapon(nullptr);
 			if (GetCurrentMainWeapon() != nullptr)
 			{
 				EquipWeapon(GetCurrentMainWeapon());

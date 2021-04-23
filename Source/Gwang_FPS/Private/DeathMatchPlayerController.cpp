@@ -84,14 +84,16 @@ void ADeathMatchPlayerController::OnPlayerDeath_Implementation()
 
 void ADeathMatchPlayerController::Server_OnPlayerDeath_Implementation()
 {
-	GM->OnPlayerDeath(this);
 	Client_OnPlayerDeath();
+	GM->OnPlayerDeath(this);
 }
 
 void ADeathMatchPlayerController::Client_OnPlayerDeath_Implementation()
 {
-	FInputModeUIOnly InputMode;
-	SetInputMode(InputMode);
+	SetIgnoreMoveInput(true);
+	SetIgnoreLookInput(true);
+	//FInputModeUIOnly InputMode;
+	//SetInputMode(InputMode);
 }
 
 #pragma region Widget Related

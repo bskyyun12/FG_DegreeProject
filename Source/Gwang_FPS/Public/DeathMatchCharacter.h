@@ -58,15 +58,15 @@ public:
 	void Client_OnTakeDamage();
 
 protected:
-	/** Pawn mesh: 1st person view (arms; seen only by self) */
+	// Pawn mesh: 1st person view (arms; seen only by self)
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* ArmMesh;
 
-	/** First person camera */
+	// First person camera
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FP_Camera;
 
-	/** Camera to activate on death */
+	// Camera to activate on death
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UCameraComponent* DeathCamera;
 

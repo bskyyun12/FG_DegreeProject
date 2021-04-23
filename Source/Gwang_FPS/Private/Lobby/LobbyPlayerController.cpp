@@ -33,23 +33,25 @@ void ALobbyPlayerController::BeginPlay()
 	if (IsLocalController())
 	{
 		UWorld* World = GetWorld();
-		if (!ensure(World != nullptr))
+		if (World != nullptr)
 		{
-			return;
-		}
-		if (!ensure(LobbyWidgetClass != nullptr))
-		{
-			return;
-		}
+			if (!ensure(LobbyWidgetClass != nullptr))
+			{
+				return;
+			}
+			LobbyWidget = CreateWidget<ULobbyWidget>(World, LobbyWidgetClass);
+			if (!ensure(LobbyWidget != nullptr))
+			{
+				return;
+			}
+			LobbyWidget->Setup();
 
-		LobbyWidget = CreateWidget<ULobbyWidget>(World, LobbyWidgetClass);
-		if (!ensure(LobbyWidget != nullptr))
-		{
-			return;
+			FTimerHandle LobbyUITimer;
+			World->GetTimerManager().SetTimer(LobbyUITimer, [&]()
+				{
+					Server_OnSetupWidget();
+				}, 3.f, false);
 		}
-		LobbyWidget->Setup();
-
-		Server_OnSetupWidget();
 	}
 }
 
@@ -69,7 +71,10 @@ void ALobbyPlayerController::UpdateLobbyUI_Implementation(const TArray<FLobbyPla
 
 void ALobbyPlayerController::Client_UpdateLobbyUI_Implementation(const TArray<FLobbyPlayerData>& UserDataList)
 {
-	LobbyWidget->UpdateUserRowData(UserDataList);
+	if (LobbyWidget != nullptr)
+	{
+		LobbyWidget->UpdateUserRowData(UserDataList);
+	}
 }
 
 // ( bIsReady Update ) Called after UUserRow::OnClicked_Button_Ready

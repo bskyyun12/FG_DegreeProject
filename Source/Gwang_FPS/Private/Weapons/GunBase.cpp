@@ -129,7 +129,7 @@ void AGunBase::OnWeaponEquipped_Implementation(ADeathMatchCharacter* NewOwner)
 	}
 	else
 	{
-		// TODO: Play TP_EquipAnim
+		// TODO: Play TP_EquipAnim?
 	}
 }
 
@@ -140,9 +140,7 @@ void AGunBase::OnWeaponDropped_Implementation()
 		Execute_EndFire(this);
 		
 		InteractCollider->SetCollisionProfileName(TEXT("Weapon_Dropped"));
-
 		FPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-
 		TPWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 		TPWeaponMesh->SetCollisionProfileName(TEXT("Weapon_Dropped"));
 		TPWeaponMesh->SetSimulatePhysics(true);
@@ -316,11 +314,11 @@ bool AGunBase::FireLineTrace(FHitResult& OutHit)
 		EPhysicalSurface SurfaceType = UPhysicalMaterial::DetermineSurfaceType(OutHit.PhysMaterial.Get());
 		if (SurfaceType == SurfaceType1) // Head
 		{
-			DrawDebugPoint(World, OutHit.ImpactPoint + OutHit.ImpactNormal, 30.f, FColor::Red, false, .7f);
+			DrawDebugPoint(World, OutHit.ImpactPoint + OutHit.ImpactNormal, 70.f, FColor::Red, false, .5f);
 		}
 		else
 		{
-			DrawDebugPoint(World, OutHit.ImpactPoint + OutHit.ImpactNormal, 10.f, FColor::Red, false, .7f);
+			DrawDebugPoint(World, OutHit.ImpactPoint + OutHit.ImpactNormal, 10.f, FColor::Red, false, .5f);
 		}
 		return true;
 	}

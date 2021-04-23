@@ -303,7 +303,17 @@ void ADeathMatchPlayerState::Multicast_OnSendChat_Implementation(const FName& Ch
 {
 	if (GetPlayerController() != nullptr && GetPlayerController()->IsLocalController())
 	{
-		GetPlayerController()->UpdateChatUI(*GetPlayerName(), ChatContent);
+		FString Name = GetPlayerName();
+		if (Team == ETeam::Marvel)
+		{
+			Name = FString::Printf(TEXT("(Red) %s"), *GetPlayerName());
+		}
+		else if (Team == ETeam::DC)
+		{
+			Name = FString::Printf(TEXT("(Blue) %s"), *GetPlayerName());
+		}
+
+		GetPlayerController()->UpdateChatUI(*Name, ChatContent);
 	}
 }
 

@@ -36,30 +36,33 @@ bool ULobbyWidget::Initialize()
 // Called by ALobbyPlayerController::Client_UpdateLobbyUI_Implementation
 void ULobbyWidget::UpdateUserRowData(TArray<FLobbyPlayerData> UserData)
 {
-	VerticalBox_TeamMarvel->ClearChildren();
-	VerticalBox_TeamDC->ClearChildren();
-
-	for (FLobbyPlayerData Data : UserData)
+	if (VerticalBox_TeamMarvel != nullptr && VerticalBox_TeamDC != nullptr)
 	{
-		UWorld* World = GetWorld();
-		if (!ensure(World != nullptr))
-		{
-			return;
-		}
-		UUserRow* UserRow = CreateWidget<UUserRow>(World, UserRowClass);
-		if (!ensure(UserRow != nullptr))
-		{
-			return;
-		}
-		UserRow->UpdateRow(Data);
+		VerticalBox_TeamMarvel->ClearChildren();
+		VerticalBox_TeamDC->ClearChildren();
 
-		if (Data.Team == ETeam::Marvel)
+		for (FLobbyPlayerData Data : UserData)
 		{
-			VerticalBox_TeamMarvel->AddChild(UserRow);
-		}
-		else if (Data.Team == ETeam::DC)
-		{
-			VerticalBox_TeamDC->AddChild(UserRow);
+			UWorld* World = GetWorld();
+			if (!ensure(World != nullptr))
+			{
+				return;
+			}
+			UUserRow* UserRow = CreateWidget<UUserRow>(World, UserRowClass);
+			if (!ensure(UserRow != nullptr))
+			{
+				return;
+			}
+			UserRow->UpdateRow(Data);
+
+			if (Data.Team == ETeam::Marvel)
+			{
+				VerticalBox_TeamMarvel->AddChild(UserRow);
+			}
+			else if (Data.Team == ETeam::DC)
+			{
+				VerticalBox_TeamDC->AddChild(UserRow);
+			}
 		}
 	}
 }

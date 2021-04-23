@@ -192,8 +192,9 @@ ETeam ALobbyGameMode::GetTeamToJoin()
 
 FName ALobbyGameMode::GetPlayerName(APlayerController* NewPlayer) const
 {
+	FName UserName = "PS_nullptr";
+
 	APlayerState* PlayerState = NewPlayer->GetPlayerState<APlayerState>();
-	FName UserName = "Gwang";
 	if (PlayerState != nullptr)
 	{
 		UserName = *PlayerState->GetPlayerName();
